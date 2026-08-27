@@ -1,0 +1,11 @@
+{
+  "name": "unified-gov",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @unified-gov/web dev",
+    "build:web": "pnpm --filter @unified-gov/web build",
+    "lint:web": "pnpm --filter @unified-gov/web lint",
+    "api": "cd apps/api && uv run uvicorn app.main:app --reload",
+    "api:test": "cd apps/api && uv run pytest"
+  }
+}
