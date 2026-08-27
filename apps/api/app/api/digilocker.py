@@ -70,5 +70,5 @@ def select_digilocker_documents(
 def digilocker_document_not_found(document_id: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail={"code": "DIGILOCKER_DOCUMENT_NOT_FOUND", "message": f"Mock document '{document_id}' was not found."},
+        detail={"code": "DIGILOCKER_DOCUMENT_NOT_FOUND", "message": f"DigiLocker document '{document_id}' was not found."},
     )

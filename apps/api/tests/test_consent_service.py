@@ -50,7 +50,7 @@ def test_consent_records_requested_data_documents_purpose_and_timestamp(db: Sess
     ]
     assert consent.document_types == ["PHOTOGRAPH", "IDENTITY_DOCUMENT"]
     assert len(consent.document_ids) == 1
-    assert consent.purpose == "Driving Licence Application — Demo Application"
+    assert consent.purpose == "Driving Licence Application"
     assert consent.status == "GRANTED"
     assert consent.granted_at is not None
 

@@ -7,8 +7,9 @@ import type { GovernmentService } from "@/src/types";
 export function ServiceCard({ service }: { service: GovernmentService }) {
   const deadline = service.end_date ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(service.end_date)) : "Not specified";
   const fee = service.fee > 0 ? `${service.currency} ${service.fee}` : "Free";
+  const accent = service.category === "Transport" ? "border-t-blue-500" : service.category === "Education" ? "border-t-emerald-500" : "border-t-amber-500";
   return (
-    <Card className="h-full">
+    <Card className={`h-full border-t-4 ${accent} transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3"><CardTitle>{service.name}</CardTitle><Badge variant="secondary">{service.category}</Badge></div>
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Landmark className="size-3.5" aria-hidden="true" />{service.department}</p>

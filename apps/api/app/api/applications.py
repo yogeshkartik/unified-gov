@@ -55,6 +55,20 @@ def read_application(application_id: str, db: Session = Depends(get_db)) -> Appl
         raise application_not_found(application_id) from error
 
 
+@router.delete("/applications/{application_id}")
+def delete_draft_application(application_id: str, db: Session = Depends(get_db)) -> dict[str, str]:
+    try:
+        application_engine.delete_draft_application(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+    except application_engine.ApplicationDeletionNotAllowedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_NOT_DRAFT", "message": "Only draft applications can be deleted."},
+        ) from error
+    return {"id": application_id}
+
+
 @router.get("/applications/{application_id}/preview", response_model=ApplicationPreviewResponse)
 def read_application_preview(
     application_id: str, db: Session = Depends(get_db)

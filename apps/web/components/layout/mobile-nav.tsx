@@ -23,7 +23,7 @@ export function MobileNav() {
         <Dialog className="top-0 left-0 h-full max-w-[min(20rem,calc(100%-2rem))] -translate-x-0 -translate-y-0 rounded-none p-0 sm:max-w-sm" showCloseButton>
           <DialogHeader className="border-b border-border p-5 pr-12">
             <DialogTitle>Navigation</DialogTitle>
-            <DialogDescription>Browse your demo citizen portal.</DialogDescription>
+            <DialogDescription>Browse your citizen services portal.</DialogDescription>
           </DialogHeader>
           <nav className="space-y-1 p-3" aria-label="Mobile navigation">
             {navigationItems.map(({ href, labelKey, icon: Icon }) => <Link key={href} href={href} slot="close" aria-current={pathname === href ? "page" : undefined} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className="size-4" aria-hidden="true" />{t(labelKey)}</Link>)}

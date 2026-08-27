@@ -74,6 +74,8 @@ export const api = {
     request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),
   getApplication: (applicationId: string) =>
     request<ApplicationEngineResponse>(`/api/applications/${applicationId}`),
+  deleteApplication: (applicationId: string) =>
+    request<{ id: string }>(`/api/applications/${applicationId}`, { method: "DELETE" }),
   saveAdditionalData: (applicationId: string, answers: Record<string, unknown>) =>
     request<ApplicationEngineResponse>(`/api/applications/${applicationId}/additional-data`, {
       method: "PUT",

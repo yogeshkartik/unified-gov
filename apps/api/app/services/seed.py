@@ -39,7 +39,9 @@ INDIAN_VEHICLE_CLASS_OPTIONS = [
 
 def seed_demo_citizen(db: Session) -> None:
     """Create only synthetic, explicitly demo-labelled citizen data."""
-    if db.scalar(select(User).where(User.email == DEMO_USER_EMAIL)) is not None:
+    existing_user = db.scalar(select(User).where(User.email == DEMO_USER_EMAIL))
+    if existing_user is not None:
+        sync_citizen_display_data(db, existing_user)
         return
 
     user = User(email=DEMO_USER_EMAIL, mobile="9000000000", auth_state="DEMO")
@@ -49,26 +51,26 @@ def seed_demo_citizen(db: Session) -> None:
         date_of_birth=date(2005, 3, 15),
         gender="MALE",
         nationality="Indian",
-        father_name="Demo Parent One",
-        mother_name="Demo Parent Two",
+        father_name="Arun Kumar",
+        mother_name="Sunita Kumar",
         mobile="9000000000",
-        email=DEMO_USER_EMAIL,
+        email="rahul.kumar@example.com",
         category="GENERAL",
         disability_status="NONE",
     )
     user.addresses.append(
         Address(
             type=AddressType.PERMANENT,
-            line1="42 Demo Street",
+            line1="42 Ashoka Road",
             line2=None,
-            city="Sample City",
-            district="Sample District",
-            state="Demo State",
-            pincode="000000",
+            city="New Delhi",
+            district="Central Delhi",
+            state="Delhi",
+            pincode="110001",
         )
     )
     marksheet = Document(
-        name="Class 12 Marksheet — Synthetic Demo",
+        name="Class 12 Marksheet",
         document_type="12TH_MARKSHEET",
         source=DocumentSource.PROFILE_UPLOAD,
         storage_key="synthetic/class-12-marksheet.pdf",
@@ -77,7 +79,7 @@ def seed_demo_citizen(db: Session) -> None:
         [
             marksheet,
             Document(
-                name="Photograph — Synthetic Demo",
+                name="Photograph",
                 document_type="PHOTOGRAPH",
                 source=DocumentSource.PROFILE_UPLOAD,
                 storage_key="synthetic/photograph.png",
@@ -87,8 +89,8 @@ def seed_demo_citizen(db: Session) -> None:
     user.education_records.append(
         Education(
             level=EducationLevel.TWELFTH,
-            board_or_university="Demo State Board",
-            institution="Sample Senior Secondary School",
+            board_or_university="Central Board of Secondary Education",
+            institution="Government Senior Secondary School",
             year=2023,
             marks_or_percentage="87%",
             certificate_document=marksheet,
@@ -106,15 +108,15 @@ def seed_demo_services(db: Session) -> None:
 
     recruitment_exam = Service(
         id="RECRUITMENT_EXAM_001",
-        name="Government Recruitment Exam — Demo",
-        department="Demo Public Recruitment Department",
-        description="Synthetic demo recruitment examination for the hackathon prototype.",
+        name="Government Recruitment Exam",
+        department="Public Recruitment Department",
+        description="Apply for open government recruitment examinations and track your application.",
         service_type=ServiceType.RECRUITMENT,
         category="Recruitment",
         status=ServiceStatus.OPEN,
         fee=100,
         currency="INR",
-        instructions="This is a mock service. Do not provide real personal or payment information.",
+        instructions=None,
         required_profile_fields=["full_name", "date_of_birth", "gender", "address", "category", "education"],
         fields=[
             ServiceField(
@@ -122,7 +124,7 @@ def seed_demo_services(db: Session) -> None:
                 label="Preferred Exam City",
                 field_type=ServiceFieldType.SELECT,
                 required=True,
-                options=["Sample City", "Demo Nagar", "Prototype Town"],
+                options=["New Delhi", "Mumbai", "Bengaluru"],
                 position=1,
             ),
             ServiceField(
@@ -144,15 +146,15 @@ def seed_demo_services(db: Session) -> None:
     )
     scholarship = Service(
         id="SCHOLARSHIP_001",
-        name="Post-Matric Scholarship — Demo",
-        department="Demo Education Support Department",
-        description="Synthetic post-matric scholarship service for the hackathon prototype.",
+        name="Post-Matric Scholarship",
+        department="Education Support Department",
+        description="Financial assistance for eligible students pursuing post-matric education.",
         service_type=ServiceType.SCHOLARSHIP,
         category="Education",
         status=ServiceStatus.OPEN,
         fee=0,
         currency="INR",
-        instructions="This is a mock service. All documents and information are synthetic.",
+        instructions=None,
         required_profile_fields=["full_name", "date_of_birth", "address", "category", "education"],
         fields=[
             ServiceField(
@@ -179,15 +181,15 @@ def seed_demo_services(db: Session) -> None:
     )
     driving_licence = Service(
         id="DRIVING_LICENCE_001",
-        name="Driving Licence Application — Demo",
-        department="Demo Transport Department",
-        description="Synthetic driving licence application for the hackathon prototype.",
+        name="Driving Licence Application",
+        department="Transport Department",
+        description="Apply for learner, permanent, renewal and vehicle-class driving licence services.",
         service_type=ServiceType.LICENCE,
         category="Transport",
         status=ServiceStatus.OPEN,
         fee=200,
         currency="INR",
-        instructions="This is a mock service. It is not connected to any transport authority.",
+        instructions=None,
         required_profile_fields=["full_name", "date_of_birth", "address"],
         fields=[
             ServiceField(
@@ -220,6 +222,35 @@ def seed_demo_services(db: Session) -> None:
 
 def sync_demo_service_options(db: Session) -> None:
     """Keep option-backed demo fields current in already-created local databases."""
+    services = {
+        service.id: service
+        for service in db.scalars(select(Service)).all()
+    }
+    service_copy = {
+        "RECRUITMENT_EXAM_001": (
+            "Government Recruitment Exam",
+            "Public Recruitment Department",
+            "Apply for open government recruitment examinations and track your application.",
+        ),
+        "SCHOLARSHIP_001": (
+            "Post-Matric Scholarship",
+            "Education Support Department",
+            "Financial assistance for eligible students pursuing post-matric education.",
+        ),
+        "DRIVING_LICENCE_001": (
+            "Driving Licence Application",
+            "Transport Department",
+            "Apply for learner, permanent, renewal and vehicle-class driving licence services.",
+        ),
+    }
+    for service_id, (name, department, description) in service_copy.items():
+        service = services.get(service_id)
+        if service is not None:
+            service.name = name
+            service.department = department
+            service.description = description
+            service.instructions = None
+
     fields = {
         field.key: field
         for field in db.scalars(
@@ -235,4 +266,43 @@ def sync_demo_service_options(db: Session) -> None:
     if vehicle_class is not None:
         vehicle_class.field_type = ServiceFieldType.SELECT
         vehicle_class.options = INDIAN_VEHICLE_CLASS_OPTIONS
+    exam_city = db.scalar(
+        select(ServiceField).where(
+            ServiceField.service_id == "RECRUITMENT_EXAM_001",
+            ServiceField.key == "exam_city",
+        )
+    )
+    if exam_city is not None:
+        exam_city.options = ["New Delhi", "Mumbai", "Bengaluru"]
+    db.commit()
+
+
+def sync_citizen_display_data(db: Session, user: User) -> None:
+    if user.profile is not None:
+        user.profile.father_name = "Arun Kumar"
+        user.profile.mother_name = "Sunita Kumar"
+        user.profile.email = "rahul.kumar@example.com"
+    if user.addresses:
+        address = user.addresses[0]
+        address.line1 = "42 Ashoka Road"
+        address.city = "New Delhi"
+        address.district = "Central Delhi"
+        address.state = "Delhi"
+        address.pincode = "110001"
+    if user.education_records:
+        education = user.education_records[0]
+        education.board_or_university = "Central Board of Secondary Education"
+        education.institution = "Government Senior Secondary School"
+    document_names = {
+        "10TH_MARKSHEET": "Class 10 Marksheet",
+        "12TH_MARKSHEET": "Class 12 Marksheet",
+        "INCOME_CERTIFICATE": "Income Certificate",
+        "CASTE_CERTIFICATE": "Caste Certificate",
+        "DRIVING_LICENCE": "Driving Licence",
+        "DEGREE_CERTIFICATE": "Degree Certificate",
+        "PHOTOGRAPH": "Photograph",
+    }
+    for document in user.documents:
+        if document.document_type in document_names:
+            document.name = document_names[document.document_type]
     db.commit()

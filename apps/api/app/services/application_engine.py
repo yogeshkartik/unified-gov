@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, ApplicationAnswer, ApplicationDocument, ApplicationStatus
+from app.models.consent import Consent
 from app.models.profile import Profile, User
 from app.models.service import Service, ServiceField, ServiceFieldType
 from app.schemas.application import AdditionalDataUpdate, ApplicationEngineResponse
@@ -22,6 +23,10 @@ class InvalidApplicationFieldsError(Exception):
     def __init__(self, fields: dict[str, str]) -> None:
         self.fields = fields
         super().__init__("Invalid application fields")
+
+
+class ApplicationDeletionNotAllowedError(Exception):
+    pass
 
 
 def create_application(db: Session, service_id: str) -> ApplicationEngineResponse:
@@ -68,6 +73,15 @@ def get_application(db: Session, application_id: str) -> Application:
     if application is None:
         raise ApplicationNotFoundError
     return application
+
+
+def delete_draft_application(db: Session, application_id: str) -> None:
+    application = get_application(db, application_id)
+    if application.status != ApplicationStatus.DRAFT:
+        raise ApplicationDeletionNotAllowedError
+    db.execute(delete(Consent).where(Consent.application_id == application.id))
+    db.delete(application)
+    db.commit()
 
 
 def build_engine_response(db: Session, application_id: str) -> ApplicationEngineResponse:

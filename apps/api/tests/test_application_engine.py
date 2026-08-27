@@ -3,10 +3,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
+from app.models.application import ApplicationStatus
 from app.schemas.application import AdditionalDataUpdate
 from app.services.application_engine import (
+    ApplicationDeletionNotAllowedError,
+    ApplicationNotFoundError,
     InvalidApplicationFieldsError,
     create_application,
+    delete_draft_application,
     get_application,
     save_additional_data,
 )
@@ -33,6 +37,25 @@ def test_application_creation_creates_a_draft_for_the_selected_service(db: Sessi
     assert response.status == "DRAFT"
     assert response.service_id == "SCHOLARSHIP_001"
     assert get_application(db, response.id).service_id == "SCHOLARSHIP_001"
+
+
+def test_draft_application_can_be_deleted(db: Session) -> None:
+    response = create_application(db, "SCHOLARSHIP_001")
+
+    delete_draft_application(db, response.id)
+
+    with pytest.raises(ApplicationNotFoundError):
+        get_application(db, response.id)
+
+
+def test_only_drafts_can_be_deleted(db: Session) -> None:
+    response = create_application(db, "SCHOLARSHIP_001")
+    application = get_application(db, response.id)
+    application.status = ApplicationStatus.SUBMITTED
+    db.commit()
+
+    with pytest.raises(ApplicationDeletionNotAllowedError):
+        delete_draft_application(db, response.id)
 
 
 def test_application_creation_reports_missing_service_fields_and_documents(db: Session) -> None:

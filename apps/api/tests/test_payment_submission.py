@@ -55,7 +55,7 @@ def test_paid_service_creates_a_successful_mock_payment(db: Session) -> None:
 
     assert payment.skipped is False
     assert payment.status == PaymentStatus.SUCCESS
-    assert payment.transaction_id is not None and payment.transaction_id.startswith("DEMO-TXN-")
+    assert payment.transaction_id is not None and payment.transaction_id.startswith("TXN-")
     assert payment.amount == 200
 
 
@@ -86,7 +86,7 @@ def test_mock_submission_generates_reference_and_marks_application_submitted(db:
     submission = submit_application(db, application_id)
     application = db.scalar(select(Application).where(Application.id == application_id))
 
-    assert submission.government_reference_number.startswith("GOV-DEMO-")
+    assert submission.government_reference_number.startswith("GOV-")
     assert submission.status == ApplicationStatus.SUBMITTED
     assert application is not None
     assert application.government_reference_number == submission.government_reference_number

@@ -32,7 +32,7 @@ def test_mock_provider_exposes_only_synthetic_documents_and_grants_mock_consent(
     consent = provider.request_consent("synthetic-user", ["mock-class-12", "mock-income"])
 
     assert len(documents) == 6
-    assert documents[0].name.endswith("Synthetic Demo")
+    assert documents[0].name == "Class 10 Marksheet"
     assert provider.get_document("mock-degree").document_type == "DEGREE_CERTIFICATE"
     assert consent.status == "GRANTED"
     assert consent.document_ids == ["mock-class-12", "mock-income"]
@@ -54,7 +54,7 @@ def test_selecting_mock_document_attaches_it_to_application_preview(db: Session)
     assert preview.documents == [
         {
             "id": selected[0].id,
-            "name": "Income Certificate — Synthetic Demo",
+            "name": "Income Certificate",
             "document_type": "INCOME_CERTIFICATE",
             "source": "DIGILOCKER",
         }

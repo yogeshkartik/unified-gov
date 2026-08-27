@@ -60,7 +60,7 @@ def test_preview_combines_profile_education_documents_answers_service_and_fee(db
         "licence_type": "Learner's Licence",
         "vehicle_class": "MCWG — Motorcycle with gear",
     }
-    assert preview.service["name"] == "Driving Licence Application — Demo"
+    assert preview.service["name"] == "Driving Licence Application"
     assert preview.fee == 200
     assert preview.currency == "INR"
 

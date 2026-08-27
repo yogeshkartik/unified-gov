@@ -27,7 +27,7 @@ export function DynamicField({ field, control, errors, register }: DynamicFieldP
 
   let controlElement: React.ReactNode;
   if (options.length > 0) {
-    controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <Select selectedKey={typeof formField.value === "string" && options.includes(formField.value) ? formField.value : null} onSelectionChange={(key) => formField.onChange(String(key))} aria-label={field.label} isInvalid={Boolean(error)}><SelectTrigger><SelectValue>Select {field.label.toLowerCase()}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem id={option} key={option}>{option}</SelectItem>)}</SelectContent></Select>} />;
+    controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <Select className="w-full" selectedKey={typeof formField.value === "string" && options.includes(formField.value) ? formField.value : null} onSelectionChange={(key) => formField.onChange(String(key))} aria-label={field.label} isInvalid={Boolean(error)}><SelectTrigger><SelectValue>Select {field.label.toLowerCase()}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem id={option} key={option}>{option}</SelectItem>)}</SelectContent></Select>} />;
   } else switch (field.field_type) {
     case "TEXTAREA":
       controlElement = <Textarea id={field.id} aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;

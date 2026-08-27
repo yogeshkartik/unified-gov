@@ -35,7 +35,7 @@ function Select<T extends object, M extends "single" | "multiple" = "single">({
   return (
     <SelectPrimitive
       data-slot="select"
-      className={cn("w-fit", className)}
+      className={cn("w-full", className)}
       {...props}
     />
   )

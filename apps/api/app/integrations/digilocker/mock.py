@@ -9,12 +9,12 @@ class MockDigiLockerProvider(DocumentProvider):
     """Local-only synthetic credential provider for the hackathon prototype."""
 
     _documents = (
-        ProviderDocument("mock-class-10", "Class 10 Marksheet — Synthetic Demo", "10TH_MARKSHEET", "Demo Education Board"),
-        ProviderDocument("mock-class-12", "Class 12 Marksheet — Synthetic Demo", "12TH_MARKSHEET", "Demo Education Board"),
-        ProviderDocument("mock-income", "Income Certificate — Synthetic Demo", "INCOME_CERTIFICATE", "Demo Revenue Department"),
-        ProviderDocument("mock-caste", "Caste Certificate — Synthetic Demo", "CASTE_CERTIFICATE", "Demo Social Welfare Department"),
-        ProviderDocument("mock-driving-licence", "Driving Licence — Synthetic Demo", "DRIVING_LICENCE", "Demo Transport Department"),
-        ProviderDocument("mock-degree", "Degree Certificate — Synthetic Demo", "DEGREE_CERTIFICATE", "Demo University"),
+        ProviderDocument("mock-class-10", "Class 10 Marksheet", "10TH_MARKSHEET", "Education Board"),
+        ProviderDocument("mock-class-12", "Class 12 Marksheet", "12TH_MARKSHEET", "Education Board"),
+        ProviderDocument("mock-income", "Income Certificate", "INCOME_CERTIFICATE", "Revenue Department"),
+        ProviderDocument("mock-caste", "Caste Certificate", "CASTE_CERTIFICATE", "Social Welfare Department"),
+        ProviderDocument("mock-driving-licence", "Driving Licence", "DRIVING_LICENCE", "Transport Department"),
+        ProviderDocument("mock-degree", "Degree Certificate", "DEGREE_CERTIFICATE", "University"),
     )
 
     def get_documents(self, user_id: str) -> list[ProviderDocument]:

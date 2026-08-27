@@ -10,7 +10,7 @@ class MockGovernmentSubmissionProvider(GovernmentSubmissionProvider):
 
     def submit(self, application_snapshot: dict[str, Any]) -> SubmissionResult:
         return SubmissionResult(
-            government_reference_number=f"GOV-DEMO-{uuid4().hex[:10].upper()}",
+            government_reference_number=f"GOV-{uuid4().hex[:10].upper()}",
             submission_timestamp=datetime.now(UTC),
             status="SUBMITTED",
         )

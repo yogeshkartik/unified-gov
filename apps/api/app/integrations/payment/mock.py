@@ -16,7 +16,7 @@ class MockPaymentProvider(PaymentProvider):
     def create_payment(
         self, application_snapshot: dict[str, Any], amount: float, currency: str
     ) -> PaymentResult:
-        transaction_id = f"DEMO-TXN-{uuid4().hex[:10].upper()}"
+        transaction_id = f"TXN-{uuid4().hex[:10].upper()}"
         status = "FAILED" if self.force_failure else "SUCCESS"
         self._statuses[transaction_id] = status
         return PaymentResult(transaction_id=transaction_id, status=status)

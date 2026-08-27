@@ -19,3 +19,8 @@ export function saveApplication(application: CitizenApplicationSummary) {
   else applications.unshift(application);
   window.localStorage.setItem(storageKey, JSON.stringify(applications));
 }
+
+export function removeStoredApplication(applicationId: string) {
+  const applications = getStoredApplications().filter((application) => application.id !== applicationId);
+  window.localStorage.setItem(storageKey, JSON.stringify(applications));
+}

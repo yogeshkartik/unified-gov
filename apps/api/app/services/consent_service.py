@@ -38,6 +38,11 @@ def grant_consent(db: Session, application_id: str) -> Consent:
             for required_type in document_types
         )
     ]
+    purpose = (
+        application.service.name
+        if application.service.name.lower().endswith("application")
+        else f"{application.service.name} Application"
+    )
     consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
     if consent is None:
         consent = Consent(
@@ -47,7 +52,7 @@ def grant_consent(db: Session, application_id: str) -> Consent:
             data_categories=data_categories,
             document_types=document_types,
             document_ids=document_ids,
-            purpose=f"{application.service.name} Application",
+            purpose=purpose,
             status=ConsentStatus.GRANTED,
             granted_at=datetime.now(UTC),
         )
@@ -56,6 +61,7 @@ def grant_consent(db: Session, application_id: str) -> Consent:
         consent.data_categories = data_categories
         consent.document_types = document_types
         consent.document_ids = document_ids
+        consent.purpose = purpose
         consent.status = ConsentStatus.GRANTED
         consent.granted_at = datetime.now(UTC)
     db.commit()

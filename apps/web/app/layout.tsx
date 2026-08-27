@@ -3,8 +3,8 @@ import "./globals.css";
 import { CitizenPreferencesProvider } from "@/components/providers/citizen-preferences";
 
 export const metadata: Metadata = {
-  title: "Unified Government Services — Demo",
-  description: "A synthetic-data prototype for reusable citizen service applications.",
+  title: "Unified Government Services",
+  description: "A unified portal for reusable citizen service applications.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
