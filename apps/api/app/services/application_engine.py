@@ -172,6 +172,10 @@ def validate_answers(answers: dict[str, Any], fields_by_key: dict[str, ServiceFi
 def validate_field_value(field: ServiceField, value: Any) -> str | None:
     if value is None:
         return None
+    if field.options:
+        if not isinstance(value, str):
+            return "Expected a selected option."
+        return None if value in field.options else "Selected option is not allowed."
     if field.field_type in {ServiceFieldType.TEXT, ServiceFieldType.TEXTAREA, ServiceFieldType.FILE}:
         return None if isinstance(value, str) else "Expected a text value."
     if field.field_type == ServiceFieldType.NUMBER:
@@ -185,9 +189,7 @@ def validate_field_value(field: ServiceField, value: Any) -> str | None:
             return "Expected an ISO-8601 date string."
         return None
     if field.field_type in {ServiceFieldType.SELECT, ServiceFieldType.RADIO}:
-        if not isinstance(value, str):
-            return "Expected a selected option."
-        return None if field.options is None or value in field.options else "Selected option is not allowed."
+        return None if isinstance(value, str) else "Expected a selected option."
     if field.field_type == ServiceFieldType.CHECKBOX:
         return None if isinstance(value, bool) else "Expected a boolean value."
     return None

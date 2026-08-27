@@ -29,7 +29,10 @@ def test_consent_records_requested_data_documents_purpose_and_timestamp(db: Sess
         db,
         application.id,
         AdditionalDataUpdate(
-            answers={"licence_type": "Learner Licence", "vehicle_class": "Two Wheeler"}
+            answers={
+                "licence_type": "Learner's Licence",
+                "vehicle_class": "MCWG — Motorcycle with gear",
+            }
         ),
     )
 

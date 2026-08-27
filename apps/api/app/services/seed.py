@@ -15,6 +15,28 @@ from app.models.service import (
 from app.services.profile_service import DEMO_USER_EMAIL
 
 
+DRIVING_LICENCE_APPLICATION_OPTIONS = [
+    "Learner's Licence",
+    "Permanent Driving Licence",
+    "Add Vehicle Class to Existing Licence",
+    "Renew Driving Licence",
+    "Duplicate Driving Licence",
+]
+
+INDIAN_VEHICLE_CLASS_OPTIONS = [
+    "MCWOG — Motorcycle without gear",
+    "MCWG — Motorcycle with gear",
+    "LMV-NT — Light motor vehicle (non-transport)",
+    "LMV-TR — Light motor vehicle (transport)",
+    "Transport — Medium/heavy goods or passenger vehicle",
+    "E-rickshaw",
+    "E-cart",
+    "Road roller",
+    "Adapted vehicle for persons with disability",
+    "Other specified vehicle",
+]
+
+
 def seed_demo_citizen(db: Session) -> None:
     """Create only synthetic, explicitly demo-labelled citizen data."""
     if db.scalar(select(User).where(User.email == DEMO_USER_EMAIL)) is not None:
@@ -79,6 +101,7 @@ def seed_demo_citizen(db: Session) -> None:
 def seed_demo_services(db: Session) -> None:
     """Seed generic service definitions; forms are rendered from these records."""
     if db.scalar(select(Service.id).limit(1)) is not None:
+        sync_demo_service_options(db)
         return
 
     recruitment_exam = Service(
@@ -169,10 +192,10 @@ def seed_demo_services(db: Session) -> None:
         fields=[
             ServiceField(
                 key="licence_type",
-                label="Licence Type",
-                field_type=ServiceFieldType.RADIO,
+                label="Application Type",
+                field_type=ServiceFieldType.SELECT,
                 required=True,
-                options=["Learner Licence", "Permanent Licence"],
+                options=DRIVING_LICENCE_APPLICATION_OPTIONS,
                 position=1,
             ),
             ServiceField(
@@ -180,7 +203,7 @@ def seed_demo_services(db: Session) -> None:
                 label="Vehicle Class",
                 field_type=ServiceFieldType.SELECT,
                 required=True,
-                options=["Two Wheeler", "Light Motor Vehicle"],
+                options=INDIAN_VEHICLE_CLASS_OPTIONS,
                 position=2,
             ),
         ],
@@ -192,4 +215,24 @@ def seed_demo_services(db: Session) -> None:
         ],
     )
     db.add_all([recruitment_exam, scholarship, driving_licence])
+    db.commit()
+
+
+def sync_demo_service_options(db: Session) -> None:
+    """Keep option-backed demo fields current in already-created local databases."""
+    fields = {
+        field.key: field
+        for field in db.scalars(
+            select(ServiceField).where(ServiceField.service_id == "DRIVING_LICENCE_001")
+        ).all()
+    }
+    licence_type = fields.get("licence_type")
+    if licence_type is not None:
+        licence_type.label = "Application Type"
+        licence_type.field_type = ServiceFieldType.SELECT
+        licence_type.options = DRIVING_LICENCE_APPLICATION_OPTIONS
+    vehicle_class = fields.get("vehicle_class")
+    if vehicle_class is not None:
+        vehicle_class.field_type = ServiceFieldType.SELECT
+        vehicle_class.options = INDIAN_VEHICLE_CLASS_OPTIONS
     db.commit()

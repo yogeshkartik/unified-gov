@@ -31,7 +31,10 @@ def db(tmp_path) -> Session:
 def finalized_application(db: Session, service_id: str) -> str:
     application = create_application(db, service_id)
     answers = (
-        {"licence_type": "Learner Licence", "vehicle_class": "Two Wheeler"}
+        {
+            "licence_type": "Learner's Licence",
+            "vehicle_class": "MCWG — Motorcycle with gear",
+        }
         if service_id == "DRIVING_LICENCE_001"
         else {
             "course": "Computer Science",

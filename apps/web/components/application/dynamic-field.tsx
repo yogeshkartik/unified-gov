@@ -5,7 +5,6 @@ import { Controller } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ServiceField } from "@/src/types";
@@ -27,7 +26,9 @@ export function DynamicField({ field, control, errors, register }: DynamicFieldP
   const label = <Label htmlFor={field.id}>{field.label}{field.required ? <span className="ml-1 text-destructive" aria-hidden="true">*</span> : null}</Label>;
 
   let controlElement: React.ReactNode;
-  switch (field.field_type) {
+  if (options.length > 0) {
+    controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <Select selectedKey={typeof formField.value === "string" && options.includes(formField.value) ? formField.value : null} onSelectionChange={(key) => formField.onChange(String(key))} aria-label={field.label} isInvalid={Boolean(error)}><SelectTrigger><SelectValue>Select {field.label.toLowerCase()}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem id={option} key={option}>{option}</SelectItem>)}</SelectContent></Select>} />;
+  } else switch (field.field_type) {
     case "TEXTAREA":
       controlElement = <Textarea id={field.id} aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;
       break;
@@ -36,12 +37,6 @@ export function DynamicField({ field, control, errors, register }: DynamicFieldP
       break;
     case "DATE":
       controlElement = <Input id={field.id} type="date" aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;
-      break;
-    case "SELECT":
-      controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <Select selectedKey={typeof formField.value === "string" ? formField.value : null} onSelectionChange={(key) => formField.onChange(String(key))} aria-label={field.label} isInvalid={Boolean(error)}><SelectTrigger><SelectValue>{field.label}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem id={option} key={option}>{option}</SelectItem>)}</SelectContent></Select>} />;
-      break;
-    case "RADIO":
-      controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <RadioGroup value={typeof formField.value === "string" ? formField.value : undefined} onChange={formField.onChange} aria-label={field.label} isInvalid={Boolean(error)}>{options.map((option) => <label key={option} className="flex min-h-10 items-center gap-3 rounded-lg border border-border px-3 text-sm"><RadioGroupItem value={option} />{option}</label>)}</RadioGroup>} />;
       break;
     case "CHECKBOX":
       controlElement = <Controller control={control} name={field.key} render={({ field: formField }) => <label className="flex min-h-10 items-center gap-3 text-sm"><Checkbox isSelected={formField.value === true} onChange={formField.onChange} aria-describedby={describedBy} isInvalid={Boolean(error)} />{field.label}</label>} />;

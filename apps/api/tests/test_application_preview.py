@@ -34,7 +34,10 @@ def complete_driving_licence_application(db: Session) -> str:
         db,
         application.id,
         AdditionalDataUpdate(
-            answers={"licence_type": "Learner Licence", "vehicle_class": "Two Wheeler"}
+            answers={
+                "licence_type": "Learner's Licence",
+                "vehicle_class": "MCWG — Motorcycle with gear",
+            }
         ),
     )
     photograph = db.scalar(select(Document).where(Document.document_type == "PHOTOGRAPH"))
@@ -53,7 +56,10 @@ def test_preview_combines_profile_education_documents_answers_service_and_fee(db
     assert preview.profile["full_name"] == "Rahul Kumar"
     assert preview.education[0]["level"] == "12TH"
     assert preview.documents[0]["document_type"] == "PHOTOGRAPH"
-    assert preview.answers == {"licence_type": "Learner Licence", "vehicle_class": "Two Wheeler"}
+    assert preview.answers == {
+        "licence_type": "Learner's Licence",
+        "vehicle_class": "MCWG — Motorcycle with gear",
+    }
     assert preview.service["name"] == "Driving Licence Application — Demo"
     assert preview.fee == 200
     assert preview.currency == "INR"

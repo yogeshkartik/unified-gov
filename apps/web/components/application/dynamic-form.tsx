@@ -10,7 +10,7 @@ import type { ServiceField } from "@/src/types";
 function fieldSchema(field: ServiceField) {
   if (field.field_type === "CHECKBOX") return z.boolean().refine((value) => !field.required || value, "Please confirm this item.");
   if (field.field_type === "NUMBER") return field.required ? z.number().finite("Enter a valid number.") : z.number().finite("Enter a valid number.").optional();
-  if (field.field_type === "SELECT" || field.field_type === "RADIO") {
+  if ((field.options?.length ?? 0) > 0) {
     const allowedValues = field.options ?? [];
     const selection = z.string().trim().refine(
       (value) => value.length === 0 || allowedValues.length === 0 || allowedValues.includes(value),
