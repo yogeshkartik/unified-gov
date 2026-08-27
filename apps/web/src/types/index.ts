@@ -174,3 +174,21 @@ export interface SubmissionResult {
   submission_timestamp: string;
   status: ApplicationStatus;
 }
+
+export interface MockDigiLockerDocument {
+  id: string;
+  name: string;
+  document_type: string;
+  issuer: string;
+}
+
+export interface CitizenApplicationSummary {
+  id: string;
+  service_id: string;
+  service_name: string;
+  status: ApplicationStatus;
+  fee: number;
+  currency: string;
+  created_at: string;
+  government_reference_number?: string;
+}

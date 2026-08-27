@@ -1,0 +1,19 @@
+{
+  "dashboard": "Dashboard",
+  "profile": "My Profile",
+  "services": "Government Services",
+  "applications": "My Applications",
+  "documents": "My Documents",
+  "settings": "Settings",
+  "language": "Language",
+  "accessibility": "Accessibility",
+  "english": "English",
+  "hindi": "Hindi",
+  "tamil": "Tamil",
+  "textSize": "Text size",
+  "highContrast": "High contrast",
+  "reduceMotion": "Reduce motion",
+  "small": "Small",
+  "default": "Default",
+  "large": "Large"
+}

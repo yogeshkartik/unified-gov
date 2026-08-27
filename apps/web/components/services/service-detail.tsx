@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CalendarDays, CheckCircle2, FileText, IndianRupee, Landmark, LoaderCircle, UserRound } from "lucide-react";
 import { api } from "@/src/lib/api";
+import { saveApplication } from "@/src/lib/application-store";
 import type { GovernmentServiceDetail } from "@/src/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
     setApplyError(undefined);
     try {
       const application = await api.createApplication(serviceId);
+      if (service) saveApplication({ id: application.id, service_id: service.id, service_name: service.name, status: application.status, fee: service.fee, currency: service.currency, created_at: application.created_at });
       router.push(application.missing_fields.length === 0 ? `/applications/${application.id}/consent` : `/applications/${application.id}/additional`);
     } catch {
       setApplyError("We could not create your demo application. Please try again.");

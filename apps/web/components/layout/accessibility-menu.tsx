@@ -3,19 +3,20 @@
 import { Accessibility, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
 export function AccessibilityMenu() {
+  const { highContrast, reduceMotion, setHighContrast, setReduceMotion, t } = useCitizenPreferences();
   return (
     <DropdownMenuTrigger>
-      <Button variant="ghost" size="sm" aria-label="Accessibility options (placeholder)">
+      <Button variant="ghost" size="sm" aria-label={t("accessibility")}>
         <Accessibility aria-hidden="true" />
-        <span className="hidden lg:inline">Accessibility</span>
+        <span className="hidden lg:inline">{t("accessibility")}</span>
         <ChevronDown className="hidden lg:block" aria-hidden="true" />
       </Button>
-      <DropdownMenu aria-label="Accessibility options placeholder" className="w-52">
-        <DropdownMenuItem id="text-size" isDisabled>Text size controls — coming soon</DropdownMenuItem>
-        <DropdownMenuItem id="contrast" isDisabled>High contrast — coming soon</DropdownMenuItem>
-        <DropdownMenuItem id="motion" isDisabled>Reduce motion — coming soon</DropdownMenuItem>
+      <DropdownMenu aria-label={t("accessibility")} className="w-52" onAction={(key) => { if (key === "contrast") setHighContrast(!highContrast); if (key === "motion") setReduceMotion(!reduceMotion); }}>
+        <DropdownMenuItem id="contrast">{t("highContrast")}: {highContrast ? "On" : "Off"}</DropdownMenuItem>
+        <DropdownMenuItem id="motion">{t("reduceMotion")}: {reduceMotion ? "On" : "Off"}</DropdownMenuItem>
       </DropdownMenu>
     </DropdownMenuTrigger>
   );

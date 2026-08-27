@@ -1,0 +1,19 @@
+{
+  "dashboard": "முகப்பு",
+  "profile": "என் சுயவிவரம்",
+  "services": "அரசு சேவைகள்",
+  "applications": "என் விண்ணப்பங்கள்",
+  "documents": "என் ஆவணங்கள்",
+  "settings": "அமைப்புகள்",
+  "language": "மொழி",
+  "accessibility": "அணுகல்தன்மை",
+  "english": "ஆங்கிலம்",
+  "hindi": "இந்தி",
+  "tamil": "தமிழ்",
+  "textSize": "உரை அளவு",
+  "highContrast": "உயர் மாறுபாடு",
+  "reduceMotion": "இயக்கத்தைக் குறை",
+  "small": "சிறியது",
+  "default": "இயல்புநிலை",
+  "large": "பெரியது"
+}

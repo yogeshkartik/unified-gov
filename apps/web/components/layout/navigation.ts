@@ -3,15 +3,15 @@ import { FileText, FolderOpen, LayoutDashboard, Settings, UserRound } from "luci
 
 export interface NavigationItem {
   href: string;
-  label: string;
+  labelKey: "dashboard" | "profile" | "services" | "applications" | "documents" | "settings";
   icon: LucideIcon;
-  unavailable?: boolean;
 }
 
 export const navigationItems: NavigationItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/profile", label: "My Profile", icon: UserRound },
-  { href: "/services", label: "Government Services", icon: FileText },
-  { href: "/applications", label: "My Applications", icon: FolderOpen, unavailable: true },
-  { href: "/settings", label: "Settings", icon: Settings, unavailable: true },
+  { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+  { href: "/profile", labelKey: "profile", icon: UserRound },
+  { href: "/services", labelKey: "services", icon: FileText },
+  { href: "/applications", labelKey: "applications", icon: FolderOpen },
+  { href: "/documents", labelKey: "documents", icon: FileText },
+  { href: "/settings", labelKey: "settings", icon: Settings },
 ];

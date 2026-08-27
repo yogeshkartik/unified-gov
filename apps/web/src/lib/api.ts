@@ -8,6 +8,7 @@ import type {
   GovernmentService,
   GovernmentServiceDetail,
   PaymentResult,
+  MockDigiLockerDocument,
   SubmissionResult,
 } from "@/src/types";
 
@@ -50,6 +51,7 @@ export const api = {
   getProfile: () => request<CitizenProfile>("/api/profile"),
   getEducation: () => request<Education[]>("/api/profile/education"),
   getDocuments: () => request<Document[]>("/api/documents"),
+  getDigiLockerDocuments: () => request<MockDigiLockerDocument[]>("/api/digilocker/documents"),
   getServices: () => request<GovernmentService[]>("/api/services"),
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>

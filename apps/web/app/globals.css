@@ -128,3 +128,8 @@
     @apply font-sans;
   }
 }
+
+html[data-text-size="small"] { font-size: 14px; }
+html[data-text-size="large"] { font-size: 18px; }
+html.high-contrast { --background: oklch(1 0 0); --foreground: oklch(0 0 0); --primary: oklch(0 0 0); --primary-foreground: oklch(1 0 0); --muted-foreground: oklch(0.2 0 0); --border: oklch(0.2 0 0); --ring: oklch(0 0 0); }
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }

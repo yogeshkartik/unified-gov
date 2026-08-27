@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, FileText, Landmark } from "lucide-react";
 import { api } from "@/src/lib/api";
+import { saveApplication } from "@/src/lib/application-store";
 import type { ApplicationPreview } from "@/src/types";
 import { ApplicationProgress } from "@/components/application/application-progress";
 import { LinkButton } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
   const searchParams = useSearchParams();
   const [preview, setPreview] = useState<ApplicationPreview>();
   const [error, setError] = useState(false);
-  useEffect(() => { api.getPreview(applicationId).then(setPreview).catch(() => setError(true)); }, [applicationId]);
+  useEffect(() => { api.getPreview(applicationId).then((loadedPreview) => { setPreview(loadedPreview); const reference = searchParams.get("reference"); if (reference) saveApplication({ id: applicationId, service_id: String(loadedPreview.service.id), service_name: String(loadedPreview.service.name), status: "SUBMITTED", fee: loadedPreview.fee, currency: loadedPreview.currency, created_at: new Date().toISOString(), government_reference_number: reference }); }).catch(() => setError(true)); }, [applicationId, searchParams]);
   if (error) return <ErrorState>Your application was submitted, but its summary could not be loaded.</ErrorState>;
   if (!preview) return <LoadingState label="Loading submission confirmation…" />;
   const reference = searchParams.get("reference");

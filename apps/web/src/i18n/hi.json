@@ -1,0 +1,19 @@
+{
+  "dashboard": "डैशबोर्ड",
+  "profile": "मेरी प्रोफ़ाइल",
+  "services": "सरकारी सेवाएँ",
+  "applications": "मेरे आवेदन",
+  "documents": "मेरे दस्तावेज़",
+  "settings": "सेटिंग्स",
+  "language": "भाषा",
+  "accessibility": "सुगम्यता",
+  "english": "अंग्रेज़ी",
+  "hindi": "हिन्दी",
+  "tamil": "तमिल",
+  "textSize": "पाठ आकार",
+  "highContrast": "उच्च कंट्रास्ट",
+  "reduceMotion": "गति कम करें",
+  "small": "छोटा",
+  "default": "सामान्य",
+  "large": "बड़ा"
+}
