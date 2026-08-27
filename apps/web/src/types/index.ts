@@ -131,3 +131,46 @@ export interface ApplicationEngineResponse extends Application {
   missing_documents: string[];
   missing_fields: string[];
 }
+
+export interface Consent {
+  id: string;
+  user_id: string;
+  application_id: string;
+  service_id: string;
+  data_requested: string[];
+  document_types: string[];
+  document_ids: string[];
+  purpose: string;
+  status: "GRANTED" | "DENIED" | "REVOKED";
+  granted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationPreview {
+  application_id: string;
+  status: ApplicationStatus;
+  profile: Record<string, unknown>;
+  education: Array<Record<string, unknown>>;
+  documents: Array<Record<string, unknown>>;
+  answers: Record<string, unknown>;
+  service: Record<string, unknown>;
+  fee: number;
+  currency: string;
+}
+
+export interface PaymentResult {
+  application_id: string;
+  skipped: boolean;
+  status: "SUCCESS" | "FAILED" | null;
+  transaction_id: string | null;
+  amount: number;
+  currency: string;
+}
+
+export interface SubmissionResult {
+  application_id: string;
+  government_reference_number: string;
+  submission_timestamp: string;
+  status: ApplicationStatus;
+}

@@ -1,10 +1,14 @@
 import type {
   ApplicationEngineResponse,
+  ApplicationPreview,
   CitizenProfile,
+  Consent,
   Document,
   Education,
   GovernmentService,
   GovernmentServiceDetail,
+  PaymentResult,
+  SubmissionResult,
 } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -58,4 +62,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ answers }),
     }),
+  grantConsent: (applicationId: string) =>
+    request<Consent>(`/api/applications/${applicationId}/consent`, { method: "POST" }),
+  getPreview: (applicationId: string) =>
+    request<ApplicationPreview>(`/api/applications/${applicationId}/preview`),
+  finalizeApplication: (applicationId: string) =>
+    request<{ id: string; application_id: string }>(`/api/applications/${applicationId}/finalize`, { method: "POST" }),
+  processPayment: (applicationId: string) =>
+    request<PaymentResult>(`/api/applications/${applicationId}/payment`, { method: "POST" }),
+  submitApplication: (applicationId: string) =>
+    request<SubmissionResult>(`/api/applications/${applicationId}/submit`, { method: "POST" }),
 };
