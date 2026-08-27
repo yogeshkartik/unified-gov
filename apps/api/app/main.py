@@ -1,18 +1,40 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import applications, documents, profile, services
+from app.core.config import settings
+from app.core.database import Base, SessionLocal, engine
+from app.services.seed import seed_demo_citizen, seed_demo_services
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    with SessionLocal() as session:
+        seed_demo_citizen(session)
+        seed_demo_services(session)
+    yield
+
 app = FastAPI(
-    title="Unified Government Services API",
+    title=settings.app_name,
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[settings.frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(profile.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
+app.include_router(services.router, prefix="/api")
+app.include_router(applications.router, prefix="/api")
 
 
 @app.get("/health")

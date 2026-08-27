@@ -6,6 +6,6 @@
     "build:web": "pnpm --filter @unified-gov/web build",
     "lint:web": "pnpm --filter @unified-gov/web lint",
     "api": "cd apps/api && uv run uvicorn app.main:app --reload",
-    "api:test": "cd apps/api && uv run pytest"
+    "api:test": "cd apps/api && PYTHONPATH=. PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest"
   }
 }
