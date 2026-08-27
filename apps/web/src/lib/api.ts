@@ -1,0 +1,43 @@
+import type { CitizenProfile, Document, Education, GovernmentService } from "@/src/types";
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...init,
+    headers: { Accept: "application/json", ...init?.headers },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    let message = "The service is temporarily unavailable.";
+    try {
+      const body: unknown = await response.json();
+      if (typeof body === "object" && body !== null && "detail" in body) {
+        message = typeof body.detail === "string" ? body.detail : message;
+      }
+    } catch {
+      // Keep the safe fallback message when an error response is not JSON.
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export const api = {
+  getProfile: () => request<CitizenProfile>("/api/profile"),
+  getEducation: () => request<Education[]>("/api/profile/education"),
+  getDocuments: () => request<Document[]>("/api/documents"),
+  getServices: () => request<GovernmentService[]>("/api/services"),
+};
