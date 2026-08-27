@@ -1,6 +1,7 @@
 {
   "name": "unified-gov",
   "private": true,
+  "packageManager": "pnpm@10.26.1",
   "scripts": {
     "dev:web": "pnpm --filter @unified-gov/web dev",
     "build:web": "pnpm --filter @unified-gov/web build",

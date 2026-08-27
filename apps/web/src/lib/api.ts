@@ -36,7 +36,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       const body: unknown = await response.json();
       if (typeof body === "object" && body !== null && "detail" in body) {
-        message = typeof body.detail === "string" ? body.detail : message;
+        const detail = body.detail;
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (typeof detail === "object" && detail !== null) {
+          if ("message" in detail && typeof detail.message === "string") {
+            message = detail.message;
+          } else if ("fields" in detail && typeof detail.fields === "object" && detail.fields !== null) {
+            const fieldMessages = Object.values(detail.fields).filter((value): value is string => typeof value === "string");
+            if (fieldMessages.length > 0) message = fieldMessages.join(" ");
+          }
+        }
       }
     } catch {
       // Keep the safe fallback message when an error response is not JSON.

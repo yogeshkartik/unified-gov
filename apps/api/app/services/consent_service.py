@@ -27,14 +27,17 @@ def grant_consent(db: Session, application_id: str) -> Consent:
     document_types = [
         requirement.document_type for requirement in application.service.document_requirements
     ]
-    document_ids = list(
-        db.scalars(
-            select(Document.id).where(
-                Document.user_id == application.user_id,
-                Document.document_type.in_(document_types),
-            )
-        ).all()
+    citizen_documents = list(
+        db.scalars(select(Document).where(Document.user_id == application.user_id)).all()
     )
+    document_ids = [
+        document.id
+        for document in citizen_documents
+        if any(
+            application_engine.document_type_matches(required_type, document.document_type)
+            for required_type in document_types
+        )
+    ]
     consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
     if consent is None:
         consent = Consent(

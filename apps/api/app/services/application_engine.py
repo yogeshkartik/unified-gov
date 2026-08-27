@@ -104,17 +104,31 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
     missing_profile_fields = [
         field for field in application.service.required_profile_fields if not has_profile_data(user, field)
     ]
-    available_document_types = {document.document_type for document in user.documents}
     missing_documents = [
         requirement.document_type
         for requirement in application.service.document_requirements
-        if requirement.required and requirement.document_type not in available_document_types
+        if requirement.required
+        and not any(
+            document_type_matches(requirement.document_type, document.document_type)
+            for document in user.documents
+        )
     ]
     return (
         missing_profile_fields,
         missing_documents,
         required_field_keys(application.service.fields, application.answers_by_key),
     )
+
+
+def document_type_matches(required_type: str, available_type: str) -> bool:
+    """Return whether a concrete citizen document satisfies a service requirement."""
+    if required_type == available_type:
+        return True
+    if required_type == "MARKSHEET":
+        return available_type.endswith("_MARKSHEET")
+    if required_type == "IDENTITY_DOCUMENT":
+        return available_type == "DRIVING_LICENCE"
+    return False
 
 
 def has_profile_data(user: User, field: str) -> bool:
