@@ -6,10 +6,11 @@ import { CalendarDays, CheckCircle2, FileText, IndianRupee, Landmark, LoaderCirc
 import { api } from "@/src/lib/api";
 import { saveApplication } from "@/src/lib/application-store";
 import type { GovernmentServiceDetail } from "@/src/types";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { ApplicationProgress } from "@/components/application/application-progress";
+import { useCitizenAuth } from "@/components/providers/citizen-auth";
 
 function formatFieldName(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -21,6 +22,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
   const [error, setError] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string>();
+  const { session } = useCitizenAuth();
 
   useEffect(() => {
     api.getService(serviceId).then(setService).catch(() => setError(true));
@@ -58,8 +60,8 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
           <div><dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"><CalendarDays className="size-3.5" aria-hidden="true" />Deadline</dt><dd className="mt-1 font-medium">{deadline}</dd></div>
         </dl>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button size="lg" onPress={apply} isDisabled={applying}>{applying ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Creating application…</> : "Apply now"}</Button>
-          <p className="text-xs leading-5 text-muted-foreground">This creates a draft that you can review before submission.</p>
+          {session ? <Button size="lg" onPress={apply} isDisabled={applying}>{applying ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Creating application…</> : "Apply now"}</Button> : <LinkButton href={`/login?returnTo=${encodeURIComponent(`/services/${serviceId}`)}`} size="lg">Sign in to apply</LinkButton>}
+          <p className="text-xs leading-5 text-muted-foreground">{session ? "This creates a draft that you can review before submission." : "Sign in is required to start an application."}</p>
         </div>
         {applyError ? <p role="alert" className="mt-3 text-sm text-destructive">{applyError}</p> : null}
       </section>

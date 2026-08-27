@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CitizenPreferencesProvider } from "@/components/providers/citizen-preferences";
+import { CitizenAuthProvider } from "@/components/providers/citizen-auth";
 
 export const metadata: Metadata = {
   title: "Unified Government Services",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col"><CitizenPreferencesProvider>{children}</CitizenPreferencesProvider></body>
+      <body className="min-h-full flex flex-col"><CitizenAuthProvider><CitizenPreferencesProvider>{children}</CitizenPreferencesProvider></CitizenAuthProvider></body>
     </html>
   );
 }
