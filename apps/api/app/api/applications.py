@@ -2,8 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.application import AdditionalDataUpdate, ApplicationEngineResponse
-from app.services import application_engine
+from app.schemas.application import (
+    AdditionalDataUpdate,
+    ApplicationEngineResponse,
+    ApplicationPreviewResponse,
+    ApplicationSnapshotResponse,
+)
+from app.schemas.payment import PaymentProcessResponse, SubmissionResponse
+from app.services import application_engine, payment_submission_service, preview_service
 from app.services.service_catalog import ServiceNotFoundError
 
 router = APIRouter(tags=["applications"])
@@ -49,6 +55,75 @@ def read_application(application_id: str, db: Session = Depends(get_db)) -> Appl
         raise application_not_found(application_id) from error
 
 
+@router.get("/applications/{application_id}/preview", response_model=ApplicationPreviewResponse)
+def read_application_preview(
+    application_id: str, db: Session = Depends(get_db)
+) -> ApplicationPreviewResponse:
+    try:
+        return preview_service.get_preview(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+
+
+@router.post(
+    "/applications/{application_id}/finalize",
+    response_model=ApplicationSnapshotResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def finalize_application(
+    application_id: str, db: Session = Depends(get_db)
+) -> ApplicationSnapshotResponse:
+    try:
+        return preview_service.finalize_application(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+    except preview_service.ConsentRequiredForFinalizationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "CONSENT_REQUIRED"},
+        ) from error
+    except preview_service.ApplicationNotReadyForFinalizationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "APPLICATION_NOT_READY",
+                "missing_profile_fields": error.missing_profile_fields,
+                "missing_fields": error.missing_fields,
+            },
+        ) from error
+
+
+@router.post("/applications/{application_id}/payment", response_model=PaymentProcessResponse)
+def process_application_payment(
+    application_id: str, db: Session = Depends(get_db)
+) -> PaymentProcessResponse:
+    try:
+        return payment_submission_service.process_payment(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+    except payment_submission_service.ApplicationSnapshotRequiredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "APPLICATION_SNAPSHOT_REQUIRED"},
+        ) from error
+
+
+@router.post("/applications/{application_id}/submit", response_model=SubmissionResponse)
+def submit_application(application_id: str, db: Session = Depends(get_db)) -> SubmissionResponse:
+    try:
+        return payment_submission_service.submit_application(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+    except payment_submission_service.ApplicationSnapshotRequiredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "APPLICATION_SNAPSHOT_REQUIRED"},
+        ) from error
+    except payment_submission_service.SuccessfulPaymentRequiredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "SUCCESSFUL_PAYMENT_REQUIRED"},
+        ) from error
 def application_not_found(application_id: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,

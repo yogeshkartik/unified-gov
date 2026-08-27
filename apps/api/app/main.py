@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import applications, documents, profile, services
+from app.api import applications, consent, digilocker, documents, profile, services
 from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.services.seed import seed_demo_citizen, seed_demo_services
@@ -35,6 +35,8 @@ app.include_router(profile.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
+app.include_router(consent.router, prefix="/api")
+app.include_router(digilocker.router, prefix="/api")
 
 
 @app.get("/health")

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import ForeignKey, JSON, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, JSON, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -31,12 +32,20 @@ class Application(TimestampMixin, Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     service_id: Mapped[str] = mapped_column(ForeignKey("services.id", ondelete="RESTRICT"))
     status: Mapped[ApplicationStatus] = mapped_column(String(30), default=ApplicationStatus.DRAFT)
+    government_reference_number: Mapped[str | None] = mapped_column(String(100), unique=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     user: Mapped[User] = relationship()
     service: Mapped[Service] = relationship()
     answers: Mapped[list[ApplicationAnswer]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
     documents: Mapped[list[ApplicationDocument]] = relationship(
+        back_populates="application", cascade="all, delete-orphan"
+    )
+    snapshot: Mapped[ApplicationSnapshot | None] = relationship(
+        back_populates="application", uselist=False, cascade="all, delete-orphan"
+    )
+    payments: Mapped[list[Payment]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
 
@@ -65,3 +74,15 @@ class ApplicationDocument(TimestampMixin, Base):
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id", ondelete="RESTRICT"))
     application: Mapped[Application] = relationship(back_populates="documents")
     document: Mapped[Document] = relationship()
+
+
+class ApplicationSnapshot(Base):
+    __tablename__ = "application_snapshots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    application_id: Mapped[str] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"), unique=True
+    )
+    snapshot_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    application: Mapped[Application] = relationship(back_populates="snapshot")

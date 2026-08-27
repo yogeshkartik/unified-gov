@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.application import Application, ApplicationAnswer, ApplicationStatus
+from app.models.application import Application, ApplicationAnswer, ApplicationDocument, ApplicationStatus
 from app.models.profile import Profile, User
 from app.models.service import Service, ServiceField, ServiceFieldType
 from app.schemas.application import AdditionalDataUpdate, ApplicationEngineResponse
@@ -60,6 +60,7 @@ def get_application(db: Session, application_id: str) -> Application:
         .where(Application.id == application_id, Application.user_id == user.id)
         .options(
             selectinload(Application.answers),
+            selectinload(Application.documents).selectinload(ApplicationDocument.document),
             selectinload(Application.service).selectinload(Service.fields),
             selectinload(Application.service).selectinload(Service.document_requirements),
         )
