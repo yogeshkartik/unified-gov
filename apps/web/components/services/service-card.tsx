@@ -1,7 +1,7 @@
 import { CalendarDays, Landmark, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { LinkButton } from "@/components/ui/button";
 import type { GovernmentService } from "@/src/types";
 
 export function ServiceCard({ service }: { service: GovernmentService }) {
@@ -17,7 +17,7 @@ export function ServiceCard({ service }: { service: GovernmentService }) {
         <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{service.description}</p>
         <dl className="grid grid-cols-2 gap-3 text-xs"><div><dt className="flex items-center gap-1 text-muted-foreground"><CalendarDays className="size-3" aria-hidden="true" />Deadline</dt><dd className="mt-1 font-medium text-foreground">{deadline}</dd></div><div><dt className="flex items-center gap-1 text-muted-foreground"><IndianRupee className="size-3" aria-hidden="true" />Fee</dt><dd className="mt-1 font-medium text-foreground">{fee}</dd></div></dl>
       </CardContent>
-      <CardFooter><Button variant="outline" className="w-full" isDisabled>Service details coming next</Button></CardFooter>
+      <CardFooter><LinkButton href={`/services/${service.id}`} variant="outline" className="w-full">View service details</LinkButton></CardFooter>
     </Card>
   );
 }

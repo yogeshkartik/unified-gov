@@ -1,4 +1,11 @@
-import type { CitizenProfile, Document, Education, GovernmentService } from "@/src/types";
+import type {
+  ApplicationEngineResponse,
+  CitizenProfile,
+  Document,
+  Education,
+  GovernmentService,
+  GovernmentServiceDetail,
+} from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -40,4 +47,15 @@ export const api = {
   getEducation: () => request<Education[]>("/api/profile/education"),
   getDocuments: () => request<Document[]>("/api/documents"),
   getServices: () => request<GovernmentService[]>("/api/services"),
+  getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
+  createApplication: (serviceId: string) =>
+    request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),
+  getApplication: (applicationId: string) =>
+    request<ApplicationEngineResponse>(`/api/applications/${applicationId}`),
+  saveAdditionalData: (applicationId: string, answers: Record<string, unknown>) =>
+    request<ApplicationEngineResponse>(`/api/applications/${applicationId}/additional-data`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    }),
 };

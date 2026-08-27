@@ -81,6 +81,41 @@ export interface GovernmentService {
   updated_at: string;
 }
 
+export type ServiceFieldType =
+  | "TEXT"
+  | "NUMBER"
+  | "DATE"
+  | "SELECT"
+  | "RADIO"
+  | "CHECKBOX"
+  | "TEXTAREA"
+  | "FILE";
+
+export interface ServiceField {
+  id: string;
+  key: string;
+  label: string;
+  field_type: ServiceFieldType;
+  required: boolean;
+  options: string[] | null;
+  help_text: string | null;
+  position: number;
+}
+
+export interface ServiceDocumentRequirement {
+  id: string;
+  document_type: string;
+  label: string;
+  required: boolean;
+  position: number;
+}
+
+export interface GovernmentServiceDetail extends GovernmentService {
+  required_profile_fields: string[];
+  fields: ServiceField[];
+  document_requirements: ServiceDocumentRequirement[];
+}
+
 export interface Application {
   id: string;
   user_id: string;
@@ -89,4 +124,10 @@ export interface Application {
   answers: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+export interface ApplicationEngineResponse extends Application {
+  missing_profile_fields: string[];
+  missing_documents: string[];
+  missing_fields: string[];
 }
