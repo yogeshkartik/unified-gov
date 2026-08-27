@@ -52,6 +52,12 @@ export const api = {
   getEducation: () => request<Education[]>("/api/profile/education"),
   getDocuments: () => request<Document[]>("/api/documents"),
   getDigiLockerDocuments: () => request<MockDigiLockerDocument[]>("/api/digilocker/documents"),
+  selectApplicationDocuments: (applicationId: string, documentIds: string[]) =>
+    request<Document[]>(`/api/applications/${applicationId}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ document_ids: documentIds }),
+    }),
   getServices: () => request<GovernmentService[]>("/api/services"),
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>
