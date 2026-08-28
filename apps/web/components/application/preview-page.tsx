@@ -50,14 +50,15 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
 
   const profile = preview.profile;
   const addresses = Array.isArray(profile.addresses) ? profile.addresses : [];
+  const isSubmitted = preview.status === "SUBMITTED";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <ApplicationProgress currentStep={3} />
       <div>
-        <p className="text-sm font-medium text-primary">Final review</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Review your application</h1>
-        <p className="mt-2 leading-6 text-muted-foreground">Confirm the information below before continuing to payment and submission.</p>
+        <p className="text-sm font-medium text-primary">{isSubmitted ? "Submitted application" : "Final review"}</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{isSubmitted ? "Application preview" : "Review your application"}</h1>
+        <p className="mt-2 leading-6 text-muted-foreground">{isSubmitted ? "This submitted application is read-only." : "Confirm the information below before continuing to payment and submission."}</p>
       </div>
 
       <Card className="border-t-4 border-t-primary">
@@ -100,8 +101,8 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
         <CardContent><p className="text-lg font-semibold">{preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free service"}</p></CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row"><LinkButton href={`/applications/${applicationId}/consent`} variant="outline" size="lg">Back</LinkButton><Button size="lg" onPress={confirm} isDisabled={finalizing}>{finalizing ? "Creating snapshot…" : "Confirm & continue"}</Button></div>
-      {finalizeError ? <p role="alert" className="text-sm text-destructive">{finalizeError}</p> : null}
+      {!isSubmitted ? <><div className="flex flex-col-reverse gap-3 sm:flex-row"><LinkButton href={`/applications/${applicationId}/consent`} variant="outline" size="lg">Back</LinkButton><Button size="lg" onPress={confirm} isDisabled={finalizing}>{finalizing ? "Creating snapshot…" : "Confirm & continue"}</Button></div>
+      {finalizeError ? <p role="alert" className="text-sm text-destructive">{finalizeError}</p> : null}</> : null}
     </div>
   );
 }
