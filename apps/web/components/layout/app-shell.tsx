@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="lg:pl-64">
         <MobileNav />
-        <div className="sticky top-0 z-40 hidden min-h-16 items-center justify-end gap-1 border-b border-primary/10 bg-card px-4 shadow-sm sm:px-6 lg:flex">
+        <div className="sticky top-16 z-30 flex min-h-14 items-center justify-end gap-1 border-b border-primary/10 bg-card px-3 shadow-sm sm:px-6 lg:top-0 lg:z-40 lg:min-h-16">
           <LanguageSwitcher />
           <AccessibilityMenu />
           <span className="mx-2 h-8 w-px bg-border" aria-hidden="true" />
