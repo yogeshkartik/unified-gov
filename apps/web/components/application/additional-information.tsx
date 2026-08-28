@@ -60,7 +60,9 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
     (values, field) => ({
       ...values,
       [field.key]:
-        (data.application.answers[field.key] as DynamicFormValues[string]) ??
+        (field.field_type === "NUMBER" && data.application.answers[field.key] != null
+          ? String(data.application.answers[field.key])
+          : (data.application.answers[field.key] as DynamicFormValues[string])) ??
         (field.field_type === "CHECKBOX" ? false : ""),
     }),
     {}

@@ -11,9 +11,14 @@ function fieldSchema(field: ServiceField) {
   if (field.field_type === "CHECKBOX")
     return z.boolean().refine((value) => !field.required || value, "Please confirm this item.");
   if (field.field_type === "NUMBER")
-    return field.required
-      ? z.number().finite("Enter a valid number.")
-      : z.number().finite("Enter a valid number.").optional();
+    return z
+      .string()
+      .trim()
+      .refine(
+        (value) => value.length === 0 || /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value),
+        "Enter a valid number."
+      )
+      .refine((value) => !field.required || value.length > 0, `${field.label} is required.`);
   if ((field.options?.length ?? 0) > 0) {
     const allowedValues = field.options ?? [];
     const selection = z

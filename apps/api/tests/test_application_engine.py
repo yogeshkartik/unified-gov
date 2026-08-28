@@ -102,6 +102,29 @@ def test_completed_additional_data_clears_missing_fields(db: Session) -> None:
     }
 
 
+def test_numeric_form_text_is_normalized_before_storage(db: Session) -> None:
+    response = create_application(db, "AYUSHMAN_BHARAT_001")
+
+    updated = save_additional_data(
+        db,
+        response.id,
+        AdditionalDataUpdate(answers={"household_size": "5."}),
+    )
+
+    assert updated.answers == {"household_size": 5.0}
+    assert updated.missing_fields == []
+
+
+@pytest.mark.parametrize("value", ["five", "5..", "NaN", float("inf")])
+def test_numeric_fields_reject_invalid_or_non_finite_values(db: Session, value: object) -> None:
+    response = create_application(db, "AYUSHMAN_BHARAT_001")
+
+    with pytest.raises(InvalidApplicationFieldsError) as error:
+        save_additional_data(db, response.id, AdditionalDataUpdate(answers={"household_size": value}))
+
+    assert error.value.fields == {"household_size": "Expected a numeric value."}
+
+
 def test_reusable_uploads_match_by_document_type_and_are_attached_explicitly(db: Session) -> None:
     application = create_application(db, "RECRUITMENT_EXAM_001")
     signature = Document(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date
+from math import isfinite
+import re
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -48,6 +50,12 @@ ACTIONABLE_STATUSES = {
 }
 
 
+# Mirrors the numeric formats users can enter in a form, including incomplete-looking
+# but valid decimal notation such as "5.".  Values are normalized before they are
+# saved so every service form stores a JSON number consistently.
+NUMERIC_TEXT_PATTERN = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
+
+
 def required_status(missing_fields: list[str], consent_granted: bool = False) -> ApplicationStatus:
     if missing_fields:
         return ApplicationStatus.ADDITIONAL_INFO_REQUIRED
@@ -72,13 +80,14 @@ def save_additional_data(
 ) -> ApplicationEngineResponse:
     application = get_application(db, application_id)
     fields_by_key = {field.key: field for field in application.service.fields}
-    errors = validate_answers(payload.answers, fields_by_key)
+    answers = normalize_answers(payload.answers, fields_by_key)
+    errors = validate_answers(answers, fields_by_key)
     if errors:
         raise InvalidApplicationFieldsError(errors)
 
     answers_by_key = {answer.field_key: answer for answer in application.answers}
     next_answers = application.answers_by_key.copy()
-    for key, value in payload.answers.items():
+    for key, value in answers.items():
         answer = answers_by_key.get(key)
         if answer is None:
             db.add(ApplicationAnswer(application_id=application.id, field_key=key, value=value))
@@ -324,6 +333,24 @@ def validate_answers(answers: dict[str, Any], fields_by_key: dict[str, ServiceFi
     return errors
 
 
+def normalize_answers(answers: dict[str, Any], fields_by_key: dict[str, ServiceField]) -> dict[str, Any]:
+    """Convert valid numeric form text to JSON numbers before validation and storage."""
+    normalized = answers.copy()
+    for key, value in answers.items():
+        field = fields_by_key.get(key)
+        if field is None or field.field_type != ServiceFieldType.NUMBER or not isinstance(value, str):
+            continue
+        numeric_text = value.strip()
+        if not numeric_text:
+            normalized[key] = None
+            continue
+        if NUMERIC_TEXT_PATTERN.fullmatch(numeric_text):
+            numeric_value = float(numeric_text)
+            if isfinite(numeric_value):
+                normalized[key] = numeric_value
+    return normalized
+
+
 def validate_field_value(field: ServiceField, value: Any) -> str | None:
     if value is None:
         return None
@@ -334,7 +361,11 @@ def validate_field_value(field: ServiceField, value: Any) -> str | None:
     if field.field_type in {ServiceFieldType.TEXT, ServiceFieldType.TEXTAREA, ServiceFieldType.FILE}:
         return None if isinstance(value, str) else "Expected a text value."
     if field.field_type == ServiceFieldType.NUMBER:
-        return None if isinstance(value, int | float) and not isinstance(value, bool) else "Expected a numeric value."
+        return (
+            None
+            if isinstance(value, int | float) and not isinstance(value, bool) and isfinite(value)
+            else "Expected a numeric value."
+        )
     if field.field_type == ServiceFieldType.DATE:
         if not isinstance(value, str):
             return "Expected an ISO-8601 date string."

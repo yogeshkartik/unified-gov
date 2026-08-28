@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { ServiceField } from "@/src/types";
 
-export type DynamicFormValues = Record<string, string | number | boolean | undefined>;
+export type DynamicFormValues = Record<string, string | boolean | undefined>;
 
 interface DynamicFieldProps {
   field: ServiceField;
@@ -33,7 +33,7 @@ export function DynamicField({ field, control, errors, register }: DynamicFieldP
       controlElement = <Textarea id={field.id} aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;
       break;
     case "NUMBER":
-      controlElement = <Input id={field.id} type="number" inputMode="decimal" aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key, { valueAsNumber: true })} />;
+      controlElement = <Input id={field.id} type="text" inputMode="decimal" aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;
       break;
     case "DATE":
       controlElement = <Input id={field.id} type="date" aria-describedby={describedBy} aria-invalid={Boolean(error)} {...register(field.key)} />;
