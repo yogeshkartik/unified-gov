@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.profile import AddressType, DocumentSource, DocumentType, EducationLevel
 
@@ -21,12 +21,12 @@ class AddressResponse(BaseModel):
 
 class AddressUpdate(BaseModel):
     type: AddressType
-    line1: str = Field(min_length=1, max_length=255)
+    line1: str = Field(default="", max_length=255)
     line2: str | None = Field(default=None, max_length=255)
-    city: str = Field(min_length=1, max_length=100)
-    district: str = Field(min_length=1, max_length=100)
-    state: str = Field(min_length=1, max_length=100)
-    pincode: str = Field(pattern=r"^\d{6}$")
+    city: str = Field(default="", max_length=100)
+    district: str = Field(default="", max_length=100)
+    state: str = Field(default="", max_length=100)
+    pincode: str = Field(default="", pattern=r"^(\d{6})?$")
     country: str = Field(default="India", min_length=1, max_length=100)
 
 
@@ -58,6 +58,25 @@ class ProfileUpdate(BaseModel):
     preferred_language: str | None = Field(default=None, max_length=20)
     current_address_same_as_permanent: bool | None = None
     addresses: list[AddressUpdate] | None = None
+
+    @model_validator(mode="after")
+    def complete_empty_correspondence_address(self) -> "ProfileUpdate":
+        if self.addresses is None:
+            return self
+        permanent = next((item for item in self.addresses if item.type == AddressType.PERMANENT), None)
+        correspondence = next((item for item in self.addresses if item.type == AddressType.CORRESPONDENCE), None)
+        if permanent and correspondence and not any((correspondence.line1, correspondence.city, correspondence.district, correspondence.state, correspondence.pincode)):
+            correspondence.line1 = permanent.line1
+            correspondence.line2 = permanent.line2
+            correspondence.city = permanent.city
+            correspondence.district = permanent.district
+            correspondence.state = permanent.state
+            correspondence.pincode = permanent.pincode
+            correspondence.country = permanent.country
+            self.current_address_same_as_permanent = True
+        if permanent and not all((permanent.line1, permanent.city, permanent.district, permanent.state, permanent.pincode)):
+            raise ValueError("Permanent address is incomplete.")
+        return self
 
 
 class ProfileResponse(BaseModel):
