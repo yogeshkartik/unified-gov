@@ -25,14 +25,35 @@ def db(tmp_path) -> Session:
         engine.dispose()
 
 
-def test_list_services_returns_all_three_demo_catalog_entries(db: Session) -> None:
+def test_list_services_returns_the_expanded_demo_catalog(db: Session) -> None:
     services = list_services(db)
 
-    assert {service.id for service in services} == {
-        "RECRUITMENT_EXAM_001",
-        "SCHOLARSHIP_001",
-        "DRIVING_LICENCE_001",
-    }
+    service_ids = {service.id for service in services}
+    assert len(service_ids) == 23
+    assert {
+        "JEE_MAIN_001",
+        "NEET_UG_001",
+        "CUET_UG_001",
+        "WBJEE_001",
+        "SSC_CGL_001",
+        "UPSC_CSE_001",
+        "IBPS_PO_001",
+        "PAN_CARD_001",
+        "VOTER_ID_001",
+        "PASSPORT_001",
+        "NATIONAL_SCHOLARSHIP_001",
+        "PM_KISAN_001",
+        "INCOME_CERTIFICATE_001",
+    }.issubset(service_ids)
+
+
+def test_jee_main_requirements_use_the_generic_service_schema(db: Session) -> None:
+    service = get_service(db, "JEE_MAIN_001")
+
+    assert service.category == "Examinations"
+    assert service.required_profile_fields == ["full_name", "date_of_birth", "gender", "address", "category", "education"]
+    assert [field.key for field in service.fields] == ["exam_city", "paper_preference"]
+    assert [requirement.document_type for requirement in service.document_requirements] == ["PHOTOGRAPH", "SIGNATURE", "MARKSHEET"]
 
 
 def test_scholarship_requirements_are_data_driven(db: Session) -> None:

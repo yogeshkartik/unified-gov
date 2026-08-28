@@ -159,6 +159,7 @@ def seed_demo_services(db: Session) -> None:
     """Seed generic service definitions; forms are rendered from these records."""
     if db.scalar(select(Service.id).limit(1)) is not None:
         sync_demo_service_options(db)
+        seed_extended_demo_services(db)
         return
 
     recruitment_exam = Service(
@@ -167,7 +168,7 @@ def seed_demo_services(db: Session) -> None:
         department="Public Recruitment Department",
         description="Apply for open government recruitment examinations and track your application.",
         service_type=ServiceType.RECRUITMENT,
-        category="Recruitment",
+        category="Examinations",
         status=ServiceStatus.OPEN,
         fee=100,
         currency="INR",
@@ -205,7 +206,7 @@ def seed_demo_services(db: Session) -> None:
         department="Education Support Department",
         description="Financial assistance for eligible students pursuing post-matric education.",
         service_type=ServiceType.SCHOLARSHIP,
-        category="Education",
+        category="Education & Scholarships",
         status=ServiceStatus.OPEN,
         fee=0,
         currency="INR",
@@ -240,7 +241,7 @@ def seed_demo_services(db: Session) -> None:
         department="Transport Department",
         description="Apply for learner, permanent, renewal and vehicle-class driving licence services.",
         service_type=ServiceType.LICENCE,
-        category="Transport",
+        category="Identity & Licences",
         status=ServiceStatus.OPEN,
         fee=200,
         currency="INR",
@@ -272,6 +273,49 @@ def seed_demo_services(db: Session) -> None:
         ],
     )
     db.add_all([recruitment_exam, scholarship, driving_licence])
+    seed_extended_demo_services(db)
+    db.commit()
+
+
+def seed_extended_demo_services(db: Session) -> None:
+    """Add synthetic directory entries using the same generic service schema."""
+    existing_ids = set(db.scalars(select(Service.id)).all())
+
+    def make_fields(*definitions: tuple[str, str, ServiceFieldType, list[str] | None]) -> list[ServiceField]:
+        return [ServiceField(key=key, label=label, field_type=field_type, required=True, options=options, position=position) for position, (key, label, field_type, options) in enumerate(definitions, start=1)]
+
+    def make_documents(*definitions: tuple[str, str]) -> list[ServiceDocumentRequirement]:
+        return [ServiceDocumentRequirement(document_type=document_type, label=label, required=True, position=position) for position, (document_type, label) in enumerate(definitions, start=1)]
+
+    exam_profile = ["full_name", "date_of_birth", "gender", "address", "category", "education"]
+    identity_profile = ["full_name", "date_of_birth", "address"]
+    exam_documents = (("PHOTOGRAPH", "Photograph"), ("SIGNATURE", "Signature"), ("MARKSHEET", "Class 12 Marksheet"))
+    exam_fields = (("exam_city", "Preferred Exam City", ServiceFieldType.SELECT, ["New Delhi", "Mumbai", "Bengaluru"]),)
+    catalog = [
+        ("JEE_MAIN_001", "JEE Main", "National Testing Agency", "Engineering entrance examination.", ServiceType.EXAM, "Examinations", 100, exam_profile, exam_fields + (("paper_preference", "Paper Preference", ServiceFieldType.SELECT, ["Paper 1", "Paper 2"]),), exam_documents),
+        ("NEET_UG_001", "NEET UG", "National Testing Agency", "Medical undergraduate entrance examination.", ServiceType.EXAM, "Examinations", 100, exam_profile, exam_fields, exam_documents),
+        ("CUET_UG_001", "CUET UG", "National Testing Agency", "Common university undergraduate entrance examination.", ServiceType.EXAM, "Examinations", 100, exam_profile, exam_fields + (("subject_preference", "Subject Preference", ServiceFieldType.TEXT, None),), exam_documents),
+        ("WBJEE_001", "WBJEE", "West Bengal Joint Entrance Examinations Board", "West Bengal engineering entrance examination.", ServiceType.EXAM, "Examinations", 100, exam_profile, exam_fields, exam_documents),
+        ("SSC_CGL_001", "SSC CGL", "Staff Selection Commission", "Government recruitment examination.", ServiceType.RECRUITMENT, "Examinations", 100, exam_profile, exam_fields + (("post_preference", "Post Preference", ServiceFieldType.TEXT, None),), (("PHOTOGRAPH", "Photograph"), ("SIGNATURE", "Signature"), ("DEGREE_CERTIFICATE", "Degree Certificate"))),
+        ("UPSC_CSE_001", "UPSC Civil Services Examination", "Union Public Service Commission", "Civil services recruitment examination.", ServiceType.RECRUITMENT, "Examinations", 100, exam_profile, exam_fields + (("service_preference", "Service Preference", ServiceFieldType.TEXT, None),), (("PHOTOGRAPH", "Photograph"), ("SIGNATURE", "Signature"), ("DEGREE_CERTIFICATE", "Degree Certificate"))),
+        ("IBPS_PO_001", "IBPS PO", "Institute of Banking Personnel Selection", "Bank probationary officer recruitment examination.", ServiceType.RECRUITMENT, "Examinations", 100, exam_profile, exam_fields, (("PHOTOGRAPH", "Photograph"), ("SIGNATURE", "Signature"), ("DEGREE_CERTIFICATE", "Degree Certificate"))),
+        ("PAN_CARD_001", "PAN Card", "Demo Tax Services", "Apply for or update PAN details.", ServiceType.LICENCE, "Identity & Licences", 110, identity_profile, (("application_type", "Application Type", ServiceFieldType.SELECT, ["New application", "Update details"]),), (("PHOTOGRAPH", "Photograph"), ("IDENTITY_DOCUMENT", "Identity Document"))),
+        ("VOTER_ID_001", "Voter ID", "Demo Electoral Services", "Apply for voter registration or update voter information.", ServiceType.LICENCE, "Identity & Licences", 0, identity_profile, (("registration_type", "Registration Type", ServiceFieldType.SELECT, ["New registration", "Update information"]),), (("PHOTOGRAPH", "Photograph"), ("IDENTITY_DOCUMENT", "Identity Document"))),
+        ("PASSPORT_001", "Passport", "Demo Passport Services", "Apply for passport-related services.", ServiceType.LICENCE, "Identity & Licences", 500, identity_profile, (("application_type", "Application Type", ServiceFieldType.SELECT, ["New passport", "Reissue passport"]),), (("PHOTOGRAPH", "Photograph"), ("IDENTITY_DOCUMENT", "Identity Document"))),
+        ("NATIONAL_SCHOLARSHIP_001", "National Scholarship", "Education Support Department", "Financial support for eligible students.", ServiceType.SCHOLARSHIP, "Education & Scholarships", 0, exam_profile, (("course", "Current Course", ServiceFieldType.TEXT, None), ("academic_year", "Academic Year", ServiceFieldType.SELECT, ["2026-27", "2027-28"])), (("INCOME_CERTIFICATE", "Income Certificate"), ("MARKSHEET", "Marksheet"))),
+        ("STATE_MERIT_SCHOLARSHIP_001", "State Merit Scholarship", "State Education Department", "Merit-based financial support for students.", ServiceType.SCHOLARSHIP, "Education & Scholarships", 0, exam_profile, (("course", "Current Course", ServiceFieldType.TEXT, None), ("institution", "Institution", ServiceFieldType.TEXT, None)), (("MARKSHEET", "Marksheet"),)),
+        ("HIGHER_EDUCATION_SCHOLARSHIP_001", "Higher Education Scholarship", "Higher Education Department", "Support for students pursuing higher education.", ServiceType.SCHOLARSHIP, "Education & Scholarships", 0, exam_profile, (("course", "Current Course", ServiceFieldType.TEXT, None), ("institution", "Institution", ServiceFieldType.TEXT, None)), (("INCOME_CERTIFICATE", "Income Certificate"), ("MARKSHEET", "Marksheet"))),
+        ("PM_KISAN_001", "PM-KISAN", "Demo Agriculture Services", "Farmer income-support scheme application demo.", ServiceType.SCHEME, "Government Schemes", 0, ["full_name", "address"], (("farmer_declaration", "Farmer Declaration", ServiceFieldType.CHECKBOX, None),), (("IDENTITY_DOCUMENT", "Identity Document"), ("OTHER", "Land or Supporting Document"))),
+        ("AYUSHMAN_BHARAT_001", "Ayushman Bharat", "Demo Health Benefits Services", "Health-benefit enrollment application demo.", ServiceType.SCHEME, "Government Schemes", 0, identity_profile, (("household_size", "Household Size", ServiceFieldType.NUMBER, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+        ("PMAY_001", "PMAY", "Demo Housing Services", "Housing assistance scheme application demo.", ServiceType.SCHEME, "Government Schemes", 0, ["full_name", "address"], (("housing_need", "Housing Need", ServiceFieldType.TEXTAREA, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+        ("E_SHRAM_001", "e-Shram Registration", "Demo Labour Services", "Worker registration for social-security schemes demo.", ServiceType.SCHEME, "Government Schemes", 0, ["full_name", "date_of_birth", "address"], (("occupation", "Occupation", ServiceFieldType.TEXT, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+        ("INCOME_CERTIFICATE_001", "Income Certificate", "Demo Certificate Services", "Apply for an income certificate.", ServiceType.CERTIFICATE, "Certificates", 20, ["full_name", "address"], (("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+        ("CASTE_CERTIFICATE_001", "Caste Certificate", "Demo Certificate Services", "Apply for a caste certificate.", ServiceType.CERTIFICATE, "Certificates", 20, ["full_name", "address", "category"], (("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+        ("DOMICILE_CERTIFICATE_001", "Domicile Certificate", "Demo Certificate Services", "Apply for a domicile certificate.", ServiceType.CERTIFICATE, "Certificates", 20, ["full_name", "address"], (("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None),), (("IDENTITY_DOCUMENT", "Identity Document"),)),
+    ]
+    for service_id, name, department, description, service_type, category, fee, profile_fields, service_fields, service_documents in catalog:
+        if service_id not in existing_ids:
+            db.add(Service(id=service_id, name=name, department=department, description=description, service_type=service_type, category=category, status=ServiceStatus.OPEN, fee=fee, currency="INR", instructions=None, required_profile_fields=profile_fields, fields=make_fields(*service_fields), document_requirements=make_documents(*service_documents)))
     db.commit()
 
 
@@ -286,24 +330,28 @@ def sync_demo_service_options(db: Session) -> None:
             "Government Recruitment Exam",
             "Public Recruitment Department",
             "Apply for open government recruitment examinations and track your application.",
+            "Examinations",
         ),
         "SCHOLARSHIP_001": (
             "Post-Matric Scholarship",
             "Education Support Department",
             "Financial assistance for eligible students pursuing post-matric education.",
+            "Education & Scholarships",
         ),
         "DRIVING_LICENCE_001": (
             "Driving Licence Application",
             "Transport Department",
             "Apply for learner, permanent, renewal and vehicle-class driving licence services.",
+            "Identity & Licences",
         ),
     }
-    for service_id, (name, department, description) in service_copy.items():
+    for service_id, (name, department, description, category) in service_copy.items():
         service = services.get(service_id)
         if service is not None:
             service.name = name
             service.department = department
             service.description = description
+            service.category = category
             service.instructions = None
 
     fields = {
