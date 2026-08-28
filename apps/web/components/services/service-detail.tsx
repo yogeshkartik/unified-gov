@@ -9,7 +9,6 @@ import type { GovernmentServiceDetail } from "@/src/types";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
-import { ApplicationProgress } from "@/components/application/application-progress";
 import { useCitizenAuth } from "@/components/providers/citizen-auth";
 
 function formatFieldName(value: string) {
@@ -49,7 +48,6 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
 
   return (
     <div className="space-y-6">
-      <ApplicationProgress currentStep={1} />
       <section className="rounded-xl border border-primary/15 bg-gradient-to-br from-blue-50/70 to-card p-5 shadow-sm sm:p-7">
         <p className="text-sm font-medium text-primary">{service.category}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">{service.name}</h1>

@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, GraduationCap, IndianRupee, MapPin, UserRound } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationPreview } from "@/src/types";
-import { ApplicationProgress } from "@/components/application/application-progress";
-import { Button, LinkButton } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
+import { Separator } from "@/components/ui/separator";
 
 function displayName(value: string) {
-  return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function text(value: unknown) {
@@ -19,7 +20,11 @@ function text(value: unknown) {
 }
 
 function SourceBadge({ children }: { children: string }) {
-  return <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{children}</span>;
+  return (
+    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 font-medium">
+      {children}
+    </span>
+  );
 }
 
 export function PreviewPage({ applicationId }: { applicationId: string }) {
@@ -40,12 +45,21 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
       await api.finalizeApplication(applicationId);
       router.push(`/applications/${applicationId}/payment`);
     } catch {
-      setFinalizeError("This application is not ready to finalize. Check its required profile information and additional fields.");
+      setFinalizeError(
+        "This application is not ready to finalize. Check its required profile information and additional fields."
+      );
       setFinalizing(false);
     }
   }
 
-  if (error) return <ErrorState>We could not load the application preview. Confirm consent and try again.</ErrorState>;
+  if (error) {
+    return (
+      <ErrorState>
+        We could not load the application preview. Confirm consent and try again.
+      </ErrorState>
+    );
+  }
+
   if (!preview) return <LoadingState label="Preparing your complete application preview…" />;
 
   const profile = preview.profile;
@@ -53,56 +67,156 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
   const isSubmitted = preview.status === "SUBMITTED";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <ApplicationProgress currentStep={3} />
-      <div>
-        <p className="text-sm font-medium text-primary">{isSubmitted ? "Submitted application" : "Final review"}</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">{isSubmitted ? "Application preview" : "Review your application"}</h1>
-        <p className="mt-2 leading-6 text-muted-foreground">{isSubmitted ? "This submitted application is read-only." : "Confirm the information below before continuing to payment and submission."}</p>
-      </div>
+    <ApplicationFlowShell
+      serviceName={String(preview.service.name)}
+      step={3}
+      stepName="Preview"
+      onClose={() => router.push("/applications")}
+      footer={
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
+          {!isSubmitted ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onPress={() => router.push(`/applications/${applicationId}/consent`)}
+              >
+                Back
+              </Button>
+              <Button onPress={confirm} isDisabled={finalizing}>
+                {finalizing ? "Creating snapshot…" : "Confirm & Continue"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="ml-auto"
+              onPress={() => router.push("/applications")}
+            >
+              Close
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+            {isSubmitted ? "Application preview" : "Review application"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isSubmitted
+              ? "This submitted application is read-only."
+              : "Confirm the information below before continuing."}
+          </p>
+        </div>
 
-      <Card className="border-t-4 border-t-primary">
-        <CardHeader>
-          <CardTitle>{text(preview.service.name)}</CardTitle>
-          <p className="text-sm text-muted-foreground">{text(preview.service.department)} · {text(preview.service.category)}</p>
-        </CardHeader>
-        <CardContent><p className="text-sm leading-6 text-muted-foreground">{text(preview.service.description)}</p></CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><UserRound className="size-4 text-primary" aria-hidden="true" />Personal information</CardTitle></CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {["full_name", "date_of_birth", "gender", "nationality", "email", "category"].map((key) => (
-              <div key={key}><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{displayName(key)}</dt><dd className="mt-1 flex items-center justify-between gap-2 text-sm">{text(profile[key])}<SourceBadge>Profile</SourceBadge></dd></div>
-            ))}
+        {/* Personal Details */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Personal information
+          </h3>
+          <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
+            {["full_name", "date_of_birth", "gender", "nationality", "email", "category"].map(
+              (key) => (
+                <div key={key} className="space-y-0.5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {displayName(key)}
+                  </dt>
+                  <dd className="flex items-center justify-between gap-2 text-sm font-medium text-foreground">
+                    <span>{text(profile[key])}</span>
+                    <SourceBadge>Profile</SourceBadge>
+                  </dd>
+                </div>
+              )
+            )}
           </dl>
-          {addresses.length > 0 ? <div className="mt-6 border-t border-border pt-4"><p className="flex items-center gap-2 text-sm font-medium"><MapPin className="size-4 text-primary" aria-hidden="true" />Address</p>{addresses.map((address, index) => { const item = address as Record<string, unknown>; return <p key={index} className="mt-2 text-sm leading-6 text-muted-foreground">{text(item.line1)}, {text(item.city)}, {text(item.state)} — {text(item.pincode)} <SourceBadge>Profile</SourceBadge></p>; })}</div> : null}
-        </CardContent>
-      </Card>
+          {addresses.length > 0 ? (
+            <div className="mt-3 border-t border-border pt-3 space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Address
+              </p>
+              {addresses.map((address, index) => {
+                const item = address as Record<string, unknown>;
+                return (
+                  <p key={index} className="text-sm text-foreground">
+                    {text(item.line1)}, {text(item.city)}, {text(item.state)} — {text(item.pincode)}
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><GraduationCap className="size-4 text-emerald-600" aria-hidden="true" />Education</CardTitle></CardHeader>
-        <CardContent>{preview.education.length === 0 ? <p className="text-sm text-muted-foreground">No education record included.</p> : <ul className="space-y-3">{preview.education.map((education, index) => <li key={index} className="flex items-start justify-between gap-3 text-sm"><span>{text(education.level)} · {text(education.institution)} · {text(education.year)}</span><SourceBadge>Profile</SourceBadge></li>)}</ul>}</CardContent>
-      </Card>
+        <Separator />
 
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-4 text-primary" aria-hidden="true" />Selected documents</CardTitle></CardHeader>
-        <CardContent>{preview.documents.length === 0 ? <p className="text-sm text-muted-foreground">No application documents were selected for this draft.</p> : <ul className="space-y-3">{preview.documents.map((document, index) => <li key={String(document.id ?? index)} className="flex items-start justify-between gap-3 text-sm"><span>{text(document.name)}</span><SourceBadge>{text(document.source) === "DIGILOCKER" ? "DigiLocker" : "Profile"}</SourceBadge></li>)}</ul>}</CardContent>
-      </Card>
+        {/* Application Specific Answers */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Application details
+          </h3>
+          {Object.keys(preview.answers).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No additional information was required.</p>
+          ) : (
+            <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
+              {Object.entries(preview.answers).map(([key, value]) => (
+                <div key={key} className="space-y-0.5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {displayName(key)}
+                  </dt>
+                  <dd className="flex items-center justify-between gap-2 text-sm font-medium text-foreground">
+                    <span>{text(value)}</span>
+                    <SourceBadge>Application</SourceBadge>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
 
-      <Card>
-        <CardHeader><CardTitle>Additional information</CardTitle></CardHeader>
-        <CardContent>{Object.keys(preview.answers).length === 0 ? <p className="text-sm text-muted-foreground">No additional information was required.</p> : <dl className="grid gap-4 sm:grid-cols-2">{Object.entries(preview.answers).map(([key, value]) => <div key={key}><dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{displayName(key)}</dt><dd className="mt-1 flex items-center justify-between gap-2 text-sm">{text(value)}<SourceBadge>Application</SourceBadge></dd></div>)}</dl>}</CardContent>
-      </Card>
+        <Separator />
 
-      <Card className="border-t-4 border-t-amber-500">
-        <CardHeader><CardTitle className="flex items-center gap-2"><IndianRupee className="size-4 text-primary" aria-hidden="true" />Application fee</CardTitle></CardHeader>
-        <CardContent><p className="text-lg font-semibold">{preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free service"}</p></CardContent>
-      </Card>
+        {/* Documents */}
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Selected documents
+          </h3>
+          {preview.documents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No application documents attached.</p>
+          ) : (
+            <ul className="space-y-2">
+              {preview.documents.map((document, index) => (
+                <li
+                  key={String(document.id ?? index)}
+                  className="flex items-center justify-between gap-3 text-sm text-foreground"
+                >
+                  <span className="font-medium">{text(document.name)}</span>
+                  <SourceBadge>
+                    {text(document.source) === "DIGILOCKER" ? "DigiLocker" : "Profile"}
+                  </SourceBadge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      {!isSubmitted ? <><div className="flex flex-col-reverse gap-3 sm:flex-row"><LinkButton href={`/applications/${applicationId}/consent`} variant="outline" size="lg">Back</LinkButton><Button size="lg" onPress={confirm} isDisabled={finalizing}>{finalizing ? "Creating snapshot…" : "Confirm & continue"}</Button></div>
-      {finalizeError ? <p role="alert" className="text-sm text-destructive">{finalizeError}</p> : null}</> : null}
-    </div>
+        <Separator />
+
+        {/* Fee */}
+        <section className="flex items-center justify-between text-sm">
+          <span className="font-medium text-foreground">Application fee</span>
+          <span className="font-semibold text-foreground">
+            {preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free service"}
+          </span>
+        </section>
+
+        {finalizeError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {finalizeError}
+          </p>
+        ) : null}
+      </div>
+    </ApplicationFlowShell>
   );
 }

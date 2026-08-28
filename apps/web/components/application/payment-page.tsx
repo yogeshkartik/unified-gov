@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CreditCard, IndianRupee } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationPreview } from "@/src/types";
-import { ApplicationProgress } from "@/components/application/application-progress";
+import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
 export function PaymentPage({ applicationId }: { applicationId: string }) {
@@ -16,38 +15,159 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
   const [error, setError] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState<string>();
+
   useEffect(() => {
     let cancelled = false;
-    api.getPreview(applicationId).then(async (loadedPreview) => {
-      if (cancelled) return;
-      setPreview(loadedPreview);
-      if (loadedPreview.fee > 0) return;
-      setProcessing(true);
-      try {
-        await api.processPayment(applicationId);
-        const submission = await api.submitApplication(applicationId);
-        if (!cancelled) router.replace(`/applications/${applicationId}/success?reference=${encodeURIComponent(submission.government_reference_number)}`);
-      } catch {
-        if (!cancelled) { setPaymentError("We could not submit this free application. Please try again."); setProcessing(false); }
-      }
-    }).catch(() => { if (!cancelled) setError(true); });
-    return () => { cancelled = true; };
+    api
+      .getPreview(applicationId)
+      .then(async (loadedPreview) => {
+        if (cancelled) return;
+        setPreview(loadedPreview);
+        if (loadedPreview.fee > 0) return;
+        setProcessing(true);
+        try {
+          await api.processPayment(applicationId);
+          const submission = await api.submitApplication(applicationId);
+          if (!cancelled) {
+            router.replace(
+              `/applications/${applicationId}/success?reference=${encodeURIComponent(
+                submission.government_reference_number
+              )}`
+            );
+          }
+        } catch {
+          if (!cancelled) {
+            setPaymentError("We could not submit this free application. Please try again.");
+            setProcessing(false);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [applicationId, router]);
+
   async function submitAfterPayment() {
     const submission = await api.submitApplication(applicationId);
-    router.replace(`/applications/${applicationId}/success?reference=${encodeURIComponent(submission.government_reference_number)}`);
+    router.replace(
+      `/applications/${applicationId}/success?reference=${encodeURIComponent(
+        submission.government_reference_number
+      )}`
+    );
   }
+
   async function pay() {
     setProcessing(true);
     setPaymentError(undefined);
     try {
       const payment = await api.processPayment(applicationId);
-      if (payment.skipped || payment.status === "SUCCESS") await submitAfterPayment();
-      else { setPaymentError("Payment was not successful. Please try again."); setProcessing(false); }
-    } catch { setPaymentError("We could not process the payment. Please try again."); setProcessing(false); }
+      if (payment.skipped || payment.status === "SUCCESS") {
+        await submitAfterPayment();
+      } else {
+        setPaymentError("Payment was not successful. Please try again.");
+        setProcessing(false);
+      }
+    } catch {
+      setPaymentError("We could not process the payment. Please try again.");
+      setProcessing(false);
+    }
   }
-  if (error) return <ErrorState>We could not load payment information. Return to the preview and try again.</ErrorState>;
+
+  if (error) {
+    return (
+      <ErrorState>
+        We could not load payment information. Return to the preview and try again.
+      </ErrorState>
+    );
+  }
+
   if (!preview) return <LoadingState label="Loading payment details…" />;
-  if (preview.fee <= 0) return <div className="mx-auto max-w-xl space-y-6"><ApplicationProgress currentStep={4} /><Card className="border-t-4 border-t-emerald-500"><CardHeader><CardTitle>Submitting free application</CardTitle></CardHeader><CardContent className="space-y-4"><p className="flex items-center gap-2 text-sm text-muted-foreground"><CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />No payment is required. Your application is being submitted.</p>{paymentError ? <><p role="alert" className="text-sm text-destructive">{paymentError}</p><Button onPress={pay} isDisabled={processing}>Retry submission</Button></> : null}</CardContent></Card></div>;
-  return <div className="mx-auto max-w-xl space-y-6"><ApplicationProgress currentStep={4} /><div><p className="text-sm font-medium text-primary">Secure payment</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Confirm payment</h1><p className="mt-2 leading-6 text-muted-foreground">Review the application fee before continuing.</p></div><Card className="border-t-4 border-t-amber-500"><CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="size-4 text-primary" aria-hidden="true" />Payment summary</CardTitle></CardHeader><CardContent><dl className="space-y-3 text-sm"><div className="flex justify-between"><dt>Application fee</dt><dd>{preview.currency} {preview.fee}</dd></div><div className="flex justify-between border-t border-border pt-3 text-base font-semibold"><dt>Total</dt><dd className="flex items-center"><IndianRupee className="size-4" aria-hidden="true" />{preview.fee}</dd></div></dl></CardContent></Card><Button size="lg" className="w-full" onPress={pay} isDisabled={processing}>{processing ? "Processing payment…" : `Pay ${preview.currency} ${preview.fee}`}</Button>{paymentError ? <p role="alert" className="text-sm text-destructive">{paymentError}</p> : null}</div>;
+
+  const isFree = preview.fee <= 0;
+
+  return (
+    <ApplicationFlowShell
+      serviceName={String(preview.service.name)}
+      step={4}
+      stepName="Payment"
+      onClose={() => router.push("/applications")}
+      footer={
+        !isFree ? (
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <Button
+              type="button"
+              variant="outline"
+              onPress={() => router.push(`/applications/${applicationId}/preview`)}
+            >
+              Back
+            </Button>
+            <Button onPress={pay} isDisabled={processing}>
+              {processing ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>Processing payment…</span>
+                </>
+              ) : (
+                `Pay ${preview.currency} ${preview.fee}`
+              )}
+            </Button>
+          </div>
+        ) : null
+      }
+    >
+      {isFree ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
+          <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Submitting free application…</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              No payment is required for this service.
+            </p>
+          </div>
+          {paymentError ? (
+            <div className="space-y-3 pt-2">
+              <p role="alert" className="text-sm text-destructive">
+                {paymentError}
+              </p>
+              <Button onPress={pay} isDisabled={processing}>
+                Retry submission
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
+              Application fee
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Demo payment · No real money will be charged.
+            </p>
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Amount to pay
+            </p>
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+              {preview.currency} {preview.fee}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Mock payment for demonstration purposes
+            </p>
+          </div>
+
+          {paymentError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {paymentError}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </ApplicationFlowShell>
+  );
 }
