@@ -526,7 +526,10 @@ export function ProfileContent() {
       country: String(values[`${prefix}_country`] || "India"),
     });
     const profileValues = Object.fromEntries(
-      profileGroups.flatMap((group) => group.keys).map((key) => [key, values[String(key)] ?? null])
+      profileGroups.flatMap((group) => group.keys).map((key) => {
+        const value = values[String(key)];
+        return [key, typeof value === "string" && value.trim() === "" ? null : value ?? null];
+      })
     );
     const permanent = makeAddress("permanent", "PERMANENT");
     const addresses = [
