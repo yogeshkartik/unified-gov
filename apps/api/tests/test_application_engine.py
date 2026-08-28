@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
 from app.models.application import ApplicationStatus
+from app.models.profile import Document, DocumentSource, DocumentType
 from app.schemas.application import AdditionalDataUpdate
 from app.services.application_engine import (
     ApplicationDeletionNotAllowedError,
@@ -11,9 +12,11 @@ from app.services.application_engine import (
     InvalidApplicationFieldsError,
     create_application,
     delete_draft_application,
+    determine_missing_requirements,
     get_application,
     save_additional_data,
 )
+from app.services.application_document_service import attach_my_documents
 from app.services.seed import seed_demo_citizen, seed_demo_services
 
 
@@ -97,3 +100,21 @@ def test_completed_additional_data_clears_missing_fields(db: Session) -> None:
         "institution": "Demo Institute",
         "academic_year": "2026-27",
     }
+
+
+def test_reusable_uploads_match_by_document_type_and_are_attached_explicitly(db: Session) -> None:
+    application = create_application(db, "RECRUITMENT_EXAM_001")
+    signature = Document(
+        user_id=get_application(db, application.id).user_id,
+        name="Signature",
+        document_type=DocumentType.SIGNATURE,
+        source=DocumentSource.PROFILE_UPLOAD,
+        storage_key="signature.png",
+    )
+    db.add(signature)
+    db.commit()
+
+    assert "SIGNATURE" in application.missing_documents
+    attach_my_documents(db, application.id, [signature.id])
+    _, missing_documents, _ = determine_missing_requirements(db, get_application(db, application.id))
+    assert "SIGNATURE" not in missing_documents

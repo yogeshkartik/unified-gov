@@ -12,7 +12,7 @@ from app.schemas.digilocker import (
     DigiLockerDocumentResponse,
 )
 from app.schemas.profile import DocumentResponse
-from app.services import application_engine, digilocker_service
+from app.services import application_document_service, application_engine, digilocker_service
 from app.services.profile_service import ProfileNotFoundError, get_demo_user
 from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME
 
@@ -96,6 +96,24 @@ def select_digilocker_documents(
         ) from error
     except ProviderDocumentNotFoundError as error:
         raise digilocker_document_not_found(str(error)) from error
+
+
+@router.post(
+    "/applications/{application_id}/my-documents",
+    response_model=list[DocumentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def select_my_documents(
+    application_id: str,
+    payload: ApplicationDocumentSelection,
+    db: Session = Depends(get_db),
+) -> list[DocumentResponse]:
+    try:
+        return application_document_service.attach_my_documents(db, application_id, payload.document_ids)
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+    except application_document_service.ApplicationDocumentNotFoundError as error:
+        raise HTTPException(404, detail={"code": "DOCUMENT_NOT_FOUND"}) from error
 
 
 def digilocker_document_not_found(document_id: str) -> HTTPException:

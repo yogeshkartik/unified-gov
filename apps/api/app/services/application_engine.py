@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.application import Application, ApplicationAnswer, ApplicationDocument, ApplicationStatus
 from app.models.consent import Consent, ConsentStatus
 from app.models.payment import Payment, PaymentStatus
-from app.models.profile import DocumentSource, Profile, User
+from app.models.profile import DocumentSource, DocumentType, Profile, User
 from app.models.service import Service, ServiceField, ServiceFieldType
 from app.schemas.application import (
     AdditionalDataUpdate,
@@ -226,12 +226,13 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
     missing_profile_fields = [
         field for field in application.service.required_profile_fields if not has_profile_data(user, field)
     ]
-    reusable_docs = [
+    profile_documents = [
         document for document in user.documents
         if document.source == DocumentSource.PROFILE_UPLOAD
+        and document.document_type == DocumentType.PROFILE_PHOTO
     ]
     attached_docs = [app_doc.document for app_doc in application.documents if app_doc.document]
-    available_docs = list({d.id: d for d in (reusable_docs + attached_docs)}.values())
+    available_docs = list({d.id: d for d in (profile_documents + attached_docs)}.values())
 
     missing_documents = [
         requirement.document_type
@@ -250,16 +251,23 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
 
 
 def document_type_matches(required_type: str, available_type: str) -> bool:
-    """Return whether a concrete citizen document satisfies a service requirement."""
-    if required_type == available_type:
+    """Return whether structured document categories satisfy a service requirement."""
+    normalized_required = _canonical_document_type(required_type)
+    normalized_available = _canonical_document_type(available_type)
+    if normalized_required == normalized_available:
         return True
-    if required_type == "PHOTOGRAPH":
-        return available_type == "PROFILE_PHOTO"
-    if required_type == "MARKSHEET":
-        return available_type == "MARKSHEET" or available_type.endswith("_MARKSHEET")
-    if required_type == "IDENTITY_DOCUMENT":
-        return available_type == "DRIVING_LICENCE"
+    if normalized_required == DocumentType.MARKSHEET:
+        return normalized_available.endswith("_MARKSHEET")
+    if normalized_required == DocumentType.IDENTITY_DOCUMENT:
+        return normalized_available == "DRIVING_LICENCE"
     return False
+
+
+def _canonical_document_type(document_type: str) -> str:
+    """Keep compatibility with the reusable profile-photo category in one place."""
+    if document_type == DocumentType.PROFILE_PHOTO:
+        return DocumentType.PHOTOGRAPH
+    return document_type
 
 
 def has_profile_data(user: User, field: str) -> bool:

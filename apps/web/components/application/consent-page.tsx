@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Upload } from "lucide-react";
 import { ApiError, api } from "@/src/lib/api";
-import type { ApplicationEngineResponse, GovernmentServiceDetail, MockDigiLockerDocument } from "@/src/types";
+import type { ApplicationEngineResponse, Document as CitizenDocument, GovernmentServiceDetail, MockDigiLockerDocument } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
 
@@ -17,6 +18,15 @@ function displayName(value: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function matchesRequirement(requiredType: string, availableType: string) {
+  const canonical = (type: string) => type === "PROFILE_PHOTO" ? "PHOTOGRAPH" : type;
+  const required = canonical(requiredType);
+  const available = canonical(availableType);
+  return required === available ||
+    (required === "MARKSHEET" && available.endsWith("_MARKSHEET")) ||
+    (required === "IDENTITY_DOCUMENT" && available === "DRIVING_LICENCE");
+}
+
 export function ConsentPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [data, setData] = useState<{
@@ -24,7 +34,12 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
     service: GovernmentServiceDetail;
   }>();
   const [documents, setDocuments] = useState<MockDigiLockerDocument[]>([]);
+  const [myDocuments, setMyDocuments] = useState<CitizenDocument[]>([]);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [selectedMyDocumentIds, setSelectedMyDocumentIds] = useState<string[]>([]);
+  const [uploadRequirement, setUploadRequirement] = useState<{ document_type: string; label: string }>();
+  const [uploadFile, setUploadFile] = useState<File>();
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
@@ -33,13 +48,27 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
     api
       .getApplication(applicationId)
       .then(async (application) => {
-        const [service, digilockerDocuments] = await Promise.all([
+        const [service, digilockerDocuments, citizenDocuments] = await Promise.all([
           api.getService(application.service_id),
           api.getDigiLockerDocuments(),
+          api.getDocuments(),
         ]);
         setData({ application, service });
         setDocuments(digilockerDocuments);
-
+        setMyDocuments(citizenDocuments);
+        const automaticMyDocuments: string[] = [];
+        const automaticDigiLockerDocuments: string[] = [];
+        for (const requirement of service.document_requirements) {
+          const profile = citizenDocuments.filter((document) => document.document_type === "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+          const personal = citizenDocuments.filter((document) => document.document_type !== "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+          const provider = digilockerDocuments.filter((document) => matchesRequirement(requirement.document_type, document.document_type));
+          if (profile.length === 0 && personal.length + provider.length === 1) {
+            if (personal.length === 1) automaticMyDocuments.push(personal[0].id);
+            if (provider.length === 1) automaticDigiLockerDocuments.push(provider[0].id);
+          }
+        }
+        setSelectedMyDocumentIds(automaticMyDocuments);
+        setSelectedDocumentIds(automaticDigiLockerDocuments);
       })
       .catch(() => setError(true));
   }, [applicationId]);
@@ -48,6 +77,9 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
     setSubmitting(true);
     setSubmitError(undefined);
     try {
+      if (selectedMyDocumentIds.length > 0) {
+        await api.selectMyDocuments(applicationId, selectedMyDocumentIds);
+      }
       if (selectedDocumentIds.length > 0) {
         await api.selectApplicationDocuments(applicationId, selectedDocumentIds);
       }
@@ -72,6 +104,26 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
     }
   }
 
+  async function uploadRequiredDocument() {
+    if (!uploadRequirement || !uploadFile) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("document_type", uploadRequirement.document_type);
+      formData.append("file", uploadFile);
+      const document = await api.uploadDocument(formData);
+      await api.selectMyDocuments(applicationId, [document.id]);
+      setMyDocuments((current) => [...current, document]);
+      setSelectedMyDocumentIds((current) => [...current, document.id]);
+      setUploadRequirement(undefined);
+      setUploadFile(undefined);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Could not upload the document.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   if (error) {
     return (
       <ErrorState>
@@ -81,16 +133,6 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
   }
 
   if (!data) return <LoadingState label="Loading consent request…" />;
-
-  const matchingDocuments = documents.filter((document) =>
-    data.service.document_requirements.some(
-      (requirement) =>
-        requirement.document_type === document.document_type ||
-        (requirement.document_type === "MARKSHEET" && document.document_type.endsWith("_MARKSHEET")) ||
-        (requirement.document_type === "IDENTITY_DOCUMENT" &&
-          document.document_type === "DRIVING_LICENCE")
-    )
-  );
 
   const profileFields = [
     ...data.service.required_profile_fields,
@@ -151,43 +193,21 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
             {/* 3. Documents */}
             <section className="space-y-2.5">
               <h3 className="text-sm font-semibold tracking-tight text-foreground">Documents</h3>
-              <ul className="space-y-2">
-                {data.service.document_requirements.map((document) => (
-                  <li key={document.id} className="flex items-center gap-2 text-sm text-foreground">
-                    <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                    <span>{document.label}</span>
-                  </li>
-                ))}
+              <ul className="space-y-3">
+                {data.service.document_requirements.map((requirement) => {
+                  const profileDocument = myDocuments.find((document) => document.document_type === "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+                  const personal = myDocuments.filter((document) => document.document_type !== "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+                  const provider = documents.filter((document) => matchesRequirement(requirement.document_type, document.document_type));
+                  const hasSource = Boolean(profileDocument) || personal.length > 0 || provider.length > 0;
+                  return <li key={requirement.id} className="rounded-lg border bg-muted/20 p-3">
+                    <p className="font-medium text-sm">{requirement.label}</p>
+                    {profileDocument ? <p className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700"><CheckCircle2 className="size-4" />My Profile</p> : null}
+                    {personal.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedMyDocumentIds.includes(document.id)} onChange={(selected) => setSelectedMyDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />My Documents — {document.display_name || document.name}</label>)}
+                    {provider.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedDocumentIds.includes(document.id)} onChange={(selected) => setSelectedDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />DigiLocker — {document.name}</label>)}
+                    {!hasSource ? <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-destructive">Missing</span><Button type="button" size="sm" variant="outline" onPress={() => setUploadRequirement({ document_type: requirement.document_type, label: requirement.label })}><Upload aria-hidden="true" />Upload document</Button></div> : null}
+                  </li>;
+                })}
               </ul>
-
-              {matchingDocuments.length > 0 ? (
-                <div className="mt-3 rounded-lg border bg-muted/20 p-3 space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Documents from DigiLocker
-                  </p>
-                  <p className="text-xs text-muted-foreground">Select only the documents you want to share with this application.</p>
-                  <div className="space-y-1.5">
-                    {matchingDocuments.map((document) => (
-                      <label
-                        key={document.id}
-                        className="flex items-center gap-2.5 rounded-md border bg-card p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
-                      >
-                        <Checkbox
-                          isSelected={selectedDocumentIds.includes(document.id)}
-                          onChange={(isSelected) =>
-                            setSelectedDocumentIds((current) =>
-                              isSelected
-                                ? [...current, document.id]
-                                : current.filter((id) => id !== document.id)
-                            )
-                          }
-                        />
-                        <span className="font-medium text-foreground">{document.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </section>
           </>
         ) : null}
@@ -198,6 +218,11 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
           </p>
         ) : null}
       </div>
+      <Dialog isOpen={Boolean(uploadRequirement)} onOpenChange={(open) => { if (!open) { setUploadRequirement(undefined); setUploadFile(undefined); } }}>
+        <DialogHeader><DialogTitle>Upload {uploadRequirement?.label}</DialogTitle><DialogDescription>This document will be saved in My Documents and attached to this application.</DialogDescription></DialogHeader>
+        <div className="space-y-3"><div><p className="text-sm font-medium">Document type</p><p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm">{uploadRequirement?.label}</p></div><div><label className="text-sm font-medium" htmlFor="required-document-file">File</label><input id="required-document-file" className="mt-2 block w-full text-sm" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setUploadFile(event.target.files?.[0])} /></div></div>
+        <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={!uploadFile || uploading} onPress={uploadRequiredDocument}>{uploading ? "Uploading…" : "Upload"}</Button></DialogFooter>
+      </Dialog>
     </ApplicationFlowShell>
   );
 }

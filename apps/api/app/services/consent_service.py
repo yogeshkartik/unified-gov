@@ -44,11 +44,15 @@ def grant_consent(db: Session, application_id: str) -> Consent:
         requirement.document_type for requirement in application.service.document_requirements
     ]
     citizen_documents = list(db.scalars(select(Document).where(Document.user_id == application.user_id)).all())
+    attached_ids = {item.document_id for item in application.documents}
     eligible_documents = [
         document
         for document in citizen_documents
-        if document.source == DocumentSource.PROFILE_UPLOAD
-        or any(item.document_id == document.id for item in application.documents)
+        if document.id in attached_ids
+        or (
+            document.source == DocumentSource.PROFILE_UPLOAD
+            and document.document_type == "PROFILE_PHOTO"
+        )
     ]
     document_ids = [
         document.id
@@ -58,7 +62,6 @@ def grant_consent(db: Session, application_id: str) -> Consent:
             for required_type in document_types
         )
     ]
-    attached_ids = {item.document_id for item in application.documents}
     for document_id in document_ids:
         if document_id not in attached_ids:
             db.add(ApplicationDocument(application_id=application.id, document_id=document_id))
