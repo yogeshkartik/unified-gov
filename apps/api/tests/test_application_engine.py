@@ -31,10 +31,10 @@ def db(tmp_path) -> Session:
         engine.dispose()
 
 
-def test_application_creation_creates_a_draft_for_the_selected_service(db: Session) -> None:
+def test_application_creation_enters_additional_information_state(db: Session) -> None:
     response = create_application(db, "SCHOLARSHIP_001")
 
-    assert response.status == "DRAFT"
+    assert response.status == "ADDITIONAL_INFO_REQUIRED"
     assert response.service_id == "SCHOLARSHIP_001"
     assert get_application(db, response.id).service_id == "SCHOLARSHIP_001"
 
@@ -91,6 +91,7 @@ def test_completed_additional_data_clears_missing_fields(db: Session) -> None:
     )
 
     assert updated.missing_fields == []
+    assert updated.status == "CONSENT_REQUIRED"
     assert updated.answers == {
         "course": "Computer Science",
         "institution": "Demo Institute",

@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.application import (
     AdditionalDataUpdate,
+    ApplicationDetailResponse,
     ApplicationEngineResponse,
+    ApplicationListResponse,
     ApplicationPreviewResponse,
     ApplicationSnapshotResponse,
 )
@@ -13,6 +15,11 @@ from app.services import application_engine, payment_submission_service, preview
 from app.services.service_catalog import ServiceNotFoundError
 
 router = APIRouter(tags=["applications"])
+
+
+@router.get("/applications", response_model=list[ApplicationListResponse])
+def read_applications(db: Session = Depends(get_db)) -> list[ApplicationListResponse]:
+    return application_engine.list_applications(db)
 
 
 @router.post(
@@ -45,12 +52,17 @@ def update_additional_data(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "INVALID_APPLICATION_FIELDS", "fields": error.fields},
         ) from error
+    except application_engine.ApplicationEditingNotAllowedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_FINALIZED", "message": "This application can no longer be edited."},
+        ) from error
 
 
-@router.get("/applications/{application_id}", response_model=ApplicationEngineResponse)
-def read_application(application_id: str, db: Session = Depends(get_db)) -> ApplicationEngineResponse:
+@router.get("/applications/{application_id}", response_model=ApplicationDetailResponse)
+def read_application(application_id: str, db: Session = Depends(get_db)) -> ApplicationDetailResponse:
     try:
-        return application_engine.build_engine_response(db, application_id)
+        return application_engine.get_application_detail(db, application_id)
     except application_engine.ApplicationNotFoundError as error:
         raise application_not_found(application_id) from error
 
@@ -101,7 +113,9 @@ def finalize_application(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "APPLICATION_NOT_READY",
+                "message": "Complete the missing application requirements before continuing.",
                 "missing_profile_fields": error.missing_profile_fields,
+                "missing_documents": error.missing_documents,
                 "missing_fields": error.missing_fields,
             },
         ) from error

@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight, Ellipsis, Eye, Landmark, Search, Trash2 } from "lucide-react";
 import { api } from "@/src/lib/api";
-import { getStoredApplications, removeStoredApplication } from "@/src/lib/application-store";
-import type { ApplicationEngineResponse, ApplicationStatus, CitizenApplicationSummary } from "@/src/types";
+import type { ApplicationDetail, ApplicationStatus, ApplicationSummary } from "@/src/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,11 +14,7 @@ import { Input } from "@/components/ui/input";
 import { SubmittedApplicationDialog } from "@/components/application/submitted-application-dialog";
 
 type Filter = "All" | "Draft" | "Submitted";
-export type ApplicationListItem = CitizenApplicationSummary & {
-  department: string;
-  updated_at: string;
-  engine?: ApplicationEngineResponse;
-};
+export type ApplicationListItem = ApplicationSummary;
 
 const actionableStatuses: ApplicationStatus[] = [
   "DRAFT",
@@ -42,8 +37,8 @@ function statusLabel(status: ApplicationStatus) {
   return "Cancelled";
 }
 
-function resumeRoute(application: ApplicationEngineResponse) {
-  if (application.missing_fields.length > 0) return "additional";
+function resumeRoute(application: ApplicationDetail) {
+  if (application.status === "ADDITIONAL_INFO_REQUIRED") return "additional";
   if (application.status === "DRAFT" || application.status === "CONSENT_REQUIRED") return "consent";
   if (application.status === "PAYMENT_REQUIRED") return "payment";
   return "preview";
@@ -67,7 +62,7 @@ function ApplicationRow({
   onDelete: (application: ApplicationListItem) => void;
 }) {
   const draft = isDraft(application.status);
-  const canDelete = application.status === "DRAFT";
+  const canDelete = draft;
   const viewLabel = draft ? "Continue" : "View";
   const badge = draft ? (
     <Badge variant="secondary" className="bg-amber-100 text-amber-900">
@@ -189,30 +184,10 @@ export function ApplicationsPage() {
   const [deletingId, setDeletingId] = useState<string>();
   const [deleteError, setDeleteError] = useState<string>();
   const [pendingDelete, setPendingDelete] = useState<ApplicationListItem>();
-  const [selectedSubmittedApplication, setSelectedSubmittedApplication] = useState<ApplicationListItem | null>(null);
+  const [selectedSubmittedApplication, setSelectedSubmittedApplication] = useState<ApplicationDetail | null>(null);
 
   useEffect(() => {
-    const stored = getStoredApplications();
-    Promise.all(
-      stored.map(async (summary): Promise<ApplicationListItem> => {
-        try {
-          const application = await api.getApplication(summary.id);
-          const service = await api.getService(application.service_id);
-          return {
-            ...summary,
-            service_name: service.name,
-            status: application.status,
-            fee: service.fee,
-            currency: service.currency,
-            department: service.department,
-            updated_at: application.updated_at,
-            engine: application,
-          };
-        } catch {
-          return { ...summary, department: "Government service", updated_at: summary.created_at };
-        }
-      })
-    ).then(setApplications);
+    api.getApplications().then(setApplications).catch(() => setApplications([]));
   }, []);
 
   const sortedApplications = useMemo(
@@ -224,9 +199,9 @@ export function ApplicationsPage() {
               ? true
               : filter === "Draft"
               ? isDraft(application.status)
-              : application.status === "SUBMITTED";
+              : !isDraft(application.status);
           const searchText = `${application.service_name} ${application.department} ${
-            application.government_reference_number ?? ""
+            application.reference_number ?? ""
           }`.toLowerCase();
           return matchesFilter && searchText.includes(query.trim().toLowerCase());
         })
@@ -239,7 +214,7 @@ export function ApplicationsPage() {
     () => ({
       all: applications?.length ?? 0,
       draft: applications?.filter((application) => isDraft(application.status)).length ?? 0,
-      submitted: applications?.filter((application) => application.status === "SUBMITTED").length ?? 0,
+      submitted: applications?.filter((application) => !isDraft(application.status)).length ?? 0,
     }),
     [applications]
   );
@@ -249,7 +224,6 @@ export function ApplicationsPage() {
     setDeleteError(undefined);
     try {
       await api.deleteApplication(application.id);
-      removeStoredApplication(application.id);
       setApplications((current) => current?.filter((item) => item.id !== application.id));
       setPendingDelete(undefined);
     } catch {
@@ -259,20 +233,29 @@ export function ApplicationsPage() {
     }
   }
 
-  function openApplication(application: ApplicationListItem) {
-    if (isDraft(application.status) && application.engine) {
-      router.push(`/applications/${application.id}/${resumeRoute(application.engine)}`);
-      return;
+  async function openApplication(application: ApplicationListItem) {
+    try {
+      const detail = await api.getApplication(application.id);
+      if (isDraft(detail.status)) {
+        router.push(`/applications/${application.id}/${resumeRoute(detail)}`);
+        return;
+      }
+      setSelectedSubmittedApplication(detail);
+    } catch {
+      setDeleteError("We could not load this application. Please try again.");
     }
-    setSelectedSubmittedApplication(application);
   }
 
-  function viewDetails(application: ApplicationListItem) {
+  async function viewDetails(application: ApplicationListItem) {
     if (isDraft(application.status)) {
       router.push(`/applications/${application.id}`);
       return;
     }
-    setSelectedSubmittedApplication(application);
+    try {
+      setSelectedSubmittedApplication(await api.getApplication(application.id));
+    } catch {
+      setDeleteError("We could not load this application. Please try again.");
+    }
   }
 
   function emptyState() {

@@ -94,6 +94,11 @@ def select_digilocker_documents(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "APPLICATION_NOT_FOUND"},
         ) from error
+    except application_engine.ApplicationEditingNotAllowedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_FINALIZED", "message": "This application can no longer be edited."},
+        ) from error
     except ProviderDocumentNotFoundError as error:
         raise digilocker_document_not_found(str(error)) from error
 

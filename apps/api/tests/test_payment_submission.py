@@ -9,6 +9,7 @@ from app.models.payment import Payment, PaymentStatus
 from app.schemas.application import AdditionalDataUpdate
 from app.services.application_engine import create_application, save_additional_data
 from app.services.consent_service import grant_consent
+from app.services.digilocker_service import select_application_documents
 from app.services.payment_submission_service import process_payment, submit_application
 from app.services.preview_service import finalize_application
 from app.services.seed import seed_demo_citizen, seed_demo_services
@@ -43,6 +44,12 @@ def finalized_application(db: Session, service_id: str) -> str:
         }
     )
     save_additional_data(db, application.id, AdditionalDataUpdate(answers=answers))
+    provider_documents = (
+        ["mock-driving-licence"]
+        if service_id == "DRIVING_LICENCE_001"
+        else ["mock-income"]
+    )
+    select_application_documents(db, application.id, provider_documents)
     grant_consent(db, application.id)
     finalize_application(db, application.id)
     return application.id
@@ -50,6 +57,7 @@ def finalized_application(db: Session, service_id: str) -> str:
 
 def test_paid_service_creates_a_successful_mock_payment(db: Session) -> None:
     application_id = finalized_application(db, "DRIVING_LICENCE_001")
+    assert db.get(Application, application_id).status == ApplicationStatus.PAYMENT_REQUIRED
 
     payment = process_payment(db, application_id)
 
@@ -57,16 +65,19 @@ def test_paid_service_creates_a_successful_mock_payment(db: Session) -> None:
     assert payment.status == PaymentStatus.SUCCESS
     assert payment.transaction_id is not None and payment.transaction_id.startswith("TXN-")
     assert payment.amount == 200
+    assert db.get(Application, application_id).status == ApplicationStatus.READY_FOR_REVIEW
 
 
 def test_free_service_skips_payment(db: Session) -> None:
     application_id = finalized_application(db, "SCHOLARSHIP_001")
+    assert db.get(Application, application_id).status == ApplicationStatus.READY_FOR_REVIEW
 
     payment = process_payment(db, application_id)
 
     assert payment.skipped is True
     assert payment.status is None
     assert db.scalar(select(Payment).where(Payment.application_id == application_id)) is None
+    assert db.get(Application, application_id).status == ApplicationStatus.READY_FOR_REVIEW
 
 
 def test_mock_payment_failure_keeps_application_payment_required(db: Session) -> None:

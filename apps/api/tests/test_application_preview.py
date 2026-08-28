@@ -9,6 +9,8 @@ from app.schemas.application import AdditionalDataUpdate
 from app.schemas.profile import ProfileUpdate
 from app.services.application_engine import create_application, save_additional_data
 from app.services.consent_service import grant_consent
+from app.services.digilocker_service import select_application_documents
+from app.services.payment_submission_service import process_payment, submit_application
 from app.services.preview_service import finalize_application, get_preview
 from app.services.profile_service import update_profile
 from app.services.seed import seed_demo_citizen, seed_demo_services
@@ -44,6 +46,7 @@ def complete_driving_licence_application(db: Session) -> str:
     assert photograph is not None
     db.add(ApplicationDocument(application_id=application.id, document_id=photograph.id))
     db.commit()
+    select_application_documents(db, application.id, ["mock-driving-licence"])
     grant_consent(db, application.id)
     return application.id
 
@@ -55,7 +58,10 @@ def test_preview_combines_profile_education_documents_answers_service_and_fee(db
 
     assert preview.profile["full_name"] == "Rahul Kumar"
     assert preview.education[0]["level"] == "12TH"
-    assert preview.documents[0]["document_type"] == "PHOTOGRAPH"
+    assert {document["document_type"] for document in preview.documents} == {
+        "PHOTOGRAPH",
+        "DRIVING_LICENCE",
+    }
     assert preview.answers == {
         "licence_type": "Learner's Licence",
         "vehicle_class": "MCWG — Motorcycle with gear",
@@ -69,12 +75,14 @@ def test_final_snapshot_is_immutable_after_profile_changes(db: Session) -> None:
     application_id = complete_driving_licence_application(db)
 
     snapshot = finalize_application(db, application_id)
+    process_payment(db, application_id)
+    submit_application(db, application_id)
     update_profile(db, ProfileUpdate(full_name="Updated Synthetic Citizen"))
 
     live_preview = get_preview(db, application_id)
     repeated_finalization = finalize_application(db, application_id)
 
     assert snapshot.snapshot_json["profile"]["full_name"] == "Rahul Kumar"
-    assert live_preview.profile["full_name"] == "Updated Synthetic Citizen"
+    assert live_preview.profile["full_name"] == "Rahul Kumar"
     assert repeated_finalization.id == snapshot.id
     assert repeated_finalization.snapshot_json == snapshot.snapshot_json

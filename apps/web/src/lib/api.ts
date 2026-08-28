@@ -1,6 +1,8 @@
 import type {
   Address,
+  ApplicationDetail,
   ApplicationEngineResponse,
+  ApplicationSummary,
   ApplicationPreview,
   CitizenProfile,
   Consent,
@@ -83,8 +85,9 @@ export const api = {
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>
     request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),
+  getApplications: () => request<ApplicationSummary[]>("/api/applications"),
   getApplication: (applicationId: string) =>
-    request<ApplicationEngineResponse>(`/api/applications/${applicationId}`),
+    request<ApplicationDetail>(`/api/applications/${applicationId}`),
   deleteApplication: (applicationId: string) =>
     request<{ id: string }>(`/api/applications/${applicationId}`, { method: "DELETE" }),
   saveAdditionalData: (applicationId: string, answers: Record<string, unknown>) =>

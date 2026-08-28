@@ -2,11 +2,12 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, Profile, User
+from app.models.application import ApplicationDocument
 from app.schemas.profile import EducationCreate, ProfileUpdate
 
 DEMO_USER_EMAIL = "rahul.demo@example.com"
@@ -135,7 +136,11 @@ async def replace_upload(db: Session, document_id: str, upload: UploadFile) -> D
 
 
 def delete_document(db: Session, document_id: str) -> None:
-    document = document_for_user(db, document_id); _delete_file(document.stored_filename); db.delete(document); db.commit()
+    document = document_for_user(db, document_id)
+    _delete_file(document.stored_filename)
+    db.execute(delete(ApplicationDocument).where(ApplicationDocument.document_id == document.id))
+    db.delete(document)
+    db.commit()
 
 
 def _delete_file(stored_filename: str | None) -> None:

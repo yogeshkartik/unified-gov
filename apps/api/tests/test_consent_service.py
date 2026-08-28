@@ -6,6 +6,7 @@ from app.core.database import Base
 from app.schemas.application import AdditionalDataUpdate
 from app.services.application_engine import create_application, save_additional_data
 from app.services.consent_service import ConsentAdditionalDataRequiredError, grant_consent
+from app.services.digilocker_service import select_application_documents
 from app.services.seed import seed_demo_citizen, seed_demo_services
 
 
@@ -35,6 +36,7 @@ def test_consent_records_requested_data_documents_purpose_and_timestamp(db: Sess
             }
         ),
     )
+    select_application_documents(db, application.id, ["mock-driving-licence"])
 
     consent = grant_consent(db, application.id)
 
@@ -49,7 +51,7 @@ def test_consent_records_requested_data_documents_purpose_and_timestamp(db: Sess
         "vehicle_class",
     ]
     assert consent.document_types == ["PHOTOGRAPH", "IDENTITY_DOCUMENT"]
-    assert len(consent.document_ids) == 1
+    assert len(consent.document_ids) == 2
     assert consent.purpose == "Driving Licence Application"
     assert consent.status == "GRANTED"
     assert consent.granted_at is not None
@@ -62,3 +64,4 @@ def test_consent_requires_all_required_additional_data(db: Session) -> None:
         grant_consent(db, application.id)
 
     assert error.value.missing_fields == ["course", "institution", "academic_year"]
+    assert error.value.missing_documents == ["INCOME_CERTIFICATE"]

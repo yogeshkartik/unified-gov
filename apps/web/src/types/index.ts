@@ -158,6 +158,31 @@ export interface ApplicationEngineResponse extends Application {
   missing_fields: string[];
 }
 
+export interface ApplicationSummary {
+  id: string;
+  service_id: string;
+  service_name: string;
+  department: string;
+  status: ApplicationStatus;
+  reference_number: string | null;
+  created_at: string;
+  updated_at: string;
+  submitted_at: string | null;
+  requires_action: boolean;
+}
+
+export type ApplicationPaymentStatus = "COMPLETED" | "FAILED" | "NOT_REQUIRED" | "PENDING";
+
+export interface ApplicationDetail extends ApplicationEngineResponse {
+  service_name: string;
+  department: string;
+  reference_number: string | null;
+  submitted_at: string | null;
+  consent_status: "GRANTED" | "DENIED" | "REVOKED" | null;
+  payment_status: ApplicationPaymentStatus;
+  submission_status: ApplicationStatus | null;
+}
+
 export interface Consent {
   id: string;
   user_id: string;

@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.application import ApplicationStatus
+from app.models.consent import ConsentStatus
 
 
 class AdditionalDataUpdate(BaseModel):
@@ -30,6 +31,29 @@ class ApplicationEngineResponse(ApplicationResponse):
     missing_profile_fields: list[str]
     missing_documents: list[str]
     missing_fields: list[str]
+
+
+class ApplicationListResponse(BaseModel):
+    id: str
+    service_id: str
+    service_name: str
+    department: str
+    status: ApplicationStatus
+    reference_number: str | None
+    created_at: datetime
+    updated_at: datetime
+    submitted_at: datetime | None
+    requires_action: bool
+
+
+class ApplicationDetailResponse(ApplicationEngineResponse):
+    service_name: str
+    department: str
+    reference_number: str | None
+    submitted_at: datetime | None
+    consent_status: ConsentStatus | None
+    payment_status: Literal["COMPLETED", "FAILED", "NOT_REQUIRED", "PENDING"]
+    submission_status: ApplicationStatus | None
 
 
 class ApplicationPreviewResponse(BaseModel):

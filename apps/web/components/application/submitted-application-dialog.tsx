@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, CheckCircle2, Copy, Landmark } from "lucide-react";
-import type { ApplicationListItem } from "@/components/application/applications-page";
+import { ArrowRight, Check, CheckCircle2, CircleAlert, Copy, Landmark } from "lucide-react";
+import type { ApplicationDetail } from "@/src/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -21,12 +21,24 @@ function formatFieldValue(value: unknown): string {
   return String(value);
 }
 
+function statusLabel(status: string): string {
+  return status.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function SummaryIcon({ successful }: { successful: boolean }) {
+  return successful ? (
+    <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
+  ) : (
+    <CircleAlert className="size-4 text-amber-600 shrink-0" aria-hidden="true" />
+  );
+}
+
 export function SubmittedApplicationDialog({
   application,
   isOpen,
   onOpenChange,
 }: {
-  application?: ApplicationListItem | null;
+  application?: ApplicationDetail | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -35,15 +47,14 @@ export function SubmittedApplicationDialog({
 
   if (!application) return null;
 
-  const referenceNumber =
-    application.government_reference_number ||
-    `GOV-${application.id.slice(0, 8).toUpperCase()}`;
+  const referenceNumber = application.reference_number;
 
-  const answers = application.engine?.answers || {};
+  const answers = application.answers;
   const hasAnswers = Object.keys(answers).length > 0;
 
   async function handleCopy() {
     try {
+      if (!referenceNumber) return;
       await navigator.clipboard.writeText(referenceNumber);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -77,14 +88,16 @@ export function SubmittedApplicationDialog({
           <span className="text-muted-foreground/60">•</span>
           <Badge
             variant="outline"
-            className="border-emerald-200 bg-emerald-50 text-emerald-800 font-medium"
+            className={application.status === "REJECTED" || application.status === "CANCELLED"
+              ? "border-destructive/30 bg-destructive/5 text-destructive font-medium"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800 font-medium"}
           >
-            Submitted
+            {statusLabel(application.status)}
           </Badge>
         </div>
       </DialogHeader>
 
-      <div className="mt-4 rounded-lg border bg-muted/20 p-4">
+      {referenceNumber ? <div className="mt-4 rounded-lg border bg-muted/20 p-4">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Reference number
         </p>
@@ -112,7 +125,7 @@ export function SubmittedApplicationDialog({
             )}
           </Button>
         </div>
-      </div>
+      </div> : null}
 
       <Separator className="my-6" />
 
@@ -149,8 +162,8 @@ export function SubmittedApplicationDialog({
               Submission
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-              <span>Submitted successfully</span>
+              <SummaryIcon successful={Boolean(application.submission_status && application.submission_status !== "REJECTED" && application.submission_status !== "CANCELLED")} />
+              <span>{application.submission_status ? statusLabel(application.submission_status) : "Not submitted"}</span>
             </div>
           </div>
           <div className="space-y-1">
@@ -158,8 +171,8 @@ export function SubmittedApplicationDialog({
               Payment
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-              <span>{application.fee > 0 ? "Completed" : "Not required"}</span>
+              <SummaryIcon successful={application.payment_status === "COMPLETED" || application.payment_status === "NOT_REQUIRED"} />
+              <span>{statusLabel(application.payment_status)}</span>
             </div>
           </div>
           <div className="space-y-1">
@@ -167,8 +180,8 @@ export function SubmittedApplicationDialog({
               Consent
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-              <span>Granted</span>
+              <SummaryIcon successful={application.consent_status === "GRANTED"} />
+              <span>{application.consent_status ? statusLabel(application.consent_status) : "Not granted"}</span>
             </div>
           </div>
         </div>

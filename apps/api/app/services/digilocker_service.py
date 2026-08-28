@@ -31,6 +31,7 @@ def select_application_documents(
     provider: DocumentProvider = document_provider,
 ) -> list[Document]:
     application = application_engine.get_application(db, application_id)
+    application_engine.ensure_editable(application)
     provider.request_consent(application.user_id, provider_document_ids)
 
     selected_documents: list[Document] = []

@@ -13,8 +13,14 @@ from app.services import application_engine
 
 
 class ApplicationNotReadyForFinalizationError(Exception):
-    def __init__(self, missing_profile_fields: list[str], missing_fields: list[str]) -> None:
+    def __init__(
+        self,
+        missing_profile_fields: list[str],
+        missing_documents: list[str],
+        missing_fields: list[str],
+    ) -> None:
         self.missing_profile_fields = missing_profile_fields
+        self.missing_documents = missing_documents
         self.missing_fields = missing_fields
         super().__init__("Application is not ready for finalization.")
 
@@ -25,6 +31,12 @@ class ConsentRequiredForFinalizationError(Exception):
 
 def get_preview(db: Session, application_id: str) -> ApplicationPreviewResponse:
     application = application_engine.get_application(db, application_id)
+    existing_snapshot = db.scalar(
+        select(ApplicationSnapshot).where(ApplicationSnapshot.application_id == application.id)
+    )
+    if existing_snapshot is not None:
+        preview = ApplicationPreviewResponse.model_validate(existing_snapshot.snapshot_json)
+        return preview.model_copy(update={"status": application.status})
     user = db.scalar(
         select(User)
         .where(User.id == application.user_id)
@@ -109,9 +121,11 @@ def finalize_application(db: Session, application_id: str) -> ApplicationSnapsho
     if consent is None or consent.status != ConsentStatus.GRANTED:
         raise ConsentRequiredForFinalizationError
 
-    missing_profile_fields, _, missing_fields = application_engine.determine_missing_requirements(db, application)
-    if missing_profile_fields or missing_fields:
-        raise ApplicationNotReadyForFinalizationError(missing_profile_fields, missing_fields)
+    missing_profile_fields, missing_documents, missing_fields = application_engine.determine_missing_requirements(db, application)
+    if missing_profile_fields or missing_documents or missing_fields:
+        raise ApplicationNotReadyForFinalizationError(
+            missing_profile_fields, missing_documents, missing_fields
+        )
 
     application.status = (
         ApplicationStatus.PAYMENT_REQUIRED

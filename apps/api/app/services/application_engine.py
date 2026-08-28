@@ -7,10 +7,16 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, ApplicationAnswer, ApplicationDocument, ApplicationStatus
-from app.models.consent import Consent
+from app.models.consent import Consent, ConsentStatus
+from app.models.payment import Payment, PaymentStatus
 from app.models.profile import DocumentSource, Profile, User
 from app.models.service import Service, ServiceField, ServiceFieldType
-from app.schemas.application import AdditionalDataUpdate, ApplicationEngineResponse
+from app.schemas.application import (
+    AdditionalDataUpdate,
+    ApplicationDetailResponse,
+    ApplicationEngineResponse,
+    ApplicationListResponse,
+)
 from app.services.profile_service import get_demo_user
 from app.services.service_catalog import ServiceNotFoundError, get_service
 
@@ -29,11 +35,34 @@ class ApplicationDeletionNotAllowedError(Exception):
     pass
 
 
+class ApplicationEditingNotAllowedError(Exception):
+    pass
+
+
+ACTIONABLE_STATUSES = {
+    ApplicationStatus.DRAFT,
+    ApplicationStatus.ADDITIONAL_INFO_REQUIRED,
+    ApplicationStatus.CONSENT_REQUIRED,
+    ApplicationStatus.READY_FOR_REVIEW,
+    ApplicationStatus.PAYMENT_REQUIRED,
+}
+
+
+def required_status(missing_fields: list[str], consent_granted: bool = False) -> ApplicationStatus:
+    if missing_fields:
+        return ApplicationStatus.ADDITIONAL_INFO_REQUIRED
+    if not consent_granted:
+        return ApplicationStatus.CONSENT_REQUIRED
+    return ApplicationStatus.READY_FOR_REVIEW
+
+
 def create_application(db: Session, service_id: str) -> ApplicationEngineResponse:
     service = get_service(db, service_id)
     user = get_demo_user(db)
     application = Application(user_id=user.id, service_id=service.id, status=ApplicationStatus.DRAFT)
     db.add(application)
+    db.flush()
+    application.status = required_status(required_field_keys(service.fields, {}))
     db.commit()
     return build_engine_response(db, application.id)
 
@@ -42,18 +71,27 @@ def save_additional_data(
     db: Session, application_id: str, payload: AdditionalDataUpdate
 ) -> ApplicationEngineResponse:
     application = get_application(db, application_id)
+    ensure_editable(application)
     fields_by_key = {field.key: field for field in application.service.fields}
     errors = validate_answers(payload.answers, fields_by_key)
     if errors:
         raise InvalidApplicationFieldsError(errors)
 
     answers_by_key = {answer.field_key: answer for answer in application.answers}
+    next_answers = application.answers_by_key.copy()
     for key, value in payload.answers.items():
         answer = answers_by_key.get(key)
         if answer is None:
             db.add(ApplicationAnswer(application_id=application.id, field_key=key, value=value))
         else:
             answer.value = value
+        next_answers[key] = value
+    db.flush()
+    consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
+    application.status = required_status(
+        required_field_keys(application.service.fields, next_answers),
+        consent is not None and consent.status == ConsentStatus.GRANTED,
+    )
     db.commit()
     return build_engine_response(db, application.id)
 
@@ -77,11 +115,16 @@ def get_application(db: Session, application_id: str) -> Application:
 
 def delete_draft_application(db: Session, application_id: str) -> None:
     application = get_application(db, application_id)
-    if application.status != ApplicationStatus.DRAFT:
+    if application.status not in ACTIONABLE_STATUSES:
         raise ApplicationDeletionNotAllowedError
     db.execute(delete(Consent).where(Consent.application_id == application.id))
     db.delete(application)
     db.commit()
+
+
+def ensure_editable(application: Application) -> None:
+    if application.snapshot is not None or application.status not in ACTIONABLE_STATUSES:
+        raise ApplicationEditingNotAllowedError
 
 
 def build_engine_response(db: Session, application_id: str) -> ApplicationEngineResponse:
@@ -98,6 +141,81 @@ def build_engine_response(db: Session, application_id: str) -> ApplicationEngine
         missing_profile_fields=missing_profile_fields,
         missing_documents=missing_documents,
         missing_fields=missing_fields,
+    )
+
+
+def list_applications(db: Session) -> list[ApplicationListResponse]:
+    user = get_demo_user(db)
+    applications = list(
+        db.scalars(
+            select(Application)
+            .where(Application.user_id == user.id)
+            .options(selectinload(Application.service))
+            .order_by(Application.updated_at.desc())
+        ).all()
+    )
+    return [
+        ApplicationListResponse(
+            id=application.id,
+            service_id=application.service_id,
+            service_name=application.service.name,
+            department=application.service.department,
+            status=application.status,
+            reference_number=application.government_reference_number,
+            created_at=application.created_at,
+            updated_at=application.updated_at,
+            submitted_at=application.submitted_at,
+            requires_action=application.status in ACTIONABLE_STATUSES,
+        )
+        for application in applications
+    ]
+
+
+def get_application_detail(db: Session, application_id: str) -> ApplicationDetailResponse:
+    application = get_application(db, application_id)
+    engine = build_engine_response(db, application_id)
+    consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
+    successful_payment = db.scalar(
+        select(Payment).where(
+            Payment.application_id == application.id,
+            Payment.status == PaymentStatus.SUCCESS,
+        )
+    )
+    failed_payment = db.scalar(
+        select(Payment).where(
+            Payment.application_id == application.id,
+            Payment.status == PaymentStatus.FAILED,
+        )
+    )
+    if float(application.service.fee) <= 0:
+        payment_status = "NOT_REQUIRED"
+    elif successful_payment is not None:
+        payment_status = "COMPLETED"
+    elif failed_payment is not None:
+        payment_status = "FAILED"
+    else:
+        payment_status = "PENDING"
+    submission_status = (
+        str(application.status)
+        if application.submitted_at is not None
+        or application.status
+        in {
+            ApplicationStatus.SUBMITTED,
+            ApplicationStatus.PROCESSING,
+            ApplicationStatus.COMPLETED,
+            ApplicationStatus.REJECTED,
+        }
+        else None
+    )
+    return ApplicationDetailResponse(
+        **engine.model_dump(),
+        service_name=application.service.name,
+        department=application.service.department,
+        reference_number=application.government_reference_number,
+        submitted_at=application.submitted_at,
+        consent_status=str(consent.status) if consent is not None else None,
+        payment_status=payment_status,
+        submission_status=submission_status,
     )
 
 

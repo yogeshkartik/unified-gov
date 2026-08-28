@@ -1,43 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Check, Copy } from "lucide-react";
 import { api } from "@/src/lib/api";
-import { saveApplication } from "@/src/lib/application-store";
-import type { ApplicationPreview } from "@/src/types";
+import type { ApplicationDetail, ApplicationPreview } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
 export function SuccessPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [preview, setPreview] = useState<ApplicationPreview>();
+  const [application, setApplication] = useState<ApplicationDetail>();
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    api
-      .getPreview(applicationId)
-      .then((loadedPreview) => {
+    Promise.all([api.getPreview(applicationId), api.getApplication(applicationId)])
+      .then(([loadedPreview, loadedApplication]) => {
         setPreview(loadedPreview);
-        const reference = searchParams.get("reference");
-        if (reference) {
-          saveApplication({
-            id: applicationId,
-            service_id: String(loadedPreview.service.id),
-            service_name: String(loadedPreview.service.name),
-            status: "SUBMITTED",
-            fee: loadedPreview.fee,
-            currency: loadedPreview.currency,
-            created_at: new Date().toISOString(),
-            government_reference_number: reference,
-          });
-        }
+        setApplication(loadedApplication);
       })
       .catch(() => setError(true));
-  }, [applicationId, searchParams]);
+  }, [applicationId]);
 
   if (error) {
     return (
@@ -47,13 +33,13 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
     );
   }
 
-  if (!preview) return <LoadingState label="Loading submission confirmation…" />;
+  if (!preview || !application) return <LoadingState label="Loading submission confirmation…" />;
 
-  const reference =
-    searchParams.get("reference") ?? `GOV-DEMO-${applicationId.slice(0, 8).toUpperCase()}`;
+  const reference = application.reference_number;
 
   async function handleCopy() {
     try {
+      if (!reference) return;
       await navigator.clipboard.writeText(reference);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -102,9 +88,9 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
           </p>
           <div className="flex items-center justify-center gap-2">
             <span className="font-mono text-base font-bold tracking-wide text-foreground break-all">
-              {reference}
+              {reference ?? "Not available"}
             </span>
-            <Button
+            {reference ? <Button
               type="button"
               variant="ghost"
               size="icon-sm"
@@ -117,7 +103,7 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
               ) : (
                 <Copy className="size-3.5 text-muted-foreground" />
               )}
-            </Button>
+            </Button> : null}
           </div>
           {copied ? <p className="text-xs text-emerald-600 font-medium">Copied to clipboard</p> : null}
         </div>
