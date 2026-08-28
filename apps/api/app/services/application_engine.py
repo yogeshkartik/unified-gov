@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.application import Application, ApplicationAnswer, ApplicationDocument, ApplicationStatus
 from app.models.consent import Consent
-from app.models.profile import Profile, User
+from app.models.profile import DocumentSource, Profile, User
 from app.models.service import Service, ServiceField, ServiceFieldType
 from app.schemas.application import AdditionalDataUpdate, ApplicationEngineResponse
 from app.services.profile_service import get_demo_user
@@ -118,13 +118,20 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
     missing_profile_fields = [
         field for field in application.service.required_profile_fields if not has_profile_data(user, field)
     ]
+    reusable_docs = [
+        document for document in user.documents
+        if document.is_imported or document.source != DocumentSource.DIGILOCKER
+    ]
+    attached_docs = [app_doc.document for app_doc in application.documents if app_doc.document]
+    available_docs = list({d.id: d for d in (reusable_docs + attached_docs)}.values())
+
     missing_documents = [
         requirement.document_type
         for requirement in application.service.document_requirements
         if requirement.required
         and not any(
             document_type_matches(requirement.document_type, document.document_type)
-            for document in user.documents
+            for document in available_docs
         )
     ]
     return (

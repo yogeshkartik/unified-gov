@@ -32,8 +32,12 @@ def ensure_document_metadata_columns() -> None:
         return
     existing = {column["name"] for column in inspect(engine).get_columns("documents")}
     columns = {
-        "display_name": "VARCHAR(100)", "original_filename": "VARCHAR(255)",
-        "stored_filename": "VARCHAR(255)", "mime_type": "VARCHAR(100)", "size_bytes": "INTEGER",
+        "display_name": "VARCHAR(100)",
+        "original_filename": "VARCHAR(255)",
+        "stored_filename": "VARCHAR(255)",
+        "mime_type": "VARCHAR(100)",
+        "size_bytes": "INTEGER",
+        "is_imported": "BOOLEAN DEFAULT 1",
     }
     with engine.begin() as connection:
         for name, definition in columns.items():

@@ -9,6 +9,7 @@ from app.integrations.payment import payment_provider
 from app.integrations.payment.provider import PaymentProvider
 from app.models.application import ApplicationSnapshot, ApplicationStatus
 from app.models.payment import Payment, PaymentStatus
+from app.models.profile import DocumentSource
 from app.schemas.payment import PaymentProcessResponse, SubmissionResponse
 from app.services import application_engine
 
@@ -97,6 +98,11 @@ def submit_application(
     application.government_reference_number = result.government_reference_number
     application.submitted_at = result.submission_timestamp
     application.status = ApplicationStatus.SUBMITTED
+
+    for app_doc in application.documents:
+        if app_doc.document and app_doc.document.source == DocumentSource.DIGILOCKER:
+            app_doc.document.is_imported = True
+
     db.commit()
     return SubmissionResponse(
         application_id=application.id,

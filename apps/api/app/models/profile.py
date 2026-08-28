@@ -156,4 +156,5 @@ class Document(TimestampMixin, Base):
     stored_filename: Mapped[str | None] = mapped_column(String(255))
     mime_type: Mapped[str | None] = mapped_column(String(100))
     size_bytes: Mapped[int | None] = mapped_column()
+    is_imported: Mapped[bool] = mapped_column(Boolean, default=True)
     user: Mapped[User] = relationship(back_populates="documents")

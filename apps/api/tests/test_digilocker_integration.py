@@ -1,18 +1,28 @@
+from pathlib import Path
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.api.digilocker import download_digilocker_document
+from app.api.documents import get_document_file
+from app.core.config import settings
 from app.core.database import Base
 from app.integrations.digilocker.mock import MockDigiLockerProvider, ProviderDocumentNotFoundError
-from app.models.profile import DocumentSource
-from app.services.application_engine import create_application
+from app.models.application import Application, ApplicationStatus
+from app.models.profile import Document, DocumentSource
+from app.schemas.application import AdditionalDataUpdate
+from app.services.application_engine import create_application, determine_missing_requirements, save_additional_data
+from app.services.consent_service import grant_consent
 from app.services.digilocker_service import select_application_documents
-from app.services.preview_service import get_preview
-from app.services.seed import seed_demo_citizen, seed_demo_services
+from app.services.payment_submission_service import process_payment, submit_application
+from app.services.preview_service import finalize_application, get_preview
+from app.services.profile_service import list_documents
+from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME, seed_demo_citizen, seed_demo_services
 
 
 @pytest.fixture
-def db(tmp_path) -> Session:
+def db(tmp_path, monkeypatch) -> Session:
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
     engine = create_engine(f"sqlite:///{tmp_path / 'digilocker.db'}")
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
@@ -25,17 +35,30 @@ def db(tmp_path) -> Session:
         engine.dispose()
 
 
-def test_mock_provider_exposes_only_synthetic_documents_and_grants_mock_consent() -> None:
+def test_generic_seed_pdf_exists() -> None:
+    seed_pdf = SEED_FILES_DIR / SEED_GENERIC_DOCUMENT_FILENAME
+    assert seed_pdf.is_file()
+    assert seed_pdf.stat().st_size > 0
+
+
+def test_mock_provider_exposes_distinct_logical_metadata() -> None:
     provider = MockDigiLockerProvider()
+    docs = provider.get_documents("user-1")
 
-    documents = provider.get_documents("synthetic-user")
-    consent = provider.request_consent("synthetic-user", ["mock-class-12", "mock-income"])
+    assert len(docs) == 6
+    types = {doc.document_type for doc in docs}
+    assert "10TH_MARKSHEET" in types
+    assert "12TH_MARKSHEET" in types
+    assert "INCOME_CERTIFICATE" in types
+    assert "CASTE_CERTIFICATE" in types
+    assert "DRIVING_LICENCE" in types
+    assert "DEGREE_CERTIFICATE" in types
 
-    assert len(documents) == 6
-    assert documents[0].name == "Class 10 Marksheet"
-    assert provider.get_document("mock-degree").document_type == "DEGREE_CERTIFICATE"
-    assert consent.status == "GRANTED"
-    assert consent.document_ids == ["mock-class-12", "mock-income"]
+    doc_marksheet = provider.get_document("mock-class-12")
+    doc_income = provider.get_document("mock-income")
+    assert doc_marksheet.name == "Class 12 Marksheet"
+    assert doc_income.name == "Income Certificate"
+    assert doc_marksheet.id != doc_income.id
 
 
 def test_mock_provider_rejects_unknown_documents() -> None:
@@ -43,19 +66,113 @@ def test_mock_provider_rejects_unknown_documents() -> None:
         MockDigiLockerProvider().get_document("not-a-real-document")
 
 
-def test_selecting_mock_document_attaches_it_to_application_preview(db: Session) -> None:
+def test_digilocker_document_download_endpoint() -> None:
+    response = download_digilocker_document("mock-income")
+    assert response.media_type == "application/pdf"
+    assert response.filename == "income-certificate-demo.pdf"
+    assert Path(response.path).is_file()
+    assert Path(response.path).name == "demo-government-document.pdf"
+
+
+def test_digilocker_documents_not_in_my_documents_before_submission(db: Session) -> None:
+    my_docs = list_documents(db)
+    my_doc_types = {d.document_type for d in my_docs}
+    assert "INCOME_CERTIFICATE" not in my_doc_types
+
     application = create_application(db, "SCHOLARSHIP_001")
+    select_application_documents(db, application.id, ["mock-income"])
 
-    selected = select_application_documents(db, application.id, ["mock-income"])
-    preview = get_preview(db, application.id)
+    # Before submission, it should still NOT be in My Documents
+    my_docs_after_selection = list_documents(db)
+    assert "INCOME_CERTIFICATE" not in {d.document_type for d in my_docs_after_selection}
 
-    assert selected[0].source == DocumentSource.DIGILOCKER
-    assert selected[0].document_type == "INCOME_CERTIFICATE"
-    assert preview.documents == [
-        {
-            "id": selected[0].id,
-            "name": "Income Certificate",
-            "document_type": "INCOME_CERTIFICATE",
-            "source": "DIGILOCKER",
-        }
-    ]
+
+def test_successful_application_submission_imports_digilocker_document_to_my_documents(
+    db: Session,
+) -> None:
+    # 1. Start application
+    application = create_application(db, "SCHOLARSHIP_001")
+    save_additional_data(
+        db,
+        application.id,
+        AdditionalDataUpdate(
+            answers={
+                "course": "Computer Science",
+                "institution": "Demo Institute",
+                "academic_year": "2026-27",
+            }
+        ),
+    )
+    select_application_documents(db, application.id, ["mock-income"])
+    grant_consent(db, application.id)
+    snapshot = finalize_application(db, application.id)
+
+    # 2. Process payment (free service) and submit
+    process_payment(db, application.id)
+    submit_response = submit_application(db, application.id)
+    assert submit_response.status == ApplicationStatus.SUBMITTED
+
+    # 3. Verify My Documents now contains the imported Income Certificate
+    my_docs = list_documents(db)
+    income_docs = [d for d in my_docs if d.document_type == "INCOME_CERTIFICATE"]
+    assert len(income_docs) == 1
+    income_doc = income_docs[0]
+    assert income_doc.source == DocumentSource.DIGILOCKER
+    assert income_doc.name == "Income Certificate"
+    assert income_doc.is_imported is True
+
+    # 4. Verify downloading the imported document
+    response = get_document_file(income_doc.id, db)
+    assert response.media_type == "application/pdf"
+    assert response.filename == "income-certificate-demo.pdf"
+    assert Path(response.path).is_file()
+
+    # 5. Verify snapshot remains immutable
+    assert snapshot.snapshot_json["application_id"] == application.id
+
+    # 6. Verify subsequent application can reuse the imported Income Certificate
+    app2 = create_application(db, "SCHOLARSHIP_001")
+    assert "INCOME_CERTIFICATE" not in app2.missing_documents
+
+
+def test_repeated_submission_does_not_create_duplicate_imported_documents(db: Session) -> None:
+    # First application
+    app1 = create_application(db, "SCHOLARSHIP_001")
+    save_additional_data(
+        db,
+        app1.id,
+        AdditionalDataUpdate(
+            answers={
+                "course": "Computer Science",
+                "institution": "Demo Institute",
+                "academic_year": "2026-27",
+            }
+        ),
+    )
+    select_application_documents(db, app1.id, ["mock-income"])
+    grant_consent(db, app1.id)
+    finalize_application(db, app1.id)
+    process_payment(db, app1.id)
+    submit_application(db, app1.id)
+
+    # Second application also selecting mock-income
+    app2 = create_application(db, "SCHOLARSHIP_001")
+    save_additional_data(
+        db,
+        app2.id,
+        AdditionalDataUpdate(
+            answers={
+                "course": "Information Technology",
+                "institution": "Demo Institute",
+                "academic_year": "2026-27",
+            }
+        ),
+    )
+    select_application_documents(db, app2.id, ["mock-income"])
+    grant_consent(db, app2.id)
+    finalize_application(db, app2.id)
+    process_payment(db, app2.id)
+    submit_application(db, app2.id)
+
+    income_docs = [d for d in list_documents(db) if d.document_type == "INCOME_CERTIFICATE"]
+    assert len(income_docs) == 1

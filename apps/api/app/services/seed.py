@@ -40,7 +40,8 @@ INDIAN_VEHICLE_CLASS_OPTIONS = [
     "Other specified vehicle",
 ]
 
-SEEDED_MARKSHEET_FILENAME = "class-12-marksheet-demo.pdf"
+SEEDED_MARKSHEET_FILENAME = "demo-government-document.pdf"
+SEED_GENERIC_DOCUMENT_FILENAME = "demo-government-document.pdf"
 SEEDED_MARKSHEET_NAME = "Class 12 Marksheet"
 SEED_FILES_DIR = Path(__file__).resolve().parents[2] / "seed" / "files"
 
@@ -86,6 +87,7 @@ def seed_demo_citizen(db: Session) -> None:
                 document_type="PHOTOGRAPH",
                 source=DocumentSource.PROFILE_UPLOAD,
                 storage_key="synthetic/photograph.png",
+                is_imported=True,
             ),
         ]
     )
@@ -107,7 +109,7 @@ def seed_demo_citizen(db: Session) -> None:
 
 def seed_demo_marksheet(db: Session, user: User) -> Document:
     """Copy the tracked synthetic PDF to runtime storage and attach it to the demo citizen."""
-    source_path = SEED_FILES_DIR / SEEDED_MARKSHEET_FILENAME
+    source_path = SEED_FILES_DIR / SEED_GENERIC_DOCUMENT_FILENAME
     if not source_path.is_file():
         raise RuntimeError(f"Missing demo seed asset: {source_path}")
 
@@ -115,7 +117,8 @@ def seed_demo_marksheet(db: Session, user: User) -> Document:
         select(Document).where(
             Document.user_id == user.id,
             Document.document_type == DocumentType.MARKSHEET,
-            Document.original_filename == SEEDED_MARKSHEET_FILENAME,
+            (Document.original_filename == SEEDED_MARKSHEET_FILENAME)
+            | (Document.original_filename == "class-12-marksheet-demo.pdf"),
         )
     )
     if document is None:
@@ -147,6 +150,7 @@ def seed_demo_marksheet(db: Session, user: User) -> Document:
     document.storage_key = stored_filename
     document.mime_type = "application/pdf"
     document.size_bytes = source_path.stat().st_size
+    document.is_imported = True
     db.flush()
     return document
 

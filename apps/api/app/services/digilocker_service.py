@@ -1,3 +1,4 @@
+import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -44,13 +45,21 @@ def select_application_documents(
                 Document.storage_key == storage_key,
             )
         )
+        slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", provider_document.name.lower()).strip("-")
+        filename = f"{slug}-demo.pdf"
+
         if document is None:
             document = Document(
                 user_id=application.user_id,
                 name=provider_document.name,
+                display_name=provider_document.name,
                 document_type=provider_document.document_type,
                 source=DocumentSource.DIGILOCKER,
                 storage_key=storage_key,
+                stored_filename="demo-government-document.pdf",
+                original_filename=filename,
+                mime_type="application/pdf",
+                is_imported=False,
             )
             db.add(document)
             db.flush()

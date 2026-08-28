@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, CircleAlert, Eye, FileBadge2, FileText, Landmark, Plus, Trash2, Upload, X } from "lucide-react";
+import { CheckCircle2, CircleAlert, Download, Eye, FileBadge2, FileText, Landmark, Plus, Trash2, Upload, X } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { Document, DocumentCategory, MockDigiLockerDocument } from "@/src/types";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ type DocumentsData = { documents: Document[]; digilocker: MockDigiLockerDocument
 type ToastState = { message: string; tone: "success" | "error" };
 
 function fileSize(size: number | null) {
-  if (size === null) return "Size unavailable";
+  if (size === null) return null;
   return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -144,25 +144,145 @@ export function DocumentsPage() {
 
   const categoryLabel = (value: string) => data?.categories.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 
-  return <div className="space-y-6">
-    <PageHeader title="My documents" description="Manage reusable profile and mock DigiLocker documents for future applications."><Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />Add Document</Button></PageHeader>
-    {error ? <ErrorState>Documents are unavailable. Start the service API and try again.</ErrorState> : !data ? <LoadingState label="Loading your documents…" /> : <div className="grid gap-5 lg:grid-cols-2">
-      <Card className="border-t-4 border-t-primary"><CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-4 text-primary" aria-hidden="true" />My documents</CardTitle><p className="text-sm text-muted-foreground">Documents you have uploaded to your reusable profile.</p></CardHeader><CardContent>{data.documents.length === 0 ? <EmptyState>No profile documents are available.</EmptyState> : <ul className="space-y-3">{data.documents.map((document) => <li key={document.id} className="flex items-start justify-between gap-3 rounded-lg border border-primary/10 bg-blue-50/40 p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{document.display_name || document.name}</p><p className="mt-1 text-xs text-muted-foreground">{categoryLabel(document.document_type)} · {fileKind(document.mime_type)} · {fileSize(document.size_bytes)}</p></div><div className="flex shrink-0 items-center gap-1"><a href={`${apiBaseUrl}/api/profile/documents/${document.id}/file`} target="_blank" rel="noreferrer" className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`View ${document.display_name || document.name}`}><Eye className="size-4" aria-hidden="true" /></a><Button type="button" variant="ghost" size="icon" aria-label={`Delete ${document.display_name || document.name}`} onPress={() => setPendingDelete(document)}><Trash2 className="text-destructive" aria-hidden="true" /></Button></div></li>)}</ul>}</CardContent></Card>
-      <Card className="border-t-4 border-t-emerald-500"><CardHeader><CardTitle className="flex items-center gap-2"><Landmark className="size-4 text-primary" aria-hidden="true" />DigiLocker</CardTitle><p className="text-sm text-muted-foreground">Synthetic documents available through mock DigiLocker.</p></CardHeader><CardContent><ul className="space-y-3">{data.digilocker.map((document) => <li key={document.id} className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3"><FileBadge2 className="mt-0.5 size-4 text-emerald-600" aria-hidden="true" /><div><p className="text-sm font-medium">{document.name}</p><p className="mt-1 text-xs text-muted-foreground">{document.issuer}</p></div></li>)}</ul></CardContent></Card>
-    </div>}
+  return (
+    <div className="space-y-6">
+      <PageHeader title="My documents" description="Manage reusable profile and mock DigiLocker documents for future applications.">
+        <Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />Add Document</Button>
+      </PageHeader>
+      {error ? (
+        <ErrorState>Documents are unavailable. Start the service API and try again.</ErrorState>
+      ) : !data ? (
+        <LoadingState label="Loading your documents…" />
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card className="border-t-4 border-t-primary">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-4 text-primary" aria-hidden="true" />
+                My documents
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Documents available for future applications.</p>
+            </CardHeader>
+            <CardContent>
+              {data.documents.length === 0 ? (
+                <EmptyState>No reusable documents are available.</EmptyState>
+              ) : (
+                <ul className="space-y-3">
+                  {data.documents.map((document) => {
+                    const sizeStr = fileSize(document.size_bytes);
+                    const isDigiLocker = document.source === "DIGILOCKER";
+                    return (
+                      <li key={document.id} className="flex items-start justify-between gap-3 rounded-lg border border-primary/10 bg-blue-50/40 p-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-medium">{document.display_name || document.name}</p>
+                            {isDigiLocker ? (
+                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 font-medium">
+                                DigiLocker
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {categoryLabel(document.document_type)} · {fileKind(document.mime_type)}{sizeStr ? ` · ${sizeStr}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <a
+                            href={`${apiBaseUrl}/api/profile/documents/${document.id}/file`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`View ${document.display_name || document.name}`}
+                          >
+                            <Eye className="size-4" aria-hidden="true" />
+                          </a>
+                          <a
+                            href={`${apiBaseUrl}/api/profile/documents/${document.id}/download`}
+                            download
+                            className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Download ${document.display_name || document.name}`}
+                          >
+                            <Download className="size-4" aria-hidden="true" />
+                          </a>
+                          {!isDigiLocker ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete ${document.display_name || document.name}`}
+                              onPress={() => setPendingDelete(document)}
+                            >
+                              <Trash2 className="text-destructive" aria-hidden="true" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
 
-    <Dialog isOpen={addOpen} onOpenChange={(open) => { if (!open) { setAddOpen(false); resetUploadForm(); } }} className="w-[calc(100%-2rem)] max-w-lg">
-      <DialogHeader><DialogTitle>Add Document</DialogTitle><DialogDescription>Upload a document to your reusable document collection.</DialogDescription></DialogHeader>
-      <div className="space-y-5">
-        <div><Label htmlFor="document-category">Document Category</Label><Select aria-label="Document category" selectedKey={category} onSelectionChange={(value) => { setCategory(String(value)); setFormErrors((current) => ({ ...current, category: "" })); }}><SelectTrigger id="document-category" className="mt-2" aria-invalid={Boolean(formErrors.category)}><SelectValue>{category ? categoryLabel(category) : "Select category"}</SelectValue></SelectTrigger><SelectContent>{data?.categories.map((item) => <SelectItem key={item.value} id={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>{formErrors.category ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.category}</p> : null}</div>
-        {category === "OTHER" ? <div><Label htmlFor="document-name">Document Name</Label><Input id="document-name" className="mt-2" value={documentName} onChange={(event) => { setDocumentName(event.target.value); setFormErrors((current) => ({ ...current, documentName: "" })); }} aria-invalid={Boolean(formErrors.documentName)} aria-describedby={formErrors.documentName ? "document-name-error" : undefined} placeholder="e.g. NCC Certificate" />{formErrors.documentName ? <p id="document-name-error" className="mt-1 text-xs text-destructive" role="alert">{formErrors.documentName}</p> : null}</div> : null}
-        <div><Label>Upload File</Label><input ref={fileInput} className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} /><Button type="button" variant="outline" className="mt-2 h-32 w-full border-dashed" onPress={() => fileInput.current?.click()}><span className="flex flex-col items-center gap-2"><Upload aria-hidden="true" /><span>Click to choose a file</span><span className="text-xs font-normal text-muted-foreground">PDF, JPG, JPEG, PNG or WEBP · maximum 5 MB</span></span></Button>{formErrors.file ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.file}</p> : null}</div>
-        {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt="Selected document preview" width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type)} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label="Remove selected file" onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
-      </div>
-      <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={uploading} onPress={uploadDocument}>{uploading ? "Uploading…" : "Add Document"}</Button></DialogFooter>
-    </Dialog>
+          <Card className="border-t-4 border-t-emerald-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Landmark className="size-4 text-emerald-600" aria-hidden="true" />
+                DigiLocker
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Synthetic documents available through mock DigiLocker.</p>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {data.digilocker.map((document) => (
+                  <li key={document.id} className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <FileBadge2 className="mt-0.5 size-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{document.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{document.issuer}</p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <a
+                        href={`${apiBaseUrl}/api/digilocker/documents/${document.id}/file`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex size-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`View ${document.name}`}
+                      >
+                        <Eye className="size-4" aria-hidden="true" />
+                      </a>
+                      <a
+                        href={`${apiBaseUrl}/api/digilocker/documents/${document.id}/download`}
+                        download
+                        className="inline-flex size-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`Download ${document.name}`}
+                      >
+                        <Download className="size-4" aria-hidden="true" />
+                      </a>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-    <Dialog isOpen={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(undefined); }}><DialogHeader><DialogTitle>Delete document?</DialogTitle><DialogDescription>This will permanently remove {pendingDelete?.display_name || pendingDelete?.name} from your reusable documents.</DialogDescription></DialogHeader><DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" variant="destructive" isDisabled={!pendingDelete || deleting} onPress={deleteDocument}>{deleting ? "Deleting…" : "Delete"}</Button></DialogFooter></Dialog>
-    {toast ? <Toast toast={toast} onDismiss={() => setToast(undefined)} /> : null}
-  </div>;
+      <Dialog isOpen={addOpen} onOpenChange={(open) => { if (!open) { setAddOpen(false); resetUploadForm(); } }} className="w-[calc(100%-2rem)] max-w-lg">
+        <DialogHeader><DialogTitle>Add Document</DialogTitle><DialogDescription>Upload a document to your reusable document collection.</DialogDescription></DialogHeader>
+        <div className="space-y-5">
+          <div><Label htmlFor="document-category">Document Category</Label><Select aria-label="Document category" selectedKey={category} onSelectionChange={(value) => { setCategory(String(value)); setFormErrors((current) => ({ ...current, category: "" })); }}><SelectTrigger id="document-category" className="mt-2" aria-invalid={Boolean(formErrors.category)}><SelectValue>{category ? categoryLabel(category) : "Select category"}</SelectValue></SelectTrigger><SelectContent>{data?.categories.map((item) => <SelectItem key={item.value} id={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>{formErrors.category ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.category}</p> : null}</div>
+          {category === "OTHER" ? <div><Label htmlFor="document-name">Document Name</Label><Input id="document-name" className="mt-2" value={documentName} onChange={(event) => { setDocumentName(event.target.value); setFormErrors((current) => ({ ...current, documentName: "" })); }} aria-invalid={Boolean(formErrors.documentName)} aria-describedby={formErrors.documentName ? "document-name-error" : undefined} placeholder="e.g. NCC Certificate" />{formErrors.documentName ? <p id="document-name-error" className="mt-1 text-xs text-destructive" role="alert">{formErrors.documentName}</p> : null}</div> : null}
+          <div><Label>Upload File</Label><input ref={fileInput} className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} /><Button type="button" variant="outline" className="mt-2 h-32 w-full border-dashed" onPress={() => fileInput.current?.click()}><span className="flex flex-col items-center gap-2"><Upload aria-hidden="true" /><span>Click to choose a file</span><span className="text-xs font-normal text-muted-foreground">PDF, JPG, JPEG, PNG or WEBP · maximum 5 MB</span></span></Button>{formErrors.file ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.file}</p> : null}</div>
+          {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt="Selected document preview" width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type)} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label="Remove selected file" onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
+        </div>
+        <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={uploading} onPress={uploadDocument}>{uploading ? "Uploading…" : "Add Document"}</Button></DialogFooter>
+      </Dialog>
+
+      <Dialog isOpen={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(undefined); }}><DialogHeader><DialogTitle>Delete document?</DialogTitle><DialogDescription>This will permanently remove {pendingDelete?.display_name || pendingDelete?.name} from your reusable documents.</DialogDescription></DialogHeader><DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" variant="destructive" isDisabled={!pendingDelete || deleting} onPress={deleteDocument}>{deleting ? "Deleting…" : "Delete"}</Button></DialogFooter></Dialog>
+      {toast ? <Toast toast={toast} onDismiss={() => setToast(undefined)} /> : null}
+    </div>
+  );
 }

@@ -86,7 +86,16 @@ def create_education(db: Session, payload: EducationCreate) -> Education:
 
 def list_documents(db: Session) -> list[Document]:
     user = get_demo_user(db)
-    return list(db.scalars(select(Document).where(Document.user_id == user.id).order_by(Document.name)).all())
+    return list(
+        db.scalars(
+            select(Document)
+            .where(
+                Document.user_id == user.id,
+                (Document.source != DocumentSource.DIGILOCKER) | (Document.is_imported == True),  # noqa: E712
+            )
+            .order_by(Document.name)
+        ).all()
+    )
 
 
 def document_for_user(db: Session, document_id: str) -> Document:
@@ -112,7 +121,7 @@ async def save_upload(db: Session, upload: UploadFile, document_type: DocumentTy
     if document_type == DocumentType.PROFILE_PHOTO:
         old = db.scalar(select(Document).where(Document.user_id == user.id, Document.document_type == DocumentType.PROFILE_PHOTO))
         if old: _delete_file(old.stored_filename); db.delete(old)
-    document = Document(user_id=user.id, name=safe_name, display_name=safe_name, document_type=document_type, source=DocumentSource.PROFILE_UPLOAD, storage_key=stored_filename, stored_filename=stored_filename, original_filename=filename, mime_type=upload.content_type, size_bytes=len(content))
+    document = Document(user_id=user.id, name=safe_name, display_name=safe_name, document_type=document_type, source=DocumentSource.PROFILE_UPLOAD, storage_key=stored_filename, stored_filename=stored_filename, original_filename=filename, mime_type=upload.content_type, size_bytes=len(content), is_imported=True)
     db.add(document); db.commit(); db.refresh(document); return document
 
 
