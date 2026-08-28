@@ -11,7 +11,7 @@ from app.models.profile import Document, DocumentSource, DocumentType
 from app.schemas.profile import ProfileUpdate
 from app.services.application_engine import document_type_matches
 from app.services.profile_service import get_profile, update_profile
-from app.services.seed import SEEDED_MARKSHEET_FILENAME, SEEDED_MARKSHEET_NAME, seed_demo_citizen
+from app.services.seed import SEED_GENERIC_DOCUMENT_FILENAME, SEEDED_MARKSHEET_NAME, seed_demo_citizen
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_seeded_marksheet_is_system_owned_idempotent_and_hidden_from_documents_a
             select(Document).where(
                 Document.user_id == profile.user_id,
                 Document.document_type == DocumentType.MARKSHEET,
-                Document.original_filename == SEEDED_MARKSHEET_FILENAME,
+                Document.original_filename == SEED_GENERIC_DOCUMENT_FILENAME,
             )
         )
     )
@@ -73,6 +73,6 @@ def test_seeded_marksheet_is_system_owned_idempotent_and_hidden_from_documents_a
         select(func.count()).select_from(Document).where(
             Document.user_id == profile.user_id,
             Document.document_type == DocumentType.MARKSHEET,
-            Document.original_filename == SEEDED_MARKSHEET_FILENAME,
+            Document.original_filename == SEED_GENERIC_DOCUMENT_FILENAME,
         )
     ) == 1

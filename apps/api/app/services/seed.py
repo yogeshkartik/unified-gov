@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import SessionLocal
 from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, EducationLevel, Profile, User
 from app.models.service import (
     Service,
@@ -40,7 +41,6 @@ INDIAN_VEHICLE_CLASS_OPTIONS = [
     "Other specified vehicle",
 ]
 
-SEEDED_MARKSHEET_FILENAME = "demo-government-document.pdf"
 SEED_GENERIC_DOCUMENT_FILENAME = "demo-government-document.pdf"
 SEEDED_MARKSHEET_NAME = "Class 12 Marksheet"
 SEED_FILES_DIR = Path(__file__).resolve().parents[2] / "seed" / "files"
@@ -117,7 +117,7 @@ def seed_demo_marksheet(db: Session, user: User) -> Document:
         select(Document).where(
             Document.user_id == user.id,
             Document.document_type == DocumentType.MARKSHEET,
-            (Document.original_filename == SEEDED_MARKSHEET_FILENAME)
+            (Document.original_filename == SEED_GENERIC_DOCUMENT_FILENAME)
             | (Document.original_filename == "class-12-marksheet-demo.pdf"),
         )
     )
@@ -145,7 +145,7 @@ def seed_demo_marksheet(db: Session, user: User) -> Document:
     document.display_name = SEEDED_MARKSHEET_NAME
     document.document_type = DocumentType.MARKSHEET
     document.source = DocumentSource.SYSTEM_GENERATED
-    document.original_filename = SEEDED_MARKSHEET_FILENAME
+    document.original_filename = SEED_GENERIC_DOCUMENT_FILENAME
     document.stored_filename = stored_filename
     document.storage_key = stored_filename
     document.mime_type = "application/pdf"
@@ -409,3 +409,17 @@ def sync_citizen_display_data(db: Session, user: User) -> None:
         if document.document_type in document_names:
             document.name = document_names[document.document_type]
     db.commit()
+
+
+def main() -> None:
+    """Seed the configured database with the synthetic demo citizen and services."""
+    db = SessionLocal()
+    try:
+        seed_demo_citizen(db)
+        seed_demo_services(db)
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()
