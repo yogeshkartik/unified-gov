@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/src/lib/api";
 import type { ApplicationEngineResponse, GovernmentServiceDetail } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { type DynamicFormValues } from "@/components/application/dynamic-field";
 import { DynamicForm } from "@/components/application/dynamic-form";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
@@ -28,22 +29,13 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
       .catch(() => setError(true));
   }, [applicationId]);
 
-  useEffect(() => {
-    if (data && data.application.missing_fields.length === 0) {
-      router.replace(`/applications/${applicationId}/consent`);
-    }
-  }, [applicationId, data, router]);
-
   async function save(values: DynamicFormValues) {
     setSubmitting(true);
     setSubmitError(undefined);
     try {
       const application = await api.saveAdditionalData(applicationId, values);
-      router.push(
-        application.missing_fields.length === 0
-          ? `/applications/${applicationId}/consent`
-          : `/applications/${applicationId}/additional`
-      );
+      if (application.missing_fields.length === 0) navigateApplicationFlow(router, applicationId, "consent", "forward");
+      else router.push(`/applications/${applicationId}/additional`);
     } catch (err) {
       setSubmitError(
         err instanceof ApiError
@@ -77,8 +69,9 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
   return (
     <ApplicationFlowShell
       serviceName={data.service.name}
-      step={1}
-      stepName="Additional information"
+      applicationId={applicationId}
+      step={applicationFlowSteps.additional.index}
+      stepName={applicationFlowSteps.additional.label}
       onClose={() => router.push("/applications")}
     >
       <div className="space-y-6">

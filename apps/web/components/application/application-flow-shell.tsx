@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { type ApplicationFlowDirection, flowDirectionKey } from "@/components/application/application-flow-navigation";
 
 interface ApplicationFlowShellProps {
   serviceName: string;
   step: 1 | 2 | 3 | 4 | 5;
   stepName: string;
+  applicationId?: string;
   children: ReactNode;
   footer?: ReactNode;
   onClose?: () => void;
@@ -18,11 +20,16 @@ export function ApplicationFlowShell({
   serviceName,
   step,
   stepName,
+  applicationId,
   children,
   footer,
   onClose,
 }: ApplicationFlowShellProps) {
   const router = useRouter();
+  const [direction] = useState<ApplicationFlowDirection>(() => {
+    if (!applicationId || typeof window === "undefined") return "forward";
+    return (window.sessionStorage.getItem(flowDirectionKey(applicationId)) as ApplicationFlowDirection | null) ?? "forward";
+  });
 
   const handleClose = useCallback(() => {
     if (onClose) {
@@ -53,7 +60,7 @@ export function ApplicationFlowShell({
         role="dialog"
         aria-modal="true"
         aria-labelledby="flow-service-title"
-        className="relative flex flex-col w-full max-w-3xl max-h-[90vh] rounded-xl bg-card text-card-foreground shadow-2xl border border-border overflow-hidden duration-150 animate-in zoom-in-95 motion-reduce:animate-none"
+        className="relative flex flex-col w-full max-w-3xl max-h-[90vh] rounded-xl bg-card text-card-foreground shadow-2xl border border-border overflow-hidden"
       >
         {/* Sticky/Fixed Header */}
         <header className="border-b px-6 py-4 sm:px-7 sm:py-5 bg-card shrink-0">
@@ -98,7 +105,7 @@ export function ApplicationFlowShell({
         </header>
 
         {/* Scrollable Form / Content Body */}
-        <main className="overflow-y-auto px-6 py-6 sm:px-8 space-y-6 flex-1 min-h-0">
+        <main className={`overflow-x-hidden overflow-y-auto px-6 py-6 sm:px-8 space-y-6 flex-1 min-h-0 animate-in fade-in-0 duration-200 ease-out motion-reduce:animate-none ${direction === "back" ? "slide-in-from-left-4" : "slide-in-from-right-4"}`}>
           {children}
         </main>
 

@@ -6,6 +6,7 @@ import { Check, Copy } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationPreview } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
@@ -51,8 +52,9 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
   return (
     <ApplicationFlowShell
       serviceName={String(preview.service.name)}
-      step={5}
-      stepName="Submitted"
+      applicationId={applicationId}
+      step={applicationFlowSteps.success.index}
+      stepName={applicationFlowSteps.success.label}
       onClose={() => router.push("/applications")}
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">

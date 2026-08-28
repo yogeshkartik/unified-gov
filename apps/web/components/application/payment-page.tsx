@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationPreview } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
@@ -91,8 +92,9 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
   return (
     <ApplicationFlowShell
       serviceName={String(preview.service.name)}
-      step={4}
-      stepName="Payment"
+      applicationId={applicationId}
+      step={applicationFlowSteps.payment.index}
+      stepName={applicationFlowSteps.payment.label}
       onClose={() => router.push("/applications")}
       footer={
         !isFree ? (
@@ -100,7 +102,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
             <Button
               type="button"
               variant="outline"
-              onPress={() => router.push(`/applications/${applicationId}/preview`)}
+              onPress={() => navigateApplicationFlow(router, applicationId, "preview", "back")}
             >
               Back
             </Button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/src/lib/api";
 import type { ApplicationPreview } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
@@ -52,7 +53,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
     setFinalizeError(undefined);
     try {
       await api.finalizeApplication(applicationId);
-      router.push(`/applications/${applicationId}/payment`);
+      navigateApplicationFlow(router, applicationId, "payment", "forward");
     } catch {
       setFinalizeError(
         "This application is not ready to finalize. Check your entries and try again."
@@ -86,8 +87,9 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
   return (
     <ApplicationFlowShell
       serviceName={String(preview.service.name)}
-      step={3}
-      stepName="Preview"
+      applicationId={applicationId}
+      step={applicationFlowSteps.preview.index}
+      stepName={applicationFlowSteps.preview.label}
       onClose={() => router.push("/applications")}
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -96,7 +98,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
               <Button
                 type="button"
                 variant="outline"
-                onPress={() => router.push(`/applications/${applicationId}/consent`)}
+                onPress={() => navigateApplicationFlow(router, applicationId, "consent", "back")}
               >
                 Back
               </Button>

@@ -6,6 +6,7 @@ import { CheckCircle2, Upload } from "lucide-react";
 import { ApiError, api } from "@/src/lib/api";
 import type { ApplicationEngineResponse, Document as CitizenDocument, GovernmentServiceDetail, MockDigiLockerDocument } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
+import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -84,7 +85,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         await api.selectApplicationDocuments(applicationId, selectedDocumentIds);
       }
       await api.grantConsent(applicationId);
-      router.push(`/applications/${applicationId}/preview`);
+      navigateApplicationFlow(router, applicationId, "preview", "forward");
     } catch (error) {
       if (error instanceof ApiError && error.detail?.code === "APPLICATION_INCOMPLETE") {
         const missing = [
@@ -142,15 +143,16 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
   return (
     <ApplicationFlowShell
       serviceName={data.service.name}
-      step={2}
-      stepName="Consent"
+      applicationId={applicationId}
+      step={applicationFlowSteps.consent.index}
+      stepName={applicationFlowSteps.consent.label}
       onClose={() => router.push("/applications")}
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
           <Button
             type="button"
             variant="outline"
-            onPress={() => router.push(`/applications/${applicationId}/additional`)}
+            onPress={() => navigateApplicationFlow(router, applicationId, "additional", "back")}
           >
             Back
           </Button>
