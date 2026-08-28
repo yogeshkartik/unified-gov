@@ -141,7 +141,7 @@ def document_type_matches(required_type: str, available_type: str) -> bool:
     if required_type == "PHOTOGRAPH":
         return available_type == "PROFILE_PHOTO"
     if required_type == "MARKSHEET":
-        return available_type.endswith("_MARKSHEET")
+        return available_type == "MARKSHEET" or available_type.endswith("_MARKSHEET")
     if required_type == "IDENTITY_DOCUMENT":
         return available_type == "DRIVING_LICENCE"
     return False

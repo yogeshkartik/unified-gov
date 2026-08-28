@@ -1,9 +1,13 @@
 from datetime import date
+from pathlib import Path
+from shutil import copyfile
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.profile import Address, AddressType, Document, DocumentSource, Education, EducationLevel, Profile, User
+from app.core.config import settings
+from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, EducationLevel, Profile, User
 from app.models.service import (
     Service,
     ServiceDocumentRequirement,
@@ -36,12 +40,18 @@ INDIAN_VEHICLE_CLASS_OPTIONS = [
     "Other specified vehicle",
 ]
 
+SEEDED_MARKSHEET_FILENAME = "class-12-marksheet-demo.pdf"
+SEEDED_MARKSHEET_NAME = "Class 12 Marksheet"
+SEED_FILES_DIR = Path(__file__).resolve().parents[2] / "seed" / "files"
+
 
 def seed_demo_citizen(db: Session) -> None:
     """Create only synthetic, explicitly demo-labelled citizen data."""
     existing_user = db.scalar(select(User).where(User.email == DEMO_USER_EMAIL))
     if existing_user is not None:
         sync_citizen_display_data(db, existing_user)
+        seed_demo_marksheet(db, existing_user)
+        db.commit()
         return
 
     user = User(email=DEMO_USER_EMAIL, mobile="9000000000", auth_state="DEMO")
@@ -69,15 +79,8 @@ def seed_demo_citizen(db: Session) -> None:
             pincode="110001",
         )
     )
-    marksheet = Document(
-        name="Class 12 Marksheet",
-        document_type="12TH_MARKSHEET",
-        source=DocumentSource.PROFILE_UPLOAD,
-        storage_key="synthetic/class-12-marksheet.pdf",
-    )
     user.documents.extend(
         [
-            marksheet,
             Document(
                 name="Photograph",
                 document_type="PHOTOGRAPH",
@@ -86,6 +89,9 @@ def seed_demo_citizen(db: Session) -> None:
             ),
         ]
     )
+    db.add(profile)
+    db.flush()
+    marksheet = seed_demo_marksheet(db, user)
     user.education_records.append(
         Education(
             level=EducationLevel.TWELFTH,
@@ -96,8 +102,53 @@ def seed_demo_citizen(db: Session) -> None:
             certificate_document=marksheet,
         )
     )
-    db.add(profile)
     db.commit()
+
+
+def seed_demo_marksheet(db: Session, user: User) -> Document:
+    """Copy the tracked synthetic PDF to runtime storage and attach it to the demo citizen."""
+    source_path = SEED_FILES_DIR / SEEDED_MARKSHEET_FILENAME
+    if not source_path.is_file():
+        raise RuntimeError(f"Missing demo seed asset: {source_path}")
+
+    document = db.scalar(
+        select(Document).where(
+            Document.user_id == user.id,
+            Document.document_type == DocumentType.MARKSHEET,
+            Document.original_filename == SEEDED_MARKSHEET_FILENAME,
+        )
+    )
+    if document is None:
+        # Upgrade the metadata-only record created by earlier prototype seeds.
+        document = db.scalar(
+            select(Document).where(
+                Document.user_id == user.id,
+                Document.document_type == "12TH_MARKSHEET",
+                Document.name == SEEDED_MARKSHEET_NAME,
+            )
+        )
+
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    if document is None:
+        stored_filename = f"{uuid4()}{source_path.suffix}"
+        document = Document(user_id=user.id, name=SEEDED_MARKSHEET_NAME)
+        db.add(document)
+    else:
+        stored_filename = document.stored_filename or f"{uuid4()}{source_path.suffix}"
+
+    copyfile(source_path, upload_dir / stored_filename)
+    document.name = SEEDED_MARKSHEET_NAME
+    document.display_name = SEEDED_MARKSHEET_NAME
+    document.document_type = DocumentType.MARKSHEET
+    document.source = DocumentSource.SYSTEM_GENERATED
+    document.original_filename = SEEDED_MARKSHEET_FILENAME
+    document.stored_filename = stored_filename
+    document.storage_key = stored_filename
+    document.mime_type = "application/pdf"
+    document.size_bytes = source_path.stat().st_size
+    db.flush()
+    return document
 
 
 def seed_demo_services(db: Session) -> None:
@@ -295,7 +346,7 @@ def sync_citizen_display_data(db: Session, user: User) -> None:
         education.institution = "Government Senior Secondary School"
     document_names = {
         "10TH_MARKSHEET": "Class 10 Marksheet",
-        "12TH_MARKSHEET": "Class 12 Marksheet",
+        "MARKSHEET": "Class 12 Marksheet",
         "INCOME_CERTIFICATE": "Income Certificate",
         "CASTE_CERTIFICATE": "Caste Certificate",
         "DRIVING_LICENCE": "Driving Licence",
