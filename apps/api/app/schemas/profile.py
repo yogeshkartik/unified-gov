@@ -16,6 +16,18 @@ class AddressResponse(BaseModel):
     district: str
     state: str
     pincode: str
+    country: str
+
+
+class AddressUpdate(BaseModel):
+    type: AddressType
+    line1: str = Field(min_length=1, max_length=255)
+    line2: str | None = Field(default=None, max_length=255)
+    city: str = Field(min_length=1, max_length=100)
+    district: str = Field(min_length=1, max_length=100)
+    state: str = Field(min_length=1, max_length=100)
+    pincode: str = Field(pattern=r"^\d{6}$")
+    country: str = Field(default="India", min_length=1, max_length=100)
 
 
 class ProfileUpdate(BaseModel):
@@ -44,6 +56,8 @@ class ProfileUpdate(BaseModel):
     occupation: str | None = Field(default=None, max_length=100)
     annual_family_income_range: str | None = Field(default=None, max_length=50)
     preferred_language: str | None = Field(default=None, max_length=20)
+    current_address_same_as_permanent: bool | None = None
+    addresses: list[AddressUpdate] | None = None
 
 
 class ProfileResponse(BaseModel):
@@ -76,6 +90,7 @@ class ProfileResponse(BaseModel):
     occupation: str | None
     annual_family_income_range: str | None
     preferred_language: str | None
+    current_address_same_as_permanent: bool
     addresses: list[AddressResponse]
     created_at: datetime
     updated_at: datetime

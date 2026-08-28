@@ -45,3 +45,10 @@ def ensure_document_metadata_columns() -> None:
         for name, definition in profile_columns.items():
             if name not in existing_profile:
                 connection.execute(text(f"ALTER TABLE profiles ADD COLUMN {name} {definition}"))
+    with engine.begin() as connection:
+        if "current_address_same_as_permanent" not in existing_profile:
+            connection.execute(text("ALTER TABLE profiles ADD COLUMN current_address_same_as_permanent BOOLEAN NOT NULL DEFAULT 0"))
+    existing_addresses = {column["name"] for column in inspect(engine).get_columns("addresses")}
+    if "country" not in existing_addresses:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE addresses ADD COLUMN country VARCHAR(100) NOT NULL DEFAULT 'India'"))

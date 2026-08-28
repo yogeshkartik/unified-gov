@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -101,6 +101,7 @@ class Profile(TimestampMixin, Base):
     occupation: Mapped[str | None] = mapped_column(String(100))
     annual_family_income_range: Mapped[str | None] = mapped_column(String(50))
     preferred_language: Mapped[str | None] = mapped_column(String(20))
+    current_address_same_as_permanent: Mapped[bool] = mapped_column(Boolean, default=False)
     user: Mapped[User] = relationship(back_populates="profile")
 
     @property
@@ -120,6 +121,7 @@ class Address(TimestampMixin, Base):
     district: Mapped[str] = mapped_column(String(100))
     state: Mapped[str] = mapped_column(String(100))
     pincode: Mapped[str] = mapped_column(String(20))
+    country: Mapped[str] = mapped_column(String(100), default="India")
     user: Mapped[User] = relationship(back_populates="addresses")
 
 

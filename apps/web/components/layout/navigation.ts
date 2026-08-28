@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { FileText, FolderOpen, LayoutDashboard, Settings, UserRound } from "lucide-react";
+import { FileText, FolderOpen, LayoutDashboard, UserRound } from "lucide-react";
 
 export interface NavigationItem {
   href: string;
@@ -13,5 +13,4 @@ export const navigationItems: NavigationItem[] = [
   { href: "/services", labelKey: "services", icon: FileText },
   { href: "/applications", labelKey: "applications", icon: FolderOpen },
   { href: "/documents", labelKey: "documents", icon: FileText },
-  { href: "/settings", labelKey: "settings", icon: Settings },
 ];

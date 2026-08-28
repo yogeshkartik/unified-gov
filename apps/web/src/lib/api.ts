@@ -1,4 +1,5 @@
 import type {
+  Address,
   ApplicationEngineResponse,
   ApplicationPreview,
   CitizenProfile,
@@ -63,7 +64,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getProfile: () => request<CitizenProfile>("/api/profile"),
-  updateProfile: (profile: Partial<CitizenProfile>) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
+  updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
   getEducation: () => request<Education[]>("/api/profile/education"),
   getDocuments: () => request<Document[]>("/api/documents"),
   uploadDocument: (data: FormData) => request<Document>("/api/profile/documents", { method: "POST", body: data }),

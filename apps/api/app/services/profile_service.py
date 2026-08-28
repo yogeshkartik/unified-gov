@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
-from app.models.profile import Document, DocumentSource, DocumentType, Education, Profile, User
+from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, Profile, User
 from app.schemas.profile import EducationCreate, ProfileUpdate
 
 DEMO_USER_EMAIL = "rahul.demo@example.com"
@@ -50,8 +50,20 @@ def get_profile(db: Session) -> Profile:
 
 def update_profile(db: Session, payload: ProfileUpdate) -> Profile:
     profile = get_profile(db)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True, exclude={"addresses"})
+    for field, value in updates.items():
         setattr(profile, field, value)
+    if payload.addresses is not None:
+        existing = {address.type: address for address in profile.user.addresses}
+        for item in payload.addresses:
+            values = item.model_dump(exclude={"type"})
+            address = existing.get(item.type)
+            if address is None:
+                address = Address(user_id=profile.user_id, type=item.type, **values)
+                db.add(address)
+            else:
+                for field, value in values.items():
+                    setattr(address, field, value)
     db.commit()
     return get_profile(db)
 

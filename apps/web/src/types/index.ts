@@ -21,6 +21,7 @@ export interface Address {
   district: string;
   state: string;
   pincode: string;
+  country: string;
 }
 
 export interface Education {
@@ -64,6 +65,7 @@ export interface CitizenProfile {
   occupation: string | null;
   annual_family_income_range: string | null;
   preferred_language: string | null;
+  current_address_same_as_permanent: boolean;
   addresses: Address[];
   created_at: string;
   updated_at: string;
