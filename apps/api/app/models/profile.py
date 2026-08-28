@@ -33,6 +33,18 @@ class DocumentSource(StrEnum):
     SYSTEM_GENERATED = "SYSTEM_GENERATED"
 
 
+class DocumentType(StrEnum):
+    PROFILE_PHOTO = "PROFILE_PHOTO"
+    SIGNATURE = "SIGNATURE"
+    DEGREE_CERTIFICATE = "DEGREE_CERTIFICATE"
+    MARKSHEET = "MARKSHEET"
+    INCOME_CERTIFICATE = "INCOME_CERTIFICATE"
+    CASTE_CERTIFICATE = "CASTE_CERTIFICATE"
+    DOMICILE_CERTIFICATE = "DOMICILE_CERTIFICATE"
+    IDENTITY_DOCUMENT = "IDENTITY_DOCUMENT"
+    OTHER = "OTHER"
+
+
 def new_id() -> str:
     return str(uuid4())
 
@@ -74,6 +86,21 @@ class Profile(TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(100))
     disability_status: Mapped[str | None] = mapped_column(String(100))
+    alternate_mobile: Mapped[str | None] = mapped_column(String(20))
+    marital_status: Mapped[str | None] = mapped_column(String(50))
+    guardian_name: Mapped[str | None] = mapped_column(String(255))
+    guardian_relationship: Mapped[str | None] = mapped_column(String(100))
+    ews_status: Mapped[str | None] = mapped_column(String(30))
+    ex_serviceman_status: Mapped[str | None] = mapped_column(String(30))
+    minority_status: Mapped[str | None] = mapped_column(String(30))
+    highest_qualification: Mapped[str | None] = mapped_column(String(100))
+    current_education_status: Mapped[str | None] = mapped_column(String(100))
+    current_course: Mapped[str | None] = mapped_column(String(255))
+    current_institution: Mapped[str | None] = mapped_column(String(255))
+    employment_status: Mapped[str | None] = mapped_column(String(50))
+    occupation: Mapped[str | None] = mapped_column(String(100))
+    annual_family_income_range: Mapped[str | None] = mapped_column(String(50))
+    preferred_language: Mapped[str | None] = mapped_column(String(20))
     user: Mapped[User] = relationship(back_populates="profile")
 
     @property
@@ -122,4 +149,9 @@ class Document(TimestampMixin, Base):
     document_type: Mapped[str] = mapped_column(String(100))
     source: Mapped[DocumentSource] = mapped_column(String(30))
     storage_key: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(String(100))
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    stored_filename: Mapped[str | None] = mapped_column(String(255))
+    mime_type: Mapped[str | None] = mapped_column(String(100))
+    size_bytes: Mapped[int | None] = mapped_column()
     user: Mapped[User] = relationship(back_populates="documents")

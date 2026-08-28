@@ -138,6 +138,8 @@ def document_type_matches(required_type: str, available_type: str) -> bool:
     """Return whether a concrete citizen document satisfies a service requirement."""
     if required_type == available_type:
         return True
+    if required_type == "PHOTOGRAPH":
+        return available_type == "PROFILE_PHOTO"
     if required_type == "MARKSHEET":
         return available_type.endswith("_MARKSHEET")
     if required_type == "IDENTITY_DOCUMENT":

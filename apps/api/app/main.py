@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import applications, consent, digilocker, documents, profile, services
 from app.core.config import settings
-from app.core.database import Base, SessionLocal, engine
+from app.core.database import Base, SessionLocal, engine, ensure_document_metadata_columns
 from app.services.seed import seed_demo_citizen, seed_demo_services
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_document_metadata_columns()
     with SessionLocal() as session:
         seed_demo_citizen(session)
         seed_demo_services(session)
