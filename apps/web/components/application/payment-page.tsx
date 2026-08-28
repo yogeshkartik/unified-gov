@@ -119,13 +119,11 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
       }
     >
       {isFree ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-          <Loader2 className="size-8 animate-spin text-primary" aria-hidden="true" />
+        <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+          <Loader2 className="size-7 animate-spin text-primary" aria-hidden="true" />
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Submitting free application…</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              No payment is required for this service.
-            </p>
+            <h1 className="text-base font-medium text-foreground">Submitting free application…</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">No payment is required.</p>
           </div>
           {paymentError ? (
             <div className="space-y-3 pt-2">
@@ -139,25 +137,17 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
           ) : null}
         </div>
       ) : (
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-              Application fee
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Demo payment · No real money will be charged.
-            </p>
-          </div>
+        <div className="space-y-5">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Application fee
+          </h1>
 
-          <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Amount to pay
-            </p>
-            <p className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-1.5">
+            <p className="text-3xl font-bold tracking-tight text-foreground">
               {preview.currency} {preview.fee}
             </p>
             <p className="text-xs text-muted-foreground">
-              Mock payment for demonstration purposes
+              Demo payment · No real money will be charged.
             </p>
           </div>
 

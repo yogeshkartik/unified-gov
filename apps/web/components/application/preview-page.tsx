@@ -9,22 +9,31 @@ import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
 
-function displayName(value: string) {
+function formatKey(value: string) {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function text(value: unknown) {
-  return value === null || value === undefined || value === "" ? "Not provided" : String(value);
+function formatDate(value: unknown) {
+  if (!value || typeof value !== "string") return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(date);
 }
 
-function SourceBadge({ children }: { children: string }) {
-  return (
-    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 font-medium">
-      {children}
-    </span>
-  );
+function formatAddress(address: unknown) {
+  if (!address || typeof address !== "object") return null;
+  const a = address as Record<string, unknown>;
+  const parts = [
+    a.line1,
+    a.line2,
+    a.city,
+    a.district && a.district !== a.city ? a.district : null,
+    a.state,
+  ].filter(Boolean);
+  const pincode = a.pincode ? `— ${a.pincode}` : "";
+  return `${parts.join(", ")} ${pincode}`.trim();
 }
 
 export function PreviewPage({ applicationId }: { applicationId: string }) {
@@ -46,7 +55,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
       router.push(`/applications/${applicationId}/payment`);
     } catch {
       setFinalizeError(
-        "This application is not ready to finalize. Check its required profile information and additional fields."
+        "This application is not ready to finalize. Check your entries and try again."
       );
       setFinalizing(false);
     }
@@ -60,11 +69,19 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
     );
   }
 
-  if (!preview) return <LoadingState label="Preparing your complete application preview…" />;
+  if (!preview) return <LoadingState label="Preparing application preview…" />;
 
   const profile = preview.profile;
   const addresses = Array.isArray(profile.addresses) ? profile.addresses : [];
+  const primaryAddress = addresses[0];
   const isSubmitted = preview.status === "SUBMITTED";
+
+  const genderNationality = [profile.gender, profile.nationality]
+    .filter(Boolean)
+    .map(String)
+    .join(" · ");
+
+  const hasAnswers = Object.keys(preview.answers).length > 0;
 
   return (
     <ApplicationFlowShell
@@ -100,114 +117,81 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
         </div>
       }
     >
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-            {isSubmitted ? "Application preview" : "Review application"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {isSubmitted
-              ? "This submitted application is read-only."
-              : "Confirm the information below before continuing."}
-          </p>
-        </div>
+      <div className="space-y-5">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          {isSubmitted ? "Application preview" : "Review application"}
+        </h1>
 
-        {/* Personal Details */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Personal information
+        {/* Personal Info Summary */}
+        <section className="space-y-1.5 text-sm">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Personal
           </h3>
-          <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-            {["full_name", "date_of_birth", "gender", "nationality", "email", "category"].map(
-              (key) => (
-                <div key={key} className="space-y-0.5">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {displayName(key)}
-                  </dt>
-                  <dd className="flex items-center justify-between gap-2 text-sm font-medium text-foreground">
-                    <span>{text(profile[key])}</span>
-                    <SourceBadge>Profile</SourceBadge>
-                  </dd>
-                </div>
-              )
-            )}
-          </dl>
-          {addresses.length > 0 ? (
-            <div className="mt-3 border-t border-border pt-3 space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Address
-              </p>
-              {addresses.map((address, index) => {
-                const item = address as Record<string, unknown>;
-                return (
-                  <p key={index} className="text-sm text-foreground">
-                    {text(item.line1)}, {text(item.city)}, {text(item.state)} — {text(item.pincode)}
-                  </p>
-                );
-              })}
-            </div>
+          <p className="font-semibold text-foreground text-base">{String(profile.full_name ?? "Citizen")}</p>
+          {profile.date_of_birth ? (
+            <p className="text-muted-foreground">{formatDate(profile.date_of_birth)}</p>
+          ) : null}
+          {genderNationality ? <p className="text-muted-foreground">{genderNationality}</p> : null}
+          {profile.email ? <p className="text-muted-foreground">{String(profile.email)}</p> : null}
+          {primaryAddress ? (
+            <p className="text-muted-foreground pt-0.5">{formatAddress(primaryAddress)}</p>
           ) : null}
         </section>
 
-        <Separator />
+        {hasAnswers ? (
+          <>
+            <Separator />
 
-        {/* Application Specific Answers */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Application details
-          </h3>
-          {Object.keys(preview.answers).length === 0 ? (
-            <p className="text-sm text-muted-foreground">No additional information was required.</p>
-          ) : (
-            <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
-              {Object.entries(preview.answers).map(([key, value]) => (
-                <div key={key} className="space-y-0.5">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {displayName(key)}
-                  </dt>
-                  <dd className="flex items-center justify-between gap-2 text-sm font-medium text-foreground">
-                    <span>{text(value)}</span>
-                    <SourceBadge>Application</SourceBadge>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </section>
+            {/* Application Specific Answers */}
+            <section className="space-y-3 text-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Application
+              </h3>
+              <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
+                {Object.entries(preview.answers).map(([key, value]) => (
+                  <div key={key} className="space-y-0.5">
+                    <dt className="text-xs text-muted-foreground">{formatKey(key)}</dt>
+                    <dd className="font-medium text-foreground">{String(value ?? "—")}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          </>
+        ) : null}
 
-        <Separator />
+        {preview.documents.length > 0 ? (
+          <>
+            <Separator />
 
-        {/* Documents */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Selected documents
-          </h3>
-          {preview.documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No application documents attached.</p>
-          ) : (
-            <ul className="space-y-2">
-              {preview.documents.map((document, index) => (
-                <li
-                  key={String(document.id ?? index)}
-                  className="flex items-center justify-between gap-3 text-sm text-foreground"
-                >
-                  <span className="font-medium">{text(document.name)}</span>
-                  <SourceBadge>
-                    {text(document.source) === "DIGILOCKER" ? "DigiLocker" : "Profile"}
-                  </SourceBadge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            {/* Selected Documents */}
+            <section className="space-y-2.5 text-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Documents
+              </h3>
+              <ul className="space-y-2">
+                {preview.documents.map((document, index) => (
+                  <li
+                    key={String(document.id ?? index)}
+                    className="flex items-center justify-between gap-3 font-medium text-foreground"
+                  >
+                    <span>{String(document.name)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {String(document.source) === "DIGILOCKER" ? "DigiLocker" : "My Documents"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
+        ) : null}
 
         <Separator />
 
         {/* Fee */}
         <section className="flex items-center justify-between text-sm">
-          <span className="font-medium text-foreground">Application fee</span>
+          <span className="font-medium text-muted-foreground">Fee</span>
           <span className="font-semibold text-foreground">
-            {preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free service"}
+            {preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free"}
           </span>
         </section>
 

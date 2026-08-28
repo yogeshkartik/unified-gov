@@ -81,41 +81,41 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
         </div>
       }
     >
-      <div className="flex flex-col items-center text-center py-4 sm:py-6 space-y-5">
+      <div className="flex flex-col items-center text-center py-4 sm:py-6 space-y-4">
         {/* Animated Checkmark Circle */}
-        <div className="grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-600 animate-in zoom-in-75 fade-in-0 duration-300 motion-reduce:animate-none shadow-sm">
-          <Check className="size-8 stroke-[3]" aria-hidden="true" />
+        <div className="grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-600 animate-in zoom-in-75 fade-in-0 duration-300 motion-reduce:animate-none shadow-sm">
+          <Check className="size-7 stroke-[3]" aria-hidden="true" />
         </div>
 
         {/* Title and Service */}
-        <div className="space-y-1 animate-in fade-in-0 duration-400 delay-100 motion-reduce:animate-none">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+        <div className="space-y-0.5 animate-in fade-in-0 duration-400 delay-100 motion-reduce:animate-none">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
             Application submitted
           </h1>
-          <p className="text-sm font-medium text-muted-foreground">{String(preview.service.name)}</p>
+          <p className="text-sm text-muted-foreground">{String(preview.service.name)}</p>
         </div>
 
         {/* Compact Reference Card */}
-        <div className="w-full max-w-sm rounded-lg border bg-muted/20 p-4 space-y-1.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-400 delay-200 motion-reduce:animate-none">
+        <div className="w-full max-w-xs rounded-lg border bg-muted/20 p-3.5 space-y-1 animate-in fade-in-0 slide-in-from-bottom-2 duration-400 delay-200 motion-reduce:animate-none">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Reference number
+            Reference
           </p>
           <div className="flex items-center justify-center gap-2">
-            <span className="font-mono text-base sm:text-lg font-bold tracking-wide text-foreground break-all">
+            <span className="font-mono text-base font-bold tracking-wide text-foreground break-all">
               {reference}
             </span>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
               onPress={handleCopy}
               aria-label="Copy reference number"
             >
               {copied ? (
-                <Check className="size-4 text-emerald-600" aria-hidden="true" />
+                <Check className="size-3.5 text-emerald-600" />
               ) : (
-                <Copy className="size-4" aria-hidden="true" />
+                <Copy className="size-3.5 text-muted-foreground" />
               )}
             </Button>
           </div>
@@ -123,8 +123,8 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
         </div>
 
         {/* Prototype Notice */}
-        <p className="text-xs text-muted-foreground max-w-sm leading-relaxed animate-in fade-in-0 duration-400 delay-300 motion-reduce:animate-none">
-          This is a prototype submission and was not sent to a live government system.
+        <p className="text-xs text-muted-foreground animate-in fade-in-0 duration-400 delay-300 motion-reduce:animate-none">
+          Prototype submission only.
         </p>
       </div>
     </ApplicationFlowShell>

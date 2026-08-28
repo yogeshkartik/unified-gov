@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
 import { api, ApiError } from "@/src/lib/api";
 import type { ApplicationEngineResponse, GovernmentServiceDetail } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
@@ -83,37 +82,9 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
       onClose={() => router.push("/applications")}
     >
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-            Additional information
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            A few details are needed for this service.
-          </p>
-        </div>
-
-        {data.application.missing_profile_fields.length > 0 ||
-        data.application.missing_documents.length > 0 ? (
-          <aside className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3.5 text-sm text-amber-950">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
-            <div className="space-y-0.5">
-              <p className="font-medium">Missing required information</p>
-              {data.application.missing_profile_fields.length > 0 ? (
-                <p className="text-xs text-amber-800">
-                  Profile: {data.application.missing_profile_fields.join(", ")}
-                </p>
-              ) : null}
-              {data.application.missing_documents.length > 0 ? (
-                <p className="text-xs text-amber-800">
-                  Documents:{" "}
-                  {data.application.missing_documents
-                    .map((d) => d.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()))
-                    .join(", ")}
-                </p>
-              ) : null}
-            </div>
-          </aside>
-        ) : null}
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Additional information
+        </h1>
 
         <DynamicForm
           fields={data.service.fields}

@@ -39,6 +39,19 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         ]);
         setData({ application, service });
         setDocuments(digilockerDocuments);
+
+        // Auto-select single matching documents
+        const matching = digilockerDocuments.filter((doc) =>
+          service.document_requirements.some(
+            (req) =>
+              req.document_type === doc.document_type ||
+              (req.document_type === "MARKSHEET" && doc.document_type.endsWith("_MARKSHEET")) ||
+              (req.document_type === "IDENTITY_DOCUMENT" && doc.document_type === "DRIVING_LICENCE")
+          )
+        );
+        if (matching.length === 1) {
+          setSelectedDocumentIds([matching[0].id]);
+        }
       })
       .catch(() => setError(true));
   }, [applicationId]);
@@ -53,7 +66,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
       await api.grantConsent(applicationId);
       router.push(`/applications/${applicationId}/preview`);
     } catch {
-      setSubmitError("We could not record your consent. Complete any required additional information and try again.");
+      setSubmitError("We could not record your consent. Please try again.");
       setSubmitting(false);
     }
   }
@@ -104,22 +117,23 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         </div>
       }
     >
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-            Consent
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review what will be shared.
+      <div className="space-y-5">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Consent</h1>
+
+        {/* 1. Who receives */}
+        <div className="space-y-0.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Shared with
           </p>
+          <p className="text-sm font-medium text-foreground">{data.service.department}</p>
         </div>
 
-        {/* Profile Information */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Profile information
-          </h3>
-          <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <Separator />
+
+        {/* 2. Profile Information */}
+        <section className="space-y-2.5">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">Profile</h3>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {profileFields.map((field) => (
               <li key={field} className="flex items-center gap-2 text-sm text-foreground">
                 <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
@@ -129,76 +143,52 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
           </ul>
         </section>
 
-        <Separator />
+        {data.service.document_requirements.length > 0 ? (
+          <>
+            <Separator />
 
-        {/* Documents */}
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">
-            Documents
-          </h3>
-          <ul className="space-y-2">
-            {data.service.document_requirements.map((document) => (
-              <li
-                key={document.id}
-                className="flex items-center justify-between gap-2 text-sm text-foreground"
-              >
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                  <span>{document.label}</span>
-                </span>
-                {document.required ? (
-                  <span className="text-xs text-muted-foreground">(required)</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-
-          {matchingDocuments.length > 0 ? (
-            <div className="mt-4 rounded-lg border bg-muted/20 p-3.5 space-y-2.5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Choose documents
-              </p>
-              <div className="space-y-2">
-                {matchingDocuments.map((document) => (
-                  <label
-                    key={document.id}
-                    className="flex items-center gap-3 rounded-md border bg-card p-2.5 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
-                  >
-                    <Checkbox
-                      isSelected={selectedDocumentIds.includes(document.id)}
-                      onChange={(isSelected) =>
-                        setSelectedDocumentIds((current) =>
-                          isSelected
-                            ? [...current, document.id]
-                            : current.filter((id) => id !== document.id)
-                        )
-                      }
-                    />
-                    <span className="font-medium text-foreground">{document.name}</span>
-                  </label>
+            {/* 3. Documents */}
+            <section className="space-y-2.5">
+              <h3 className="text-sm font-semibold tracking-tight text-foreground">Documents</h3>
+              <ul className="space-y-2">
+                {data.service.document_requirements.map((document) => (
+                  <li key={document.id} className="flex items-center gap-2 text-sm text-foreground">
+                    <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <span>{document.label}</span>
+                  </li>
                 ))}
-              </div>
-            </div>
-          ) : null}
-        </section>
+              </ul>
 
-        <Separator />
-
-        {/* Shared With & Purpose */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-sm">
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Shared with
-            </p>
-            <p className="font-medium text-foreground">{data.service.department}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Purpose
-            </p>
-            <p className="font-medium text-foreground">{data.service.name} Application</p>
-          </div>
-        </section>
+              {matchingDocuments.length > 1 ? (
+                <div className="mt-3 rounded-lg border bg-muted/20 p-3 space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Select documents
+                  </p>
+                  <div className="space-y-1.5">
+                    {matchingDocuments.map((document) => (
+                      <label
+                        key={document.id}
+                        className="flex items-center gap-2.5 rounded-md border bg-card p-2 text-sm cursor-pointer hover:bg-muted/50 transition-colors"
+                      >
+                        <Checkbox
+                          isSelected={selectedDocumentIds.includes(document.id)}
+                          onChange={(isSelected) =>
+                            setSelectedDocumentIds((current) =>
+                              isSelected
+                                ? [...current, document.id]
+                                : current.filter((id) => id !== document.id)
+                            )
+                          }
+                        />
+                        <span className="font-medium text-foreground">{document.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          </>
+        ) : null}
 
         {submitError ? (
           <p role="alert" className="text-sm text-destructive">
