@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   function logout() {
     signOut();
     window.sessionStorage.setItem("unified-gov-logout-notice", "true");
-    router.replace("/login");
+    router.replace("/");
   }
 
   const name = profile?.full_name ?? "Rahul Kumar";
