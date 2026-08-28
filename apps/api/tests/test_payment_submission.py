@@ -47,7 +47,7 @@ def finalized_application(db: Session, service_id: str) -> str:
     provider_documents = (
         ["mock-driving-licence"]
         if service_id == "DRIVING_LICENCE_001"
-        else ["mock-income"]
+        else ["mock-class-12", "mock-income"]
     )
     select_application_documents(db, application.id, provider_documents)
     grant_consent(db, application.id)

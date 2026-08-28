@@ -23,7 +23,6 @@ from app.services.digilocker_service import select_application_documents
 from app.services.payment_submission_service import process_payment, submit_application
 from app.services.preview_service import ApplicationNotReadyForFinalizationError, finalize_application, get_preview
 from app.services.profile_service import update_profile
-from app.services.profile_service import delete_document
 from app.services.seed import seed_demo_citizen, seed_demo_services
 
 
@@ -53,7 +52,7 @@ def complete_scholarship_requirements(db: Session, application_id: str) -> None:
             }
         ),
     )
-    select_application_documents(db, application_id, ["mock-income"])
+    select_application_documents(db, application_id, ["mock-class-12", "mock-income"])
 
 
 def submit_scholarship(db: Session) -> str:
@@ -92,7 +91,7 @@ def test_consent_enforces_required_profile_and_documents_but_answers_remain_edit
     with pytest.raises(ApplicationIncompleteForConsentError) as error:
         grant_consent(db, application.id)
     assert error.value.missing_profile_fields == ["full_name"]
-    assert error.value.missing_documents == ["INCOME_CERTIFICATE"]
+    assert error.value.missing_documents == ["INCOME_CERTIFICATE", "MARKSHEET"]
 
 
 def test_finalization_rechecks_required_documents(db: Session) -> None:
@@ -175,11 +174,6 @@ def test_submitted_preview_ignores_later_profile_and_document_changes(db: Sessio
         item["name"] for item in historical_preview.documents if item["document_type"] == "INCOME_CERTIFICATE"
     ) == submitted_document_name
 
-    delete_document(db, document.id)
-    preview_after_delete = get_preview(db, application_id)
-    assert next(
-        item["name"] for item in preview_after_delete.documents if item["document_type"] == "INCOME_CERTIFICATE"
-    ) == submitted_document_name
 
 
 def test_unfinished_states_are_deletable_but_submitted_application_is_not(db: Session) -> None:

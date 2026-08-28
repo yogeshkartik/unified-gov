@@ -146,7 +146,7 @@ export function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My documents" description="Manage reusable profile and mock DigiLocker documents for future applications.">
+      <PageHeader title="My documents" description="Upload and manage documents for future applications.">
         <Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />Add Document</Button>
       </PageHeader>
       {error ? (
@@ -155,33 +155,30 @@ export function DocumentsPage() {
         <LoadingState label="Loading your documents…" />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
-          <Card className="border-t-4 border-t-primary">
+          <section>
+            {data.documents.filter((document) => document.document_type !== "PROFILE_PHOTO").length === 0 ? (
+              <EmptyState>
+                <p className="font-medium text-foreground">No documents uploaded yet.</p>
+                <p>Upload documents you frequently use in applications.</p>
+                <Button className="mt-2" onPress={openAddDialog}><Plus aria-hidden="true" />Add Document</Button>
+              </EmptyState>
+            ) : (
+              <Card className="border-t-4 border-t-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="size-4 text-primary" aria-hidden="true" />
                 My documents
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Documents available for future applications.</p>
+              <p className="text-sm text-muted-foreground">Documents you upload for reuse in applications.</p>
             </CardHeader>
             <CardContent>
-              {data.documents.length === 0 ? (
-                <EmptyState>No reusable documents are available.</EmptyState>
-              ) : (
-                <ul className="space-y-3">
-                  {data.documents.map((document) => {
+              <ul className="space-y-3">
+                  {data.documents.filter((document) => document.document_type !== "PROFILE_PHOTO").map((document) => {
                     const sizeStr = fileSize(document.size_bytes);
-                    const isDigiLocker = document.source === "DIGILOCKER";
                     return (
                       <li key={document.id} className="flex items-start justify-between gap-3 rounded-lg border border-primary/10 bg-blue-50/40 p-3">
                         <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium">{document.display_name || document.name}</p>
-                            {isDigiLocker ? (
-                              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 font-medium">
-                                DigiLocker
-                              </span>
-                            ) : null}
-                          </div>
+                          <p className="truncate text-sm font-medium">{document.display_name || document.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {categoryLabel(document.document_type)} · {fileKind(document.mime_type)}{sizeStr ? ` · ${sizeStr}` : ""}
                           </p>
@@ -204,8 +201,7 @@ export function DocumentsPage() {
                           >
                             <Download className="size-4" aria-hidden="true" />
                           </a>
-                          {!isDigiLocker ? (
-                            <Button
+                          <Button
                               type="button"
                               variant="ghost"
                               size="icon"
@@ -214,15 +210,15 @@ export function DocumentsPage() {
                             >
                               <Trash2 className="text-destructive" aria-hidden="true" />
                             </Button>
-                          ) : null}
                         </div>
                       </li>
                     );
                   })}
                 </ul>
-              )}
             </CardContent>
-          </Card>
+              </Card>
+            )}
+          </section>
 
           <Card className="border-t-4 border-t-emerald-500">
             <CardHeader>
@@ -236,10 +232,10 @@ export function DocumentsPage() {
               <ul className="space-y-3">
                 {data.digilocker.map((document) => (
                   <li key={document.id} className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <FileBadge2 className="mt-0.5 size-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <div className="flex min-w-0 items-start gap-3">
+                      <FileBadge2 className="mt-0.5 size-4 shrink-0 text-emerald-600" aria-hidden="true" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{document.name}</p>
+                        <p className="truncate text-sm font-medium">{document.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{document.issuer}</p>
                       </div>
                     </div>

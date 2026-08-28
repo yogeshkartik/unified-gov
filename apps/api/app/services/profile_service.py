@@ -92,7 +92,7 @@ def list_documents(db: Session) -> list[Document]:
             select(Document)
             .where(
                 Document.user_id == user.id,
-                (Document.source != DocumentSource.DIGILOCKER) | (Document.is_imported == True),  # noqa: E712
+                Document.source == DocumentSource.PROFILE_UPLOAD,
             )
             .order_by(Document.name)
         ).all()
@@ -101,7 +101,13 @@ def list_documents(db: Session) -> list[Document]:
 
 def document_for_user(db: Session, document_id: str) -> Document:
     user = get_demo_user(db)
-    document = db.scalar(select(Document).where(Document.id == document_id, Document.user_id == user.id))
+    document = db.scalar(
+        select(Document).where(
+            Document.id == document_id,
+            Document.user_id == user.id,
+            Document.source == DocumentSource.PROFILE_UPLOAD,
+        )
+    )
     if document is None: raise DocumentNotFoundError
     return document
 

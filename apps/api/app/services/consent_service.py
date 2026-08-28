@@ -48,7 +48,7 @@ def grant_consent(db: Session, application_id: str) -> Consent:
     eligible_documents = [
         document
         for document in citizen_documents
-        if (document.source != DocumentSource.DIGILOCKER or document.is_imported)
+        if document.source == DocumentSource.PROFILE_UPLOAD
         or any(item.document_id == document.id for item in application.documents)
     ]
     document_ids = [

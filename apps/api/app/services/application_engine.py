@@ -238,7 +238,7 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
     ]
     reusable_docs = [
         document for document in user.documents
-        if document.is_imported or document.source != DocumentSource.DIGILOCKER
+        if document.source == DocumentSource.PROFILE_UPLOAD
     ]
     attached_docs = [app_doc.document for app_doc in application.documents if app_doc.document]
     available_docs = list({d.id: d for d in (reusable_docs + attached_docs)}.values())
