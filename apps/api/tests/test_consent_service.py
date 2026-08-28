@@ -64,4 +64,4 @@ def test_consent_requires_all_required_additional_data(db: Session) -> None:
         grant_consent(db, application.id)
 
     assert error.value.missing_fields == ["course", "institution", "academic_year"]
-    assert error.value.missing_documents == ["INCOME_CERTIFICATE"]
+    assert error.value.missing_documents == ["INCOME_CERTIFICATE", "MARKSHEET"]

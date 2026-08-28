@@ -43,7 +43,7 @@ def test_update_profile_persists_changes(db: Session) -> None:
     assert get_profile(db).nationality == "Synthetic Demo Nationality"
 
 
-def test_seeded_marksheet_is_reusable_idempotent_and_available_from_documents_api(db: Session) -> None:
+def test_seeded_marksheet_is_system_owned_idempotent_and_hidden_from_documents_api(db: Session) -> None:
     profile = get_profile(db)
     marksheets = list(
         db.scalars(
@@ -65,7 +65,7 @@ def test_seeded_marksheet_is_reusable_idempotent_and_available_from_documents_ap
     assert marksheet.stored_filename is not None
     assert (Path(settings.upload_dir) / marksheet.stored_filename).is_file()
     assert document_type_matches("MARKSHEET", marksheet.document_type)
-    assert marksheet.id in {document.id for document in read_documents(db)}
+    assert marksheet.id not in {document.id for document in read_documents(db)}
 
     seed_demo_citizen(db)
 

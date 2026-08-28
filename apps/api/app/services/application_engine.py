@@ -73,16 +73,18 @@ def save_additional_data(
         raise InvalidApplicationFieldsError(errors)
 
     answers_by_key = {answer.field_key: answer for answer in application.answers}
+    next_answers = application.answers_by_key.copy()
     for key, value in payload.answers.items():
         answer = answers_by_key.get(key)
         if answer is None:
             db.add(ApplicationAnswer(application_id=application.id, field_key=key, value=value))
         else:
             answer.value = value
+        next_answers[key] = value
     db.flush()
     consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
     application.status = required_status(
-        required_field_keys(application.service.fields, application.answers_by_key),
+        required_field_keys(application.service.fields, next_answers),
         consent is not None and consent.status == ConsentStatus.GRANTED,
     )
     db.commit()
@@ -184,7 +186,7 @@ def get_application_detail(db: Session, application_id: str) -> ApplicationDetai
     else:
         payment_status = "PENDING"
     submission_status = (
-        application.status.value
+        str(application.status)
         if application.submitted_at is not None
         or application.status
         in {
@@ -201,7 +203,7 @@ def get_application_detail(db: Session, application_id: str) -> ApplicationDetai
         department=application.service.department,
         reference_number=application.government_reference_number,
         submitted_at=application.submitted_at,
-        consent_status=consent.status.value if consent is not None else None,
+        consent_status=str(consent.status) if consent is not None else None,
         payment_status=payment_status,
         submission_status=submission_status,
     )

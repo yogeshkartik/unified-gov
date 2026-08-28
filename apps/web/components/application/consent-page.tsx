@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
-import { api } from "@/src/lib/api";
+import { ApiError, api } from "@/src/lib/api";
 import type { ApplicationEngineResponse, GovernmentServiceDetail, MockDigiLockerDocument } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { Button } from "@/components/ui/button";
@@ -40,18 +40,6 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         setData({ application, service });
         setDocuments(digilockerDocuments);
 
-        // Auto-select single matching documents
-        const matching = digilockerDocuments.filter((doc) =>
-          service.document_requirements.some(
-            (req) =>
-              req.document_type === doc.document_type ||
-              (req.document_type === "MARKSHEET" && doc.document_type.endsWith("_MARKSHEET")) ||
-              (req.document_type === "IDENTITY_DOCUMENT" && doc.document_type === "DRIVING_LICENCE")
-          )
-        );
-        if (matching.length === 1) {
-          setSelectedDocumentIds([matching[0].id]);
-        }
       })
       .catch(() => setError(true));
   }, [applicationId]);
@@ -65,8 +53,21 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
       }
       await api.grantConsent(applicationId);
       router.push(`/applications/${applicationId}/preview`);
-    } catch {
-      setSubmitError("We could not record your consent. Please try again.");
+    } catch (error) {
+      if (error instanceof ApiError && error.detail?.code === "APPLICATION_INCOMPLETE") {
+        const missing = [
+          ...(error.detail.missing_profile_fields ?? []),
+          ...(error.detail.missing_documents ?? []),
+          ...(error.detail.missing_fields ?? []),
+        ];
+        setSubmitError(
+          missing.length > 0
+            ? `Complete or select: ${missing.map(displayName).join(", ")}.`
+            : "Complete the missing information before continuing."
+        );
+      } else {
+        setSubmitError("We could not record your consent. Please try again.");
+      }
       setSubmitting(false);
     }
   }
@@ -159,11 +160,12 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
                 ))}
               </ul>
 
-              {matchingDocuments.length > 1 ? (
+              {matchingDocuments.length > 0 ? (
                 <div className="mt-3 rounded-lg border bg-muted/20 p-3 space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Select documents
+                    Documents from DigiLocker
                   </p>
+                  <p className="text-xs text-muted-foreground">Select only the documents you want to share with this application.</p>
                   <div className="space-y-1.5">
                     {matchingDocuments.map((document) => (
                       <label

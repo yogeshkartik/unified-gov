@@ -18,10 +18,19 @@ import type {
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export type ApiErrorDetail = {
+  code?: string;
+  message?: string;
+  missing_profile_fields?: string[];
+  missing_documents?: string[];
+  missing_fields?: string[];
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly detail?: ApiErrorDetail,
   ) {
     super(message);
     this.name = "ApiError";
@@ -37,6 +46,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     let message = "The service is temporarily unavailable.";
+    let errorDetail: ApiErrorDetail | undefined;
     try {
       const body: unknown = await response.json();
       if (typeof body === "object" && body !== null && "detail" in body) {
@@ -44,6 +54,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         if (typeof detail === "string") {
           message = detail;
         } else if (typeof detail === "object" && detail !== null) {
+          errorDetail = detail as ApiErrorDetail;
           if ("message" in detail && typeof detail.message === "string") {
             message = detail.message;
           } else if ("fields" in detail && typeof detail.fields === "object" && detail.fields !== null) {
@@ -55,7 +66,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // Keep the safe fallback message when an error response is not JSON.
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, errorDetail);
   }
 
   if (response.status === 204 || response.headers.get("content-length") === "0") {

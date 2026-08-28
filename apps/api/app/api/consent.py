@@ -28,6 +28,7 @@ def grant_application_consent(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "APPLICATION_INCOMPLETE",
+                "message": "Complete the missing application requirements before continuing.",
                 "missing_profile_fields": error.missing_profile_fields,
                 "missing_documents": error.missing_documents,
                 "missing_fields": error.missing_fields,
