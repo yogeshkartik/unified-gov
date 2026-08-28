@@ -85,6 +85,11 @@ export interface Document {
   updated_at: string;
 }
 
+export interface DocumentCategory {
+  value: string;
+  label: string;
+}
+
 export interface GovernmentService {
   id: string;
   name: string;

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.profile import DocumentType
-from app.schemas.profile import DocumentResponse
+from app.schemas.profile import DocumentCategoryResponse, DocumentResponse
 from app.services import profile_service
 
 router = APIRouter(tags=["documents"])
@@ -28,9 +28,18 @@ def read_documents(db: Session = Depends(get_db)) -> list[DocumentResponse]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "PROFILE_NOT_FOUND"}) from error
 
 
+@router.get("/documents/categories", response_model=list[DocumentCategoryResponse])
+def read_document_categories() -> list[DocumentCategoryResponse]:
+    return [
+        DocumentCategoryResponse(value=item.value, label=item.value.replace("_", " ").title())
+        for item in DocumentType
+        if item != DocumentType.PROFILE_PHOTO
+    ]
+
+
 @router.post("/profile/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def upload_document(document_type: DocumentType = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db)) -> DocumentResponse:
-    try: return await profile_service.save_upload(db, file, document_type)
+async def upload_document(document_type: DocumentType = Form(...), file: UploadFile = File(...), display_name: str | None = Form(None), db: Session = Depends(get_db)) -> DocumentResponse:
+    try: return await profile_service.save_upload(db, file, document_type, display_name)
     except (profile_service.ProfileNotFoundError, profile_service.InvalidDocumentError) as exc: raise error(exc) from exc
 
 

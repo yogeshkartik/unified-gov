@@ -96,12 +96,15 @@ def document_for_user(db: Session, document_id: str) -> Document:
     return document
 
 
-async def save_upload(db: Session, upload: UploadFile, document_type: DocumentType) -> Document:
+async def save_upload(db: Session, upload: UploadFile, document_type: DocumentType, display_name: str | None = None) -> Document:
     filename = upload.filename or "upload"; extension = Path(filename).suffix.lower(); expected_mime = ALLOWED_FILES.get(extension)
     if expected_mime is None or upload.content_type != expected_mime:
         raise InvalidDocumentError("UNSUPPORTED_FILE_TYPE", "Only PDF, JPG, JPEG, PNG and WEBP files are supported.")
     category_labels = {item.value: item.value.replace("_", " ").title() for item in DocumentType}
-    safe_name = filename if document_type == DocumentType.OTHER else category_labels[document_type.value]
+    custom_name = (display_name or "").strip()
+    if document_type == DocumentType.OTHER and not custom_name:
+        raise InvalidDocumentError("DOCUMENT_NAME_REQUIRED", "Document name is required for the Other category.")
+    safe_name = custom_name if document_type == DocumentType.OTHER else category_labels[document_type.value]
     content = await upload.read()
     if len(content) > MAX_UPLOAD_BYTES: raise InvalidDocumentError("FILE_TOO_LARGE", "Files must be 5 MB or smaller.")
     stored_filename = f"{uuid4()}{extension}"; upload_dir = Path(settings.upload_dir); upload_dir.mkdir(parents=True, exist_ok=True); (upload_dir / stored_filename).write_bytes(content)

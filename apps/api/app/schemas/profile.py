@@ -149,6 +149,11 @@ class DocumentResponse(BaseModel):
     updated_at: datetime
 
 
+class DocumentCategoryResponse(BaseModel):
+    value: str
+    label: str
+
+
 class DocumentRename(BaseModel):
     display_name: str = Field(min_length=1, max_length=100)
 
