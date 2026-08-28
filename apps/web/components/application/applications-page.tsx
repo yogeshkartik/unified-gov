@@ -12,9 +12,10 @@ import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, Dia
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState, LoadingState } from "@/components/ui/data-state";
 import { Input } from "@/components/ui/input";
+import { SubmittedApplicationDialog } from "@/components/application/submitted-application-dialog";
 
 type Filter = "All" | "Draft" | "Submitted";
-type ApplicationListItem = CitizenApplicationSummary & {
+export type ApplicationListItem = CitizenApplicationSummary & {
   department: string;
   updated_at: string;
   engine?: ApplicationEngineResponse;
@@ -188,6 +189,7 @@ export function ApplicationsPage() {
   const [deletingId, setDeletingId] = useState<string>();
   const [deleteError, setDeleteError] = useState<string>();
   const [pendingDelete, setPendingDelete] = useState<ApplicationListItem>();
+  const [selectedSubmittedApplication, setSelectedSubmittedApplication] = useState<ApplicationListItem | null>(null);
 
   useEffect(() => {
     const stored = getStoredApplications();
@@ -262,11 +264,15 @@ export function ApplicationsPage() {
       router.push(`/applications/${application.id}/${resumeRoute(application.engine)}`);
       return;
     }
-    router.push(`/applications/${application.id}`);
+    setSelectedSubmittedApplication(application);
   }
 
   function viewDetails(application: ApplicationListItem) {
-    router.push(`/applications/${application.id}`);
+    if (isDraft(application.status)) {
+      router.push(`/applications/${application.id}`);
+      return;
+    }
+    setSelectedSubmittedApplication(application);
   }
 
   function emptyState() {
@@ -414,6 +420,13 @@ export function ApplicationsPage() {
           </Button>
         </DialogFooter>
       </Dialog>
+      <SubmittedApplicationDialog
+        application={selectedSubmittedApplication}
+        isOpen={Boolean(selectedSubmittedApplication)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSubmittedApplication(null);
+        }}
+      />
     </div>
   );
 }
