@@ -76,6 +76,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function download(path: string): Promise<{ blob: Blob; filename: string }> {
+  const response = await fetch(`${apiBaseUrl}${path}`, { headers: { Accept: "application/pdf" }, cache: "no-store" });
+  if (!response.ok) {
+    let message = "Could not download application PDF.";
+    try {
+      const body: unknown = await response.json();
+      if (typeof body === "object" && body !== null && "detail" in body && typeof body.detail === "object" && body.detail !== null && "message" in body.detail && typeof body.detail.message === "string") message = body.detail.message;
+    } catch {
+      // Preserve the download-specific fallback.
+    }
+    throw new ApiError(message, response.status);
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? "application.pdf";
+  return { blob: await response.blob(), filename };
+}
+
 export const api = {
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
@@ -105,6 +122,7 @@ export const api = {
   getApplications: () => request<ApplicationSummary[]>("/api/applications"),
   getApplication: (applicationId: string) =>
     request<ApplicationDetail>(`/api/applications/${applicationId}`),
+  downloadApplicationPdf: (applicationId: string) => download(`/api/applications/${applicationId}/download`),
   deleteApplication: (applicationId: string) =>
     request<{ id: string }>(`/api/applications/${applicationId}`, { method: "DELETE" }),
   saveAdditionalData: (applicationId: string, answers: Record<string, unknown>) =>

@@ -1,12 +1,15 @@
+from pathlib import Path
+
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 
-from app.api.applications import read_application, read_applications
+from app.api.applications import download_application, read_application, read_applications
 from app.core.database import Base
-from app.models.application import ApplicationDocument, ApplicationStatus
-from app.models.profile import Document, Profile
+from app.models.application import Application, ApplicationDocument, ApplicationStatus
+from app.models.profile import Document, Profile, User
 from app.schemas.application import AdditionalDataUpdate
 from app.schemas.profile import ProfileUpdate
 from app.services.application_engine import (
@@ -23,7 +26,7 @@ from app.services.digilocker_service import select_application_documents
 from app.services.payment_submission_service import process_payment, submit_application
 from app.services.preview_service import ApplicationNotReadyForFinalizationError, finalize_application, get_preview
 from app.services.profile_service import update_profile
-from app.services.seed import seed_demo_citizen, seed_demo_services
+from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME, seed_demo_citizen, seed_demo_services
 
 
 @pytest.fixture
@@ -184,3 +187,38 @@ def test_unfinished_states_are_deletable_but_submitted_application_is_not(db: Se
     submitted_id = submit_scholarship(db)
     with pytest.raises(ApplicationDeletionNotAllowedError):
         delete_draft_application(db, submitted_id)
+
+
+def test_submitted_application_download_reuses_the_seeded_pdf_with_safe_reference_filename(db: Session) -> None:
+    application_id = submit_scholarship(db)
+    application = get_application(db, application_id)
+
+    response = download_application(application_id, db)
+
+    assert response.media_type == "application/pdf"
+    assert response.headers["content-disposition"] == (
+        f'attachment; filename="application-{application.government_reference_number}.pdf"'
+    )
+    assert Path(response.path).read_bytes() == (SEED_FILES_DIR / SEED_GENERIC_DOCUMENT_FILENAME).read_bytes()
+
+
+def test_application_download_rejects_drafts_and_applications_owned_by_another_user(db: Session) -> None:
+    draft = create_application(db, "SCHOLARSHIP_001")
+    with pytest.raises(HTTPException) as draft_error:
+        download_application(draft.id, db)
+    assert draft_error.value.status_code == 409
+
+    other_user = User(email="other.demo@example.com", mobile="9000000001", auth_state="DEMO")
+    db.add(other_user)
+    db.flush()
+    other_application = Application(
+        user_id=other_user.id,
+        service_id="SCHOLARSHIP_001",
+        status=ApplicationStatus.SUBMITTED,
+        government_reference_number="GOV-OTHER-001",
+    )
+    db.add(other_application)
+    db.commit()
+    with pytest.raises(HTTPException) as ownership_error:
+        download_application(other_application.id, db)
+    assert ownership_error.value.status_code == 404

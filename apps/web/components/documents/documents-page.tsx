@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { CheckCircle2, CircleAlert, Download, Eye, FileBadge2, FileText, Landmark, Plus, Trash2, Upload, X } from "lucide-react";
+import { CheckCircle2, CircleAlert, Download, FileBadge2, FileText, Landmark, Plus, Trash2, Upload, X } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { Document, DocumentCategory, MockDigiLockerDocument } from "@/src/types";
 import { Button } from "@/components/ui/button";
@@ -185,15 +185,6 @@ export function DocumentsPage() {
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
                           <a
-                            href={`${apiBaseUrl}/api/profile/documents/${document.id}/file`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`View ${document.display_name || document.name}`}
-                          >
-                            <Eye className="size-4" aria-hidden="true" />
-                          </a>
-                          <a
                             href={`${apiBaseUrl}/api/profile/documents/${document.id}/download`}
                             download
                             className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -240,15 +231,6 @@ export function DocumentsPage() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <a
-                        href={`${apiBaseUrl}/api/digilocker/documents/${document.id}/file`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex size-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`View ${document.name}`}
-                      >
-                        <Eye className="size-4" aria-hidden="true" />
-                      </a>
                       <a
                         href={`${apiBaseUrl}/api/digilocker/documents/${document.id}/download`}
                         download

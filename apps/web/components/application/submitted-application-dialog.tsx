@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowRight, Check, CheckCircle2, CircleAlert, Copy, Landmark } from "lucide-react";
+import { Check, CheckCircle2, CircleAlert, Copy, Download, Landmark } from "lucide-react";
 import type { ApplicationDetail } from "@/src/types";
+import { api } from "@/src/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,12 +42,15 @@ export function SubmittedApplicationDialog({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string>();
 
   if (!application) return null;
 
+  const applicationId = application.id;
   const referenceNumber = application.reference_number;
+  const canDownload = Boolean(referenceNumber) && ["SUBMITTED", "PROCESSING", "COMPLETED"].includes(application.status);
 
   const answers = application.answers;
   const hasAnswers = Object.keys(answers).length > 0;
@@ -63,10 +66,22 @@ export function SubmittedApplicationDialog({
     }
   }
 
-  function handleViewFull() {
-    if (!application) return;
-    onOpenChange(false);
-    router.push(`/applications/${application.id}/preview`);
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError(undefined);
+    try {
+      const { blob, filename } = await api.downloadApplicationPdf(applicationId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError("Could not download application PDF.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -191,15 +206,18 @@ export function SubmittedApplicationDialog({
         <DialogClose variant="outline" className="w-full sm:w-auto">
           Close
         </DialogClose>
-        <Button
+        {canDownload ? <Button
           type="button"
           className="w-full sm:w-auto gap-2"
-          onPress={handleViewFull}
+          onPress={handleDownload}
+          isDisabled={downloading}
+          aria-live="polite"
         >
-          <span>View Full Application</span>
-          <ArrowRight className="size-4" aria-hidden="true" />
-        </Button>
+          <span>{downloading ? "Preparing PDF…" : "Download Application PDF"}</span>
+          <Download className="size-4" aria-hidden="true" />
+        </Button> : null}
       </div>
+      {downloadError ? <p role="alert" className="mt-3 text-sm text-destructive">{downloadError}</p> : null}
     </Dialog>
   );
 }

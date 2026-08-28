@@ -1,4 +1,7 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -13,6 +16,7 @@ from app.schemas.application import (
 from app.schemas.payment import PaymentProcessResponse, SubmissionResponse
 from app.services import application_engine, payment_submission_service, preview_service
 from app.services.service_catalog import ServiceNotFoundError
+from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME
 
 router = APIRouter(tags=["applications"])
 
@@ -60,6 +64,29 @@ def read_application(application_id: str, db: Session = Depends(get_db)) -> Appl
         return application_engine.get_application_detail(db, application_id)
     except application_engine.ApplicationNotFoundError as error:
         raise application_not_found(application_id) from error
+
+
+@router.get("/applications/{application_id}/download")
+def download_application(application_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    try:
+        application = application_engine.get_downloadable_application(db, application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise application_not_found(application_id) from error
+    except application_engine.ApplicationDownloadNotAvailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_PDF_NOT_AVAILABLE", "message": "A PDF is available after submission."},
+        ) from error
+
+    pdf_path = SEED_FILES_DIR / SEED_GENERIC_DOCUMENT_FILENAME
+    if not pdf_path.is_file():
+        raise HTTPException(404, detail={"code": "FILE_NOT_AVAILABLE"})
+    safe_reference = re.sub(r"[^A-Za-z0-9_-]+", "-", application.government_reference_number).strip("-")
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"application-{safe_reference}.pdf",
+    )
 
 
 @router.delete("/applications/{application_id}")

@@ -25,6 +25,10 @@ class ApplicationNotFoundError(Exception):
     pass
 
 
+class ApplicationDownloadNotAvailableError(Exception):
+    pass
+
+
 class InvalidApplicationFieldsError(Exception):
     def __init__(self, fields: dict[str, str]) -> None:
         self.fields = fields
@@ -105,6 +109,18 @@ def get_application(db: Session, application_id: str) -> Application:
     )
     if application is None:
         raise ApplicationNotFoundError
+    return application
+
+
+def get_downloadable_application(db: Session, application_id: str) -> Application:
+    application = get_application(db, application_id)
+    final_statuses = {
+        ApplicationStatus.SUBMITTED,
+        ApplicationStatus.PROCESSING,
+        ApplicationStatus.COMPLETED,
+    }
+    if application.status not in final_statuses or not application.government_reference_number:
+        raise ApplicationDownloadNotAvailableError
     return application
 
 
