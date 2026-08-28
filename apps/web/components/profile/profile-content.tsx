@@ -22,7 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
@@ -362,7 +361,7 @@ function FieldEditor({
 
 export function ProfileContent() {
   const [data, setData] = useState<{ profile: CitizenProfile; documents: Document[] }>();
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [failed, setFailed] = useState(false);
   const [sameAddress, setSameAddress] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -452,12 +451,12 @@ export function ProfileContent() {
 
   function openEditor() {
     resetForm(profile);
-    setEditorOpen(true);
+    setIsEditing(true);
   }
 
   function cancelEditor() {
     resetForm(profile);
-    setEditorOpen(false);
+    setIsEditing(false);
   }
 
   function clearPhotoDialog() {
@@ -542,7 +541,7 @@ export function ProfileContent() {
       });
       setData((current) => (current ? { ...current, profile: updatedProfile } : current));
       resetForm(updatedProfile);
-      setEditorOpen(false);
+      setIsEditing(false);
       showToast("Profile updated successfully.", "success");
     } catch {
       showToast("Could not update your profile. Please try again.", "error");
@@ -551,8 +550,7 @@ export function ProfileContent() {
 
   return (
     <div className="space-y-6">
-      {/* Read-Only Profile Header */}
-      <header className="rounded-xl border bg-card p-5">
+      <header className={`rounded-xl border bg-card p-5 ${isEditing ? "border-primary/25" : ""}`}>
         <div className="flex flex-col items-center gap-5 sm:flex-row">
           <div className="relative">
             <ProfilePicture photo={photo} name={profile.full_name} size="size-28" />
@@ -573,195 +571,30 @@ export function ProfileContent() {
             <h1 className="text-2xl font-semibold">{profile.full_name}</h1>
             <p className="truncate text-sm text-muted-foreground">{profile.email}</p>
           </div>
-          <Button type="button" onPress={openEditor}>
-            Edit Profile
-          </Button>
+          {isEditing ? <div className="flex w-full gap-2 sm:w-auto"><Button type="button" variant="outline" className="flex-1 sm:flex-none" onPress={cancelEditor} isDisabled={form.formState.isSubmitting}>Cancel</Button><Button type="submit" form="profile-edit-form" className="flex-1 sm:flex-none" isDisabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "Saving…" : "Save Changes"}</Button></div> : <Button type="button" onPress={openEditor}>Edit Profile</Button>}
         </div>
       </header>
 
-      {/* Read-Only Profile Content Cards */}
-      <div className="grid gap-5 xl:grid-cols-2">
+      <form id="profile-edit-form" onSubmit={saveProfile} className="grid gap-5 xl:grid-cols-2">
         {profileGroups.map(({ title, keys }) => (
-          <Card key={title}>
+          <Card key={title} className={isEditing ? "border-primary/20" : undefined}>
             <CardHeader>
               <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                {visibleFields(keys).map((key) => (
-                  <div key={String(key)}>
-                    <dt className="text-xs text-muted-foreground">{labels[String(key)]}</dt>
-                    <dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd>
-                  </div>
-                ))}
-              </dl>
+              {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{labels[String(key)]}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd></div>)}</dl>}
             </CardContent>
           </Card>
         ))}
-        <Card className="xl:col-span-2">
+        <Card className={`xl:col-span-2 ${isEditing ? "border-primary/20" : ""}`}>
           <CardHeader>
             <CardTitle>Address</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <AddressView title="Permanent Address" address={permanentAddress} />
-              <AddressView
-                title="Current / Correspondence Address"
-                address={profile.current_address_same_as_permanent ? permanentAddress : currentAddress}
-              />
-            </div>
+            {isEditing ? <div className="space-y-6"><section><h3 className="text-sm font-medium">Permanent Address</h3><div className="mt-4"><AddressEditor prefix="permanent" form={form} /></div></section><div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3.5"><Checkbox id="same-address" aria-label="Current correspondence address is the same as permanent address" isSelected={sameAddress} onChange={setSameAddress} /><label htmlFor="same-address" className="cursor-pointer text-sm leading-5 font-medium">Current / correspondence address is same as permanent address</label></div>{sameAddress ? <p className="text-sm text-muted-foreground">Current / correspondence address will use the permanent address.</p> : <section><h3 className="text-sm font-medium">Current / Correspondence Address</h3><div className="mt-4"><AddressEditor prefix="current" form={form} /></div></section>}</div> : <div className="grid gap-6 sm:grid-cols-2"><AddressView title="Permanent Address" address={permanentAddress} /><AddressView title="Current / Correspondence Address" address={profile.current_address_same_as_permanent ? permanentAddress : currentAddress} /></div>}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Edit Profile Centered Elevated Modal */}
-      <Dialog
-        isOpen={editorOpen}
-        onOpenChange={(open) => {
-          if (!open) cancelEditor();
-        }}
-        overlayClassName="bg-black/50 backdrop-blur-sm"
-        className="sm:max-w-[920px] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col"
-      >
-        <form onSubmit={saveProfile} className="flex flex-col max-h-[90vh] min-h-0 overflow-hidden">
-          {/* Sticky/Fixed Header */}
-          <div className="border-b px-6 py-5 pr-12 bg-popover shrink-0">
-            <DialogTitle className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-              Edit Profile
-            </DialogTitle>
-            <DialogDescription className="mt-1.5 text-sm text-muted-foreground">
-              Update your reusable citizen information. This information may be reused when applying for supported services.
-            </DialogDescription>
-          </div>
-
-          {/* Scrollable Form Body */}
-          <div className="overflow-y-auto px-6 py-6 space-y-8 flex-1 min-h-0">
-            {/* 1. Personal Details */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Personal Details</h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {profileGroups[0].keys.map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* 2. Contact Details */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Contact Details</h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {profileGroups[1].keys.map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* 3. Parents Details */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Parents Details</h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {profileGroups[2].keys.map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* 4. Address */}
-            <section className="space-y-6">
-              <div>
-                <h3 className="text-sm font-semibold tracking-tight text-foreground">Permanent Address</h3>
-                <div className="mt-3.5">
-                  <AddressEditor prefix="permanent" form={form} />
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-lg bg-muted/40 p-3.5 border">
-                <Checkbox
-                  id="same-address"
-                  aria-label="Current correspondence address is the same as permanent address"
-                  isSelected={sameAddress}
-                  onChange={setSameAddress}
-                />
-                <label
-                  htmlFor="same-address"
-                  className="cursor-pointer text-sm leading-5 font-medium text-foreground"
-                >
-                  Current / correspondence address is same as permanent address
-                </label>
-              </div>
-
-              {sameAddress ? (
-                <p className="text-sm text-muted-foreground">
-                  Current / Correspondence Address will use the permanent address.
-                </p>
-              ) : (
-                <div>
-                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
-                    Current / Correspondence Address
-                  </h3>
-                  <div className="mt-3.5">
-                    <AddressEditor prefix="current" form={form} />
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <Separator />
-
-            {/* 5. Social / Reservation Details */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">
-                Social / Reservation Details
-              </h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {profileGroups[3].keys.map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* 6. Basic Education */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Basic Education</h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {visibleFields(profileGroups[4].keys).map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* 7. Other General Details */}
-            <section>
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Other General Details</h3>
-              <div className="mt-3.5 grid gap-4 sm:grid-cols-2">
-                {visibleFields(profileGroups[5].keys).map((key) => (
-                  <FieldEditor key={String(key)} field={key} form={form} />
-                ))}
-              </div>
-            </section>
-          </div>
-
-          {/* Sticky/Fixed Footer */}
-          <div className="border-t bg-muted/40 px-6 py-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end shrink-0">
-            <Button type="button" variant="outline" onPress={cancelEditor}>
-              Cancel
-            </Button>
-            <Button type="submit" isDisabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Saving…" : "Save Changes"}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
+      </form>
 
       {/* Photo Upload Dialog */}
       <Dialog
