@@ -13,7 +13,7 @@ export function MobileNav() {
   const { t } = useCitizenPreferences();
 
   return (
-    <div className="flex min-h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
+    <div className="sticky top-0 z-40 flex min-h-14 items-center justify-between border-b border-border bg-card px-4 shadow-sm lg:hidden">
       <Link href="/dashboard" className="flex items-center gap-2 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground"><Landmark className="size-4" aria-hidden="true" /></span>
         Unified Services
