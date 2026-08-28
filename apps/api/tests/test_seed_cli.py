@@ -17,10 +17,18 @@ def test_seed_main_uses_configured_session_and_is_idempotent(tmp_path, monkeypat
     session_factory = sessionmaker(bind=engine)
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
     monkeypatch.setattr(seed, "SessionLocal", session_factory)
+    metadata_updates = 0
+
+    def ensure_metadata() -> None:
+        nonlocal metadata_updates
+        metadata_updates += 1
+
+    monkeypatch.setattr(seed, "ensure_document_metadata_columns", ensure_metadata)
 
     seed.main()
     seed.main()
 
+    assert metadata_updates == 2
     with session_factory() as db:
         user = db.scalar(select(User).where(User.email == DEMO_USER_EMAIL))
         assert user is not None

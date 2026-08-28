@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, ensure_document_metadata_columns
 from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, EducationLevel, Profile, User
 from app.models.service import (
     Service,
@@ -413,6 +413,7 @@ def sync_citizen_display_data(db: Session, user: User) -> None:
 
 def main() -> None:
     """Seed the configured database with the synthetic demo citizen and services."""
+    ensure_document_metadata_columns()
     db = SessionLocal()
     try:
         seed_demo_citizen(db)
