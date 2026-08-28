@@ -11,7 +11,7 @@ export type ApplicationFlowDirection = "forward" | "back";
 let navigationInProgress = false;
 
 export function applicationFlowPath(applicationId: string, step: ApplicationFlowStep) {
-  return `/applications/${applicationId}/${applicationFlowSteps[step].route}`;
+  return `/applications/${applicationId}/apply?step=${applicationFlowSteps[step].route}`;
 }
 
 export function flowDirectionKey(applicationId: string) {

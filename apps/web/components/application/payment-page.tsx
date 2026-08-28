@@ -31,7 +31,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
           const submission = await api.submitApplication(applicationId);
           if (!cancelled) {
             router.replace(
-              `/applications/${applicationId}/success?reference=${encodeURIComponent(
+              `/applications/${applicationId}/apply?step=success&reference=${encodeURIComponent(
                 submission.government_reference_number
               )}`
             );
@@ -54,7 +54,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
   async function submitAfterPayment() {
     const submission = await api.submitApplication(applicationId);
     router.replace(
-      `/applications/${applicationId}/success?reference=${encodeURIComponent(
+      `/applications/${applicationId}/apply?step=success&reference=${encodeURIComponent(
         submission.government_reference_number
       )}`
     );

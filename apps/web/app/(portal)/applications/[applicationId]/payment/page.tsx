@@ -1,6 +1,6 @@
-import { PaymentPage } from "@/components/application/payment-page";
+import { redirect } from "next/navigation";
 
 export default async function PaymentRoute({ params }: { params: Promise<{ applicationId: string }> }) {
   const { applicationId } = await params;
-  return <PaymentPage applicationId={applicationId} />;
+  redirect(`/applications/${applicationId}/apply?step=payment`);
 }

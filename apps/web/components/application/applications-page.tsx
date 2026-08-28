@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrig
 import { EmptyState, LoadingState } from "@/components/ui/data-state";
 import { Input } from "@/components/ui/input";
 import { SubmittedApplicationDialog } from "@/components/application/submitted-application-dialog";
+import { applicationFlowPath } from "@/components/application/application-flow-navigation";
 
 type Filter = "All" | "Draft" | "Submitted";
 export type ApplicationListItem = ApplicationSummary;
@@ -237,7 +238,7 @@ export function ApplicationsPage() {
     try {
       const detail = await api.getApplication(application.id);
       if (isDraft(detail.status)) {
-        router.push(`/applications/${application.id}/${resumeRoute(detail)}`);
+        router.push(applicationFlowPath(application.id, resumeRoute(detail)));
         return;
       }
       setSelectedSubmittedApplication(detail);

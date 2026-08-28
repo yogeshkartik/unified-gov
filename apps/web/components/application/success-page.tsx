@@ -61,7 +61,7 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
           <Button
             type="button"
             variant="outline"
-            onPress={() => router.push(`/applications/${applicationId}/preview`)}
+            onPress={() => router.push(`/applications/${applicationId}/apply?step=preview`)}
           >
             View Application
           </Button>

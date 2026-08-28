@@ -9,6 +9,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { useCitizenAuth } from "@/components/providers/citizen-auth";
+import { applicationFlowPath } from "@/components/application/application-flow-navigation";
 
 function formatFieldName(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -31,7 +32,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
     setApplyError(undefined);
     try {
       const application = await api.createApplication(serviceId);
-      router.push(application.missing_fields.length === 0 ? `/applications/${application.id}/consent` : `/applications/${application.id}/additional`);
+      router.push(applicationFlowPath(application.id, application.missing_fields.length === 0 ? "consent" : "additional"));
     } catch {
       setApplyError("We could not create your application. Please try again.");
       setApplying(false);

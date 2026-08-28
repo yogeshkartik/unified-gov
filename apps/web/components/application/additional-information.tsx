@@ -35,7 +35,7 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
     try {
       const application = await api.saveAdditionalData(applicationId, values);
       if (application.missing_fields.length === 0) navigateApplicationFlow(router, applicationId, "consent", "forward");
-      else router.push(`/applications/${applicationId}/additional`);
+      else setData((current) => current ? { ...current, application } : current);
     } catch (err) {
       setSubmitError(
         err instanceof ApiError

@@ -1,6 +1,6 @@
-import { SuccessPage } from "@/components/application/success-page";
+import { redirect } from "next/navigation";
 
 export default async function SuccessRoute({ params }: { params: Promise<{ applicationId: string }> }) {
   const { applicationId } = await params;
-  return <SuccessPage applicationId={applicationId} />;
+  redirect(`/applications/${applicationId}/apply?step=success`);
 }
