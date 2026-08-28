@@ -6,6 +6,7 @@ import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
 import { AccessibilityMenu } from "@/components/layout/accessibility-menu";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { DemoDataNotice } from "@/components/layout/demo-data-notice";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
+      <DemoDataNotice />
     </div>
   );
 }

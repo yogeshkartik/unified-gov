@@ -25,7 +25,6 @@ export function Sidebar() {
           </Link>;
         })}
       </nav>
-      <div className="border-t border-border p-4 text-xs leading-5 text-muted-foreground">Demo citizen account<br />Synthetic data only</div>
     </aside>
   );
 }

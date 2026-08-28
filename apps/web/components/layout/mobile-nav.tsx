@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { Landmark, LogOut, Menu, Settings, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { AccessibilityMenu } from "@/components/layout/accessibility-menu";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { navigationItems } from "@/components/layout/navigation";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
@@ -32,18 +33,21 @@ export function MobileNav({ name, email, photoUrl, onLogout }: MobileNavProps) {
       </Link>
       <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
         <Button variant="outline" size="icon" aria-label="Open navigation menu"><Menu aria-hidden="true" /></Button>
-        <Dialog className="top-0 left-0 h-full max-w-[min(20rem,calc(100%-2rem))] -translate-x-0 -translate-y-0 grid-rows-[auto_1fr_auto] gap-0 rounded-none p-0 sm:max-w-sm" showCloseButton>
-          <DialogHeader className="border-b border-border p-5 pr-12">
-            <DialogTitle>Navigation</DialogTitle>
-            <DialogDescription>Browse your citizen services portal.</DialogDescription>
+        <Dialog className="top-0 left-0 h-full w-[86vw] max-w-80 -translate-x-0 -translate-y-0 gap-0 rounded-none p-0 data-entering:slide-in-from-left-4 data-exiting:slide-out-to-left-4 motion-reduce:data-entering:animate-none motion-reduce:data-exiting:animate-none sm:w-80 [&_[data-slot=dialog]]:grid [&_[data-slot=dialog]]:h-full [&_[data-slot=dialog]]:grid-rows-[auto_1fr_auto] [&_[data-slot=dialog]]:gap-0" showCloseButton>
+          <DialogHeader className="flex-row items-center gap-2 border-b border-border px-4 py-3 pr-12">
+            <span className="grid size-7 place-items-center rounded-md bg-primary text-primary-foreground"><Landmark className="size-4" aria-hidden="true" /></span>
+            <DialogTitle>Unified Services</DialogTitle>
           </DialogHeader>
-          <nav className="space-y-1 p-3" aria-label="Mobile navigation">
-            {navigationItems.map(({ href, labelKey, icon: Icon }) => <Link key={href} href={href} onClick={() => setIsOpen(false)} aria-current={pathname === href ? "page" : undefined} className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className="size-4" aria-hidden="true" />{t(labelKey)}</Link>)}
+          <nav className="space-y-1 overflow-y-auto p-3" aria-label="Mobile navigation">
+            {navigationItems.map(({ href, labelKey, icon: Icon }) => {
+              const selected = pathname === href;
+              return <Link key={href} href={href} onClick={() => setIsOpen(false)} aria-current={selected ? "page" : undefined} className={cn("flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted")}> <Icon className="size-4" aria-hidden="true" />{t(labelKey)}</Link>;
+            })}
           </nav>
-          <div className="space-y-3 border-t border-border p-3">
-            <div className="flex items-center justify-between gap-2 px-1">
-              <LanguageSwitcher />
-              <AccessibilityMenu />
+          <div className="space-y-3 border-t border-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="flex items-center justify-between gap-1">
+              <LanguageSwitcher showLabel />
+              <AccessibilityMenu showLabel />
             </div>
             <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
               <Avatar size="sm" className="size-9">
