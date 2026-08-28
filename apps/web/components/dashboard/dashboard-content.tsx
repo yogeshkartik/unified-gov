@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, CheckCircle2, ClipboardList, Search, UserRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardList, FileText } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationStatus, ApplicationSummary, CitizenProfile, Document, GovernmentService } from "@/src/types";
-import { applicationFlowPath } from "@/components/application/application-flow-navigation";
+import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { LinkButton } from "@/components/ui/button";
 
@@ -38,6 +38,19 @@ function profileChecks(profile: CitizenProfile, documents: Document[]) {
   ];
 }
 
+function applicationStatusLabel(status: ApplicationStatus) {
+  if (actionableStatuses.includes(status)) return "Draft";
+  if (status === "SUBMITTED") return "Submitted";
+  if (status === "PROCESSING") return "Processing";
+  if (status === "COMPLETED") return "Completed";
+  if (status === "REJECTED") return "Rejected";
+  return "Cancelled";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(new Date(value));
+}
+
 export function DashboardContent() {
   const [data, setData] = useState<DashboardData>();
   const [error, setError] = useState(false);
@@ -48,21 +61,26 @@ export function DashboardContent() {
   const checks = profileChecks(data.profile, data.documents);
   const completion = Math.round((checks.filter((check) => check.complete).length / checks.length) * 100);
   const nextApplication = data.applications.filter((application) => application.requires_action || actionableStatuses.includes(application.status)).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+  const draftCount = data.applications.filter((application) => actionableStatuses.includes(application.status)).length;
+  const submittedCount = data.applications.filter((application) => !actionableStatuses.includes(application.status)).length;
+  const recentApplications = data.applications.filter((application) => application.id !== nextApplication?.id).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3);
+  const firstName = data.profile.full_name.trim().split(/\s+/)[0] || "Citizen";
 
   return <div className="space-y-8">
-    <section className="rounded-2xl bg-gradient-to-r from-primary to-blue-700 px-6 py-7 text-primary-foreground shadow-md sm:px-8">
-      <p className="text-sm font-medium text-blue-100">Unified Services</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">Apply for government services with one reusable profile.</h1>
-      <p className="mt-2 text-sm text-blue-100 sm:text-base">Save your details once, then reuse them across applications.</p>
-      <div className="mt-5 flex flex-wrap gap-3"><LinkButton href="/services" size="lg" className="bg-background text-primary hover:bg-blue-50">Browse services <ArrowRight aria-hidden="true" /></LinkButton><LinkButton href="/profile" size="lg" variant="outline" className="border-blue-200 bg-transparent text-primary-foreground hover:bg-white/10 hover:text-primary-foreground">My profile</LinkButton></div>
+    <header>
+      <p className="text-sm font-medium text-muted-foreground">Dashboard</p>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight">Welcome, {firstName}</h1>
+    </header>
+
+    {completion < 100 ? <section className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4" aria-labelledby="profile-action-heading"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 id="profile-action-heading" className="font-semibold text-amber-950">Complete your profile</h2><p className="mt-1 text-sm text-amber-900">Finish setting up your reusable details.</p></div><LinkButton href="/profile">Continue profile <ArrowRight aria-hidden="true" /></LinkButton></div></section> : nextApplication ? <section className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4" aria-labelledby="continue-application-heading"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div className="flex gap-3"><ClipboardList className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" /><div><h2 id="continue-application-heading" className="font-semibold text-amber-950">Continue application</h2><p className="mt-1 text-sm text-amber-900">{nextApplication.service_name} · Step {applicationFlowSteps[applicationStep(nextApplication.status)].index} of 5</p></div></div><div className="flex items-center gap-3"><LinkButton href="/applications" variant="link" size="sm" className="h-auto px-0 text-amber-900">View all applications</LinkButton><LinkButton href={applicationFlowPath(nextApplication.id, applicationStep(nextApplication.status))}>Continue <ArrowRight aria-hidden="true" /></LinkButton></div></div></section> : <section className="rounded-xl border bg-card px-5 py-4" aria-labelledby="apply-heading"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 id="apply-heading" className="font-semibold">Ready to apply?</h2><p className="mt-1 text-sm text-muted-foreground">Find a government service and start an application.</p></div><LinkButton href="/services">Browse services <ArrowRight aria-hidden="true" /></LinkButton></div></section>}
+
+    <section className="grid gap-4 sm:grid-cols-2" aria-label="Profile and application status">
+      <article className="rounded-xl border bg-card px-5 py-4"><div className="flex items-center gap-2"><CheckCircle2 className="size-5 text-emerald-600" aria-hidden="true" /><h2 className="font-semibold">{completion === 100 ? "Profile ready" : "Profile incomplete"}</h2></div><p className="mt-2 text-sm text-muted-foreground">{completion === 100 ? "Your reusable details are ready for applications." : `${completion}% complete`}</p><LinkButton href="/profile" variant="link" size="sm" className="mt-3 h-auto px-0">{completion === 100 ? "View profile" : "Continue profile"} <ArrowRight aria-hidden="true" /></LinkButton></article>
+      <article className="rounded-xl border bg-card px-5 py-4"><div className="flex items-center gap-2"><FileText className="size-5 text-primary" aria-hidden="true" /><h2 className="font-semibold">Applications</h2></div><p className="mt-2 text-sm text-muted-foreground">{draftCount} {draftCount === 1 ? "draft" : "drafts"} · {submittedCount} {submittedCount === 1 ? "submitted" : "submitted"}</p><LinkButton href="/applications" variant="link" size="sm" className="mt-3 h-auto px-0">View applications <ArrowRight aria-hidden="true" /></LinkButton></article>
     </section>
 
-    {nextApplication ? <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm" aria-labelledby="continue-application-heading"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div className="flex gap-3"><ClipboardList className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" /><div><h2 id="continue-application-heading" className="font-semibold text-amber-950">Continue your application</h2><p className="mt-1 text-sm text-amber-900">{nextApplication.service_name} needs your attention.</p></div></div><LinkButton href={applicationFlowPath(nextApplication.id, applicationStep(nextApplication.status))} size="lg">Continue <ArrowRight aria-hidden="true" /></LinkButton></div></section> : null}
+    {recentApplications.length > 0 ? <section aria-labelledby="recent-applications-heading"><div className="mb-3 flex items-end justify-between gap-3"><h2 id="recent-applications-heading" className="text-lg font-semibold">Recent applications</h2><LinkButton href="/applications" variant="link" size="sm" className="h-auto px-0">View all <ArrowRight aria-hidden="true" /></LinkButton></div><div className="overflow-hidden rounded-xl border bg-card">{recentApplications.map((application, index) => <article key={application.id} className={`flex items-center justify-between gap-4 px-5 py-4 ${index > 0 ? "border-t" : ""}`}><div className="min-w-0"><h3 className="truncate text-sm font-medium">{application.service_name}</h3><p className="mt-1 text-xs text-muted-foreground">{applicationStatusLabel(application.status)} · {formatDate(application.updated_at)}</p></div>{actionableStatuses.includes(application.status) ? <LinkButton href={applicationFlowPath(application.id, applicationStep(application.status))} variant="link" size="sm" className="shrink-0">Continue <ArrowRight aria-hidden="true" /></LinkButton> : null}</article>)}</div></section> : null}
 
-    <section aria-labelledby="how-it-works-heading"><h2 id="how-it-works-heading" className="text-lg font-semibold">How it works</h2><ol className="mt-3 grid divide-y rounded-xl border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">{[{ icon: UserRound, label: "Save your details" }, { icon: Search, label: "Choose a service" }, { icon: CheckCircle2, label: "Review & submit" }].map(({ icon: Icon, label }, index) => <li key={label} className="flex items-center gap-3 px-4 py-4"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span><Icon className="size-4 text-primary" aria-hidden="true" /><span className="text-sm font-medium">{label}</span></li>)}</ol></section>
-
-    <section className="flex flex-col gap-4 rounded-xl border bg-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between" aria-labelledby="profile-heading"><div><div className="flex items-center gap-2"><h2 id="profile-heading" className="font-semibold">{completion === 100 ? "Profile ready" : "Profile incomplete"}</h2><span className="text-sm font-medium text-emerald-700">{completion}%</span></div>{completion === 100 ? <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">{checks.map((check) => <li key={check.label} className="flex items-center gap-1.5"><Check className="size-3.5 text-emerald-600" aria-hidden="true" />{check.label}</li>)}</ul> : <p className="mt-1 text-sm text-muted-foreground">Complete your profile before applying.</p>}</div><LinkButton href="/profile" variant={completion === 100 ? "outline" : "default"} className="w-fit">{completion === 100 ? "View profile" : "Complete profile"} <ArrowRight aria-hidden="true" /></LinkButton></section>
-
-    <section aria-labelledby="services-heading"><div className="mb-4 flex items-end justify-between gap-3"><h2 id="services-heading" className="text-xl font-semibold">Popular services</h2><LinkButton href="/services" variant="link" size="sm" className="h-auto px-0">View all services <ArrowRight aria-hidden="true" /></LinkButton></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{services.map((service) => <article key={service.id} className="rounded-xl border bg-card p-4 shadow-sm"><h3 className="font-semibold leading-5">{service.name}</h3><p className="mt-2 text-xs font-medium text-primary">{service.category}</p><p className="mt-1 truncate text-sm text-muted-foreground">{service.department}</p><LinkButton href={`/services/${service.id}`} variant="link" size="sm" className="mt-3 h-auto px-0">View <ArrowRight aria-hidden="true" /></LinkButton></article>)}</div></section>
+    <section aria-labelledby="services-heading"><div className="mb-3 flex items-end justify-between gap-3"><h2 id="services-heading" className="text-lg font-semibold">Explore services</h2><LinkButton href="/services" variant="link" size="sm" className="h-auto px-0">View all services <ArrowRight aria-hidden="true" /></LinkButton></div><div className="overflow-hidden rounded-xl border bg-card">{services.map((service, index) => <article key={service.id} className={`flex items-center justify-between gap-4 px-5 py-4 ${index > 0 ? "border-t" : ""}`}><div className="min-w-0"><h3 className="truncate text-sm font-medium">{service.name}</h3><p className="mt-1 text-xs text-muted-foreground">{service.category}</p></div><LinkButton href={`/services/${service.id}`} variant="link" size="sm" className="shrink-0">View <ArrowRight aria-hidden="true" /></LinkButton></article>)}</div></section>
   </div>;
 }
