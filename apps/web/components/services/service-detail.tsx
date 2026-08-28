@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, CheckCircle2, FileText, IndianRupee, Landmark, LoaderCircle, UserRound } from "lucide-react";
+import { CheckCircle2, FileText, Landmark, LoaderCircle } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { GovernmentServiceDetail } from "@/src/types";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -41,33 +41,44 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
   if (error) return <ErrorState>This service could not be loaded. Return to the service catalog and try again.</ErrorState>;
   if (!service) return <LoadingState label="Loading service details…" />;
 
-  const deadline = service.end_date ? new Intl.DateTimeFormat("en-IN", { dateStyle: "long" }).format(new Date(service.end_date)) : "No deadline specified";
-  const fee = service.fee > 0 ? `${service.currency} ${service.fee}` : "No application fee";
+  const deadline = service.end_date ? new Intl.DateTimeFormat("en-IN", { dateStyle: "long" }).format(new Date(service.end_date)) : "No deadline";
+  const fee = service.fee > 0 ? `${new Intl.NumberFormat("en-IN", { style: "currency", currency: service.currency, maximumFractionDigits: 0 }).format(service.fee)} fee` : "No application fee";
+  const requiredDocuments = [...service.document_requirements]
+    .filter((document) => document.required)
+    .sort((a, b) => a.position - b.position);
+  const additionalFields = [...service.fields].sort((a, b) => a.position - b.position);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <section className="rounded-xl border border-primary/15 bg-gradient-to-br from-blue-50/70 to-card p-5 shadow-sm sm:p-7">
         <p className="text-sm font-medium text-primary">{service.category}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">{service.name}</h1>
         <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Landmark className="size-4" aria-hidden="true" />{service.department}</p>
-        <p className="mt-5 max-w-3xl leading-7 text-muted-foreground">{service.description}</p>
-        <dl className="mt-6 grid gap-4 border-t border-primary/10 pt-5 sm:grid-cols-2">
-          <div><dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"><IndianRupee className="size-3.5" aria-hidden="true" />Application fee</dt><dd className="mt-1 font-medium">{fee}</dd></div>
-          <div><dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"><CalendarDays className="size-3.5" aria-hidden="true" />Deadline</dt><dd className="mt-1 font-medium">{deadline}</dd></div>
-        </dl>
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">{service.description}</p>
+        <p className="mt-5 text-sm font-medium text-muted-foreground"><span>{fee}</span><span className="mx-2" aria-hidden="true">•</span><span>{deadline}</span></p>
+        <div className="mt-6">
           {session ? <Button size="lg" onPress={apply} isDisabled={applying}>{applying ? <><LoaderCircle className="animate-spin" aria-hidden="true" />Creating application…</> : "Apply now"}</Button> : <LinkButton href={`/login?returnTo=${encodeURIComponent(`/services/${serviceId}`)}`} size="lg">Sign in to apply</LinkButton>}
-          <p className="text-xs leading-5 text-muted-foreground">{session ? "This creates a draft that you can review before submission." : "Sign in is required to start an application."}</p>
         </div>
         {applyError ? <p role="alert" className="mt-3 text-sm text-destructive">{applyError}</p> : null}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="border-t-4 border-t-emerald-500"><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />Eligibility</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">Eligibility is assessed from the service requirements when you create an application.</p></CardContent></Card>
-        <Card className="border-t-4 border-t-primary"><CardHeader><CardTitle className="flex items-center gap-2"><UserRound className="size-4 text-primary" aria-hidden="true" />Information reused from your profile</CardTitle></CardHeader><CardContent><ul className="space-y-2 text-sm">{service.required_profile_fields.map((field) => <li key={field} className="flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />{formatFieldName(field)}</li>)}</ul></CardContent></Card>
-        <Card className="border-t-4 border-t-violet-500"><CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-4 text-violet-600" aria-hidden="true" />Required documents</CardTitle></CardHeader><CardContent><ul className="space-y-3 text-sm">{service.document_requirements.sort((a, b) => a.position - b.position).map((document) => <li key={document.id} className="flex items-start justify-between gap-3"><span>{document.label}</span><span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">{document.required ? "Required" : "Optional"}</span></li>)}</ul></CardContent></Card>
-        <Card className="border-t-4 border-t-amber-500"><CardHeader><CardTitle>Additional information required</CardTitle></CardHeader><CardContent>{service.fields.length === 0 ? <p className="text-sm text-muted-foreground">No additional information is required. You will continue to consent after applying.</p> : <ul className="space-y-3 text-sm">{service.fields.sort((a, b) => a.position - b.position).map((field) => <li key={field.id}><p className="font-medium">{field.label}{field.required ? <span className="ml-1 text-destructive" aria-hidden="true">*</span> : null}</p><p className="text-xs text-muted-foreground">{formatFieldName(field.field_type)}</p></li>)}</ul>}</CardContent></Card>
-      </div>
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-lg">What you&apos;ll need</CardTitle></CardHeader>
+        <CardContent className="grid gap-6 sm:grid-cols-3">
+          <section aria-labelledby="profile-requirements-heading">
+            <h2 id="profile-requirements-heading" className="text-sm font-medium">From your profile</h2>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{service.required_profile_fields.map((field) => <li key={field} className="flex items-center gap-2"><CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden="true" />{formatFieldName(field)}</li>)}</ul>
+          </section>
+          <section aria-labelledby="document-requirements-heading">
+            <h2 id="document-requirements-heading" className="text-sm font-medium">Documents</h2>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{requiredDocuments.map((document) => <li key={document.id} className="flex items-center gap-2"><FileText className="size-4 shrink-0" aria-hidden="true" />{document.label}</li>)}</ul>
+          </section>
+          <section aria-labelledby="additional-requirements-heading">
+            <h2 id="additional-requirements-heading" className="text-sm font-medium">Additional information</h2>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{additionalFields.map((field) => <li key={field.id} className="flex items-center gap-2"><span className="text-base leading-none" aria-hidden="true">•</span>{field.label}</li>)}</ul>
+          </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }
