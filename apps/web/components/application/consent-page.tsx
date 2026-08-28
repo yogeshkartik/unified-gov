@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
+import { DocumentFilePicker } from "@/components/documents/document-file-picker";
 
 function displayName(value: string) {
   return value
@@ -221,8 +222,8 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         ) : null}
       </div>
       <Dialog isOpen={Boolean(uploadRequirement)} onOpenChange={(open) => { if (!open) { setUploadRequirement(undefined); setUploadFile(undefined); } }}>
-        <DialogHeader><DialogTitle>Upload {uploadRequirement?.label}</DialogTitle><DialogDescription>This document will be saved in My Documents and attached to this application.</DialogDescription></DialogHeader>
-        <div className="space-y-3"><div><p className="text-sm font-medium">Document type</p><p className="mt-1 rounded-md border bg-muted px-3 py-2 text-sm">{uploadRequirement?.label}</p></div><div><label className="text-sm font-medium" htmlFor="required-document-file">File</label><input id="required-document-file" className="mt-2 block w-full text-sm" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setUploadFile(event.target.files?.[0])} /></div></div>
+        <DialogHeader><DialogTitle>Upload {uploadRequirement?.label}</DialogTitle><DialogDescription>This file will be saved to My Documents and used for this application.</DialogDescription></DialogHeader>
+        <div className="space-y-4"><div><p className="text-sm font-medium">Document type</p><div className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-sm"><p>{uploadRequirement?.label}</p><p className="mt-0.5 text-xs text-muted-foreground">Required for this application</p></div></div><DocumentFilePicker id="required-document-file" file={uploadFile} onChange={setUploadFile} /></div>
         <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={!uploadFile || uploading} onPress={uploadRequiredDocument}>{uploading ? "Uploading…" : "Upload"}</Button></DialogFooter>
       </Dialog>
     </ApplicationFlowShell>
