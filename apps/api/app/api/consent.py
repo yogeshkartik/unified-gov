@@ -23,17 +23,11 @@ def grant_application_consent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "APPLICATION_NOT_FOUND", "message": f"Application '{application_id}' was not found."},
         ) from error
-    except application_engine.ApplicationEditingNotAllowedError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "APPLICATION_FINALIZED", "message": "This application can no longer be edited."},
-        ) from error
     except consent_service.ApplicationIncompleteForConsentError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "APPLICATION_INCOMPLETE",
-                "message": "Complete the missing application requirements before continuing.",
                 "missing_profile_fields": error.missing_profile_fields,
                 "missing_documents": error.missing_documents,
                 "missing_fields": error.missing_fields,

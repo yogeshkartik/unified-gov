@@ -52,11 +52,6 @@ def update_additional_data(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "INVALID_APPLICATION_FIELDS", "fields": error.fields},
         ) from error
-    except application_engine.ApplicationEditingNotAllowedError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "APPLICATION_FINALIZED", "message": "This application can no longer be edited."},
-        ) from error
 
 
 @router.get("/applications/{application_id}", response_model=ApplicationDetailResponse)
@@ -113,7 +108,6 @@ def finalize_application(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
                 "code": "APPLICATION_NOT_READY",
-                "message": "Complete the missing application requirements before continuing.",
                 "missing_profile_fields": error.missing_profile_fields,
                 "missing_documents": error.missing_documents,
                 "missing_fields": error.missing_fields,

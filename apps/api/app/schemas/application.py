@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.application import ApplicationStatus
-from app.models.consent import ConsentStatus
 
 
 class AdditionalDataUpdate(BaseModel):
@@ -51,9 +50,9 @@ class ApplicationDetailResponse(ApplicationEngineResponse):
     department: str
     reference_number: str | None
     submitted_at: datetime | None
-    consent_status: ConsentStatus | None
-    payment_status: Literal["COMPLETED", "FAILED", "NOT_REQUIRED", "PENDING"]
-    submission_status: ApplicationStatus | None
+    consent_status: str | None
+    payment_status: str
+    submission_status: str | None
 
 
 class ApplicationPreviewResponse(BaseModel):

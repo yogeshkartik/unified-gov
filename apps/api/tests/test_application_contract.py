@@ -4,7 +4,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 
 from app.core.database import Base
+<<<<<<< ours
 from app.api.applications import read_application, read_applications
+=======
+>>>>>>> theirs
 from app.models.application import ApplicationDocument, ApplicationStatus
 from app.models.profile import Document, Profile
 from app.schemas.application import AdditionalDataUpdate
@@ -52,7 +55,11 @@ def complete_scholarship_requirements(db: Session, application_id: str) -> None:
             }
         ),
     )
+<<<<<<< ours
     select_application_documents(db, application_id, ["mock-class-12", "mock-income"])
+=======
+    select_application_documents(db, application_id, ["mock-income"])
+>>>>>>> theirs
 
 
 def submit_scholarship(db: Session) -> str:
@@ -91,7 +98,11 @@ def test_consent_enforces_required_profile_and_documents_but_answers_remain_edit
     with pytest.raises(ApplicationIncompleteForConsentError) as error:
         grant_consent(db, application.id)
     assert error.value.missing_profile_fields == ["full_name"]
+<<<<<<< ours
     assert error.value.missing_documents == ["INCOME_CERTIFICATE", "MARKSHEET"]
+=======
+    assert error.value.missing_documents == ["INCOME_CERTIFICATE"]
+>>>>>>> theirs
 
 
 def test_finalization_rechecks_required_documents(db: Session) -> None:
@@ -117,6 +128,7 @@ def test_finalization_rechecks_required_documents(db: Session) -> None:
     assert error.value.missing_documents == ["INCOME_CERTIFICATE"]
 
 
+<<<<<<< ours
 def test_finalization_rechecks_required_profile_fields(db: Session) -> None:
     application = create_application(db, "SCHOLARSHIP_001")
     complete_scholarship_requirements(db, application.id)
@@ -131,6 +143,8 @@ def test_finalization_rechecks_required_profile_fields(db: Session) -> None:
     assert error.value.missing_profile_fields == ["full_name"]
 
 
+=======
+>>>>>>> theirs
 def test_application_list_and_detail_are_backend_authoritative(db: Session) -> None:
     draft = create_application(db, "DRIVING_LICENCE_001")
     submitted_id = submit_scholarship(db)
@@ -149,11 +163,14 @@ def test_application_list_and_detail_are_backend_authoritative(db: Session) -> N
     assert detail.payment_status == "NOT_REQUIRED"
     assert detail.submission_status == "SUBMITTED"
 
+<<<<<<< ours
     endpoint_summaries = read_applications(db)
     endpoint_detail = read_application(submitted_id, db)
     assert {item.id for item in endpoint_summaries} == set(by_id)
     assert endpoint_detail.reference_number == detail.reference_number
 
+=======
+>>>>>>> theirs
 
 def test_submitted_preview_ignores_later_profile_and_document_changes(db: Session) -> None:
     application_id = submit_scholarship(db)
@@ -175,7 +192,10 @@ def test_submitted_preview_ignores_later_profile_and_document_changes(db: Sessio
     ) == submitted_document_name
 
 
+<<<<<<< ours
 
+=======
+>>>>>>> theirs
 def test_unfinished_states_are_deletable_but_submitted_application_is_not(db: Session) -> None:
     draft = create_application(db, "SCHOLARSHIP_001")
     complete_scholarship_requirements(db, draft.id)

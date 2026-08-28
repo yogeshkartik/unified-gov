@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
 function nextRoute(application: ApplicationEngineResponse) {
-  if (application.status === "ADDITIONAL_INFO_REQUIRED") return "additional";
+  if (application.missing_fields.length > 0) return "additional";
   if (application.status === "DRAFT" || application.status === "CONSENT_REQUIRED") return "consent";
   if (application.status === "PAYMENT_REQUIRED") return "payment";
   return "preview";

@@ -1,6 +1,5 @@
 from pathlib import Path
 import pytest
-from fastapi import HTTPException
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,12 +11,12 @@ from app.integrations.digilocker.mock import MockDigiLockerProvider, ProviderDoc
 from app.models.application import Application, ApplicationStatus
 from app.models.profile import Document, DocumentSource
 from app.schemas.application import AdditionalDataUpdate
-from app.services.application_engine import create_application, determine_missing_requirements, get_application, save_additional_data
+from app.services.application_engine import create_application, determine_missing_requirements, save_additional_data
 from app.services.consent_service import grant_consent
 from app.services.digilocker_service import select_application_documents
 from app.services.payment_submission_service import process_payment, submit_application
 from app.services.preview_service import finalize_application, get_preview
-from app.services.profile_service import DocumentNotFoundError, delete_document, list_documents
+from app.services.profile_service import list_documents
 from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME, seed_demo_citizen, seed_demo_services
 
 
@@ -88,7 +87,7 @@ def test_digilocker_documents_not_in_my_documents_before_submission(db: Session)
     assert "INCOME_CERTIFICATE" not in {d.document_type for d in my_docs_after_selection}
 
 
-def test_successful_application_submission_keeps_digilocker_document_external(
+def test_successful_application_submission_imports_digilocker_document_to_my_documents(
     db: Session,
 ) -> None:
     # 1. Start application
@@ -104,7 +103,7 @@ def test_successful_application_submission_keeps_digilocker_document_external(
             }
         ),
     )
-    select_application_documents(db, application.id, ["mock-class-12", "mock-income"])
+    select_application_documents(db, application.id, ["mock-income"])
     grant_consent(db, application.id)
     snapshot = finalize_application(db, application.id)
 
@@ -113,37 +112,30 @@ def test_successful_application_submission_keeps_digilocker_document_external(
     submit_response = submit_application(db, application.id)
     assert submit_response.status == ApplicationStatus.SUBMITTED
 
-    # 3. Provider documents remain application-scoped after submission.
+    # 3. Verify My Documents now contains the imported Income Certificate
     my_docs = list_documents(db)
     income_docs = [d for d in my_docs if d.document_type == "INCOME_CERTIFICATE"]
-    assert income_docs == []
-    income_doc = db.scalar(
-        select(Document).where(
-            Document.document_type == "INCOME_CERTIFICATE",
-            Document.source == DocumentSource.DIGILOCKER,
-        )
-    )
-    assert income_doc is not None
-    assert income_doc.is_imported is False
+    assert len(income_docs) == 1
+    income_doc = income_docs[0]
+    assert income_doc.source == DocumentSource.DIGILOCKER
+    assert income_doc.name == "Income Certificate"
+    assert income_doc.is_imported is True
 
-    # 4. Provider documents cannot be accessed or deleted through personal-document APIs.
-    with pytest.raises(HTTPException) as error:
-        get_document_file(income_doc.id, db)
-    assert error.value.status_code == 404
-    with pytest.raises(DocumentNotFoundError):
-        delete_document(db, income_doc.id)
+    # 4. Verify downloading the imported document
+    response = get_document_file(income_doc.id, db)
+    assert response.media_type == "application/pdf"
+    assert response.filename == "income-certificate-demo.pdf"
+    assert Path(response.path).is_file()
 
     # 5. Verify snapshot remains immutable
     assert snapshot.snapshot_json["application_id"] == application.id
 
-    # 6. A subsequent application can explicitly select the same provider document again.
+    # 6. Verify subsequent application can reuse the imported Income Certificate
     app2 = create_application(db, "SCHOLARSHIP_001")
-    assert "INCOME_CERTIFICATE" in app2.missing_documents
-    select_application_documents(db, app2.id, ["mock-income"])
-    assert "INCOME_CERTIFICATE" not in determine_missing_requirements(db, get_application(db, app2.id))[1]
+    assert "INCOME_CERTIFICATE" not in app2.missing_documents
 
 
-def test_repeated_provider_selection_does_not_create_personal_document_entries(db: Session) -> None:
+def test_repeated_submission_does_not_create_duplicate_imported_documents(db: Session) -> None:
     # First application
     app1 = create_application(db, "SCHOLARSHIP_001")
     save_additional_data(
@@ -157,7 +149,7 @@ def test_repeated_provider_selection_does_not_create_personal_document_entries(d
             }
         ),
     )
-    select_application_documents(db, app1.id, ["mock-class-12", "mock-income"])
+    select_application_documents(db, app1.id, ["mock-income"])
     grant_consent(db, app1.id)
     finalize_application(db, app1.id)
     process_payment(db, app1.id)
@@ -176,19 +168,11 @@ def test_repeated_provider_selection_does_not_create_personal_document_entries(d
             }
         ),
     )
-    select_application_documents(db, app2.id, ["mock-class-12", "mock-income"])
+    select_application_documents(db, app2.id, ["mock-income"])
     grant_consent(db, app2.id)
     finalize_application(db, app2.id)
     process_payment(db, app2.id)
     submit_application(db, app2.id)
 
-    assert [d for d in list_documents(db) if d.document_type == "INCOME_CERTIFICATE"] == []
-    provider_income_docs = list(
-        db.scalars(
-            select(Document).where(
-                Document.document_type == "INCOME_CERTIFICATE",
-                Document.source == DocumentSource.DIGILOCKER,
-            )
-        )
-    )
-    assert len(provider_income_docs) == 1
+    income_docs = [d for d in list_documents(db) if d.document_type == "INCOME_CERTIFICATE"]
+    assert len(income_docs) == 1

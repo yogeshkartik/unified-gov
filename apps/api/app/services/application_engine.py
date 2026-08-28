@@ -35,10 +35,6 @@ class ApplicationDeletionNotAllowedError(Exception):
     pass
 
 
-class ApplicationEditingNotAllowedError(Exception):
-    pass
-
-
 ACTIONABLE_STATUSES = {
     ApplicationStatus.DRAFT,
     ApplicationStatus.ADDITIONAL_INFO_REQUIRED,
@@ -71,25 +67,22 @@ def save_additional_data(
     db: Session, application_id: str, payload: AdditionalDataUpdate
 ) -> ApplicationEngineResponse:
     application = get_application(db, application_id)
-    ensure_editable(application)
     fields_by_key = {field.key: field for field in application.service.fields}
     errors = validate_answers(payload.answers, fields_by_key)
     if errors:
         raise InvalidApplicationFieldsError(errors)
 
     answers_by_key = {answer.field_key: answer for answer in application.answers}
-    next_answers = application.answers_by_key.copy()
     for key, value in payload.answers.items():
         answer = answers_by_key.get(key)
         if answer is None:
             db.add(ApplicationAnswer(application_id=application.id, field_key=key, value=value))
         else:
             answer.value = value
-        next_answers[key] = value
     db.flush()
     consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
     application.status = required_status(
-        required_field_keys(application.service.fields, next_answers),
+        required_field_keys(application.service.fields, application.answers_by_key),
         consent is not None and consent.status == ConsentStatus.GRANTED,
     )
     db.commit()
@@ -120,11 +113,6 @@ def delete_draft_application(db: Session, application_id: str) -> None:
     db.execute(delete(Consent).where(Consent.application_id == application.id))
     db.delete(application)
     db.commit()
-
-
-def ensure_editable(application: Application) -> None:
-    if application.snapshot is not None or application.status not in ACTIONABLE_STATUSES:
-        raise ApplicationEditingNotAllowedError
 
 
 def build_engine_response(db: Session, application_id: str) -> ApplicationEngineResponse:
@@ -196,7 +184,7 @@ def get_application_detail(db: Session, application_id: str) -> ApplicationDetai
     else:
         payment_status = "PENDING"
     submission_status = (
-        str(application.status)
+        application.status.value
         if application.submitted_at is not None
         or application.status
         in {
@@ -213,7 +201,7 @@ def get_application_detail(db: Session, application_id: str) -> ApplicationDetai
         department=application.service.department,
         reference_number=application.government_reference_number,
         submitted_at=application.submitted_at,
-        consent_status=str(consent.status) if consent is not None else None,
+        consent_status=consent.status.value if consent is not None else None,
         payment_status=payment_status,
         submission_status=submission_status,
     )

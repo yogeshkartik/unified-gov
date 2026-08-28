@@ -31,7 +31,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
     setApplyError(undefined);
     try {
       const application = await api.createApplication(serviceId);
-      router.push(application.status === "ADDITIONAL_INFO_REQUIRED" ? `/applications/${application.id}/additional` : `/applications/${application.id}/consent`);
+      router.push(application.missing_fields.length === 0 ? `/applications/${application.id}/consent` : `/applications/${application.id}/additional`);
     } catch {
       setApplyError("We could not create your application. Please try again.");
       setApplying(false);

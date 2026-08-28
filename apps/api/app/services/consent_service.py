@@ -28,7 +28,6 @@ ConsentAdditionalDataRequiredError = ApplicationIncompleteForConsentError
 
 def grant_consent(db: Session, application_id: str) -> Consent:
     application = application_engine.get_application(db, application_id)
-    application_engine.ensure_editable(application)
     missing_profile_fields, missing_documents, missing_fields = (
         application_engine.determine_missing_requirements(db, application)
     )

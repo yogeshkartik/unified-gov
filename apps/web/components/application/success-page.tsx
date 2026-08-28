@@ -1,29 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Copy } from "lucide-react";
 import { api } from "@/src/lib/api";
-import type { ApplicationDetail, ApplicationPreview } from "@/src/types";
+import type { ApplicationPreview } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 
 export function SuccessPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [preview, setPreview] = useState<ApplicationPreview>();
-  const [application, setApplication] = useState<ApplicationDetail>();
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getPreview(applicationId), api.getApplication(applicationId)])
-      .then(([loadedPreview, loadedApplication]) => {
+    api
+      .getPreview(applicationId)
+      .then((loadedPreview) => {
         setPreview(loadedPreview);
-        setApplication(loadedApplication);
       })
       .catch(() => setError(true));
-  }, [applicationId]);
+  }, [applicationId, searchParams]);
 
   if (error) {
     return (
@@ -33,13 +33,13 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
     );
   }
 
-  if (!preview || !application) return <LoadingState label="Loading submission confirmation…" />;
+  if (!preview) return <LoadingState label="Loading submission confirmation…" />;
 
-  const reference = application.reference_number;
+  const reference =
+    searchParams.get("reference") ?? `GOV-DEMO-${applicationId.slice(0, 8).toUpperCase()}`;
 
   async function handleCopy() {
     try {
-      if (!reference) return;
       await navigator.clipboard.writeText(reference);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -88,9 +88,9 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
           </p>
           <div className="flex items-center justify-center gap-2">
             <span className="font-mono text-base font-bold tracking-wide text-foreground break-all">
-              {reference ?? "Not available"}
+              {reference}
             </span>
-            {reference ? <Button
+            <Button
               type="button"
               variant="ghost"
               size="icon-sm"
@@ -103,7 +103,7 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
               ) : (
                 <Copy className="size-3.5 text-muted-foreground" />
               )}
-            </Button> : null}
+            </Button>
           </div>
           {copied ? <p className="text-xs text-emerald-600 font-medium">Copied to clipboard</p> : null}
         </div>

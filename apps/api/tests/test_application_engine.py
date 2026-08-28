@@ -62,7 +62,7 @@ def test_application_creation_reports_missing_service_fields_and_documents(db: S
     response = create_application(db, "SCHOLARSHIP_001")
 
     assert response.missing_profile_fields == []
-    assert response.missing_documents == ["INCOME_CERTIFICATE", "MARKSHEET"]
+    assert response.missing_documents == ["INCOME_CERTIFICATE"]
     assert response.missing_fields == ["course", "institution", "academic_year"]
 
 
