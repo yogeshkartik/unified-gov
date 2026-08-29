@@ -1,64 +1,115 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Award, Car, FileCheck2, FileText, GraduationCap, Landmark, UserRound } from "lucide-react";
+import { Award, Car, FileText, GraduationCap, HeartPulse, Landmark, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useCitizenPreferences, type Language } from "@/components/providers/citizen-preferences";
-import { localizeServiceName } from "@/src/i18n/service-localization";
+import { localizeServiceOrbitName } from "@/src/i18n/service-localization";
 
-type Slot = { id: string; position: { x: number; y: number } };
-type Service = { id: string; name: string; icon: LucideIcon };
-const center = { x: 200, y: 185 };
-const slots: Slot[] = [{ id: "top", position: { x: 200, y: 45 } }, { id: "upper-left", position: { x: 74, y: 104 } }, { id: "upper-right", position: { x: 326, y: 104 } }, { id: "lower-left", position: { x: 74, y: 267 } }, { id: "lower-right", position: { x: 326, y: 267 } }, { id: "bottom", position: { x: 200, y: 327 } }];
-const serviceSets: Service[][] = [
-  [{ id: "JEE_MAIN_001", name: "JEE Main", icon: GraduationCap }, { id: "PASSPORT_001", name: "Passport", icon: FileText }, { id: "DRIVING_LICENCE_001", name: "Driving Licence Application", icon: Car }, { id: "PM_KISAN_001", name: "PM-KISAN", icon: Landmark }, { id: "INCOME_CERTIFICATE_001", name: "Income Certificate", icon: FileCheck2 }, { id: "NATIONAL_SCHOLARSHIP_001", name: "National Scholarship", icon: Award }],
-  [{ id: "NEET_UG_001", name: "NEET UG", icon: GraduationCap }, { id: "PAN_CARD_001", name: "PAN Card", icon: FileText }, { id: "VOTER_ID_001", name: "Voter ID", icon: Car }, { id: "AYUSHMAN_BHARAT_001", name: "Ayushman Bharat", icon: Landmark }, { id: "INCOME_CERTIFICATE_001", name: "Income Certificate", icon: FileCheck2 }, { id: "UPSC_CSE_001", name: "UPSC Civil Services Examination", icon: Award }],
-  [{ id: "CUET_UG_001", name: "CUET UG", icon: GraduationCap }, { id: "E_SHRAM_001", name: "e-Shram Registration", icon: FileText }, { id: "DOMICILE_CERTIFICATE_001", name: "Domicile Certificate", icon: Car }, { id: "PMAY_001", name: "PMAY", icon: Landmark }, { id: "CASTE_CERTIFICATE_001", name: "Caste Certificate", icon: FileCheck2 }, { id: "SSC_CGL_001", name: "SSC CGL", icon: Award }],
+type Ring = "inner" | "outer";
+type Service = { id: string; label: string; icon: LucideIcon };
+type Node = { slot: number; ring: Ring; angle: number };
+
+const services: Service[][] = [
+  [{ id: "JEE_MAIN_001", label: "JEE Main", icon: GraduationCap }, { id: "PASSPORT_001", label: "Passport", icon: FileText }, { id: "DRIVING_LICENCE_001", label: "Driving Licence", icon: Car }, { id: "PM_KISAN_001", label: "PM-KISAN", icon: Landmark }, { id: "INCOME_CERTIFICATE_001", label: "Income Certificate", icon: FileText }, { id: "NATIONAL_SCHOLARSHIP_001", label: "Scholarship", icon: Award }, { id: "AYUSHMAN_BHARAT_001", label: "Ayushman Bharat", icon: HeartPulse }],
+  [{ id: "NEET_UG_001", label: "NEET UG", icon: GraduationCap }, { id: "PAN_CARD_001", label: "PAN Card", icon: FileText }, { id: "VOTER_ID_001", label: "Voter ID", icon: FileText }, { id: "PMAY_001", label: "PMAY", icon: Landmark }, { id: "CASTE_CERTIFICATE_001", label: "Caste Certificate", icon: FileText }, { id: "UPSC_CSE_001", label: "UPSC CSE", icon: Award }, { id: "E_SHRAM_001", label: "e-Shram", icon: HeartPulse }],
+  [{ id: "CUET_UG_001", label: "CUET UG", icon: GraduationCap }, { id: "DOMICILE_CERTIFICATE_001", label: "Domicile Certificate", icon: FileText }, { id: "DRIVING_LICENCE_001", label: "Driving Licence", icon: Car }, { id: "PM_KISAN_001", label: "PM-KISAN", icon: Landmark }, { id: "INCOME_CERTIFICATE_001", label: "Income Certificate", icon: FileText }, { id: "SSC_CGL_001", label: "SSC CGL", icon: Award }, { id: "AYUSHMAN_BHARAT_001", label: "Ayushman Bharat", icon: HeartPulse }],
 ];
 
-function path({ x, y }: Slot["position"]) { return `M ${center.x} ${center.y} Q ${(center.x + x) / 2} ${(center.y + y) / 2 + (x === center.x ? 0 : y < center.y ? -16 : 16)} ${x} ${y}`; }
-function label(service: Service, language: Language) { return localizeServiceName(service.id, service.name, language); }
+const desktopNodes: Node[] = [
+  { slot: 0, ring: "outer", angle: -90 }, { slot: 1, ring: "outer", angle: 0 }, { slot: 2, ring: "outer", angle: 90 }, { slot: 3, ring: "outer", angle: 180 },
+  { slot: 4, ring: "inner", angle: -90 }, { slot: 5, ring: "inner", angle: 30 }, { slot: 6, ring: "inner", angle: 150 },
+];
+const mobileNodes = desktopNodes.filter((node) => [0, 1, 2, 3].includes(node.slot));
+const orbit: Record<Ring, { radius: number; duration: number; direction: 1 | -1 }> = { inner: { radius: 82, duration: 42, direction: -1 }, outer: { radius: 142, duration: 58, direction: 1 } };
+
+function point(node: Node) {
+  const ring = orbit[node.ring];
+  const radians = node.angle * Math.PI / 180;
+  return { x: 200 + Math.cos(radians) * ring.radius, y: 180 + Math.sin(radians) * ring.radius };
+}
 
 export function ServiceOrbitAnimation() {
   const { language, t } = useCitizenPreferences();
   const reduceMotion = useReducedMotion();
-  const [services, setServices] = useState(serviceSets[0]);
-  const [setIndex, setSetIndex] = useState(0);
+  const [visibleServices, setVisibleServices] = useState(services[0]);
   const [alternateSlots, setAlternateSlots] = useState<number[]>([]);
-  const [pulseTarget, setPulseTarget] = useState(0);
-  const [receivedTarget, setReceivedTarget] = useState<number>();
+  const [pulseSlot, setPulseSlot] = useState(0);
+  const [receivedSlot, setReceivedSlot] = useState<number>();
+  const tick = useRef(0);
 
   useEffect(() => {
     if (reduceMotion) return;
     const interval = window.setInterval(() => {
-      const nextIndex = (setIndex + 1) % serviceSets.length;
-      [[0, 3], [1, 4], [2, 5]].forEach((batch, batchIndex) => window.setTimeout(() => setServices((current) => current.map((service, index) => batch.includes(index) ? serviceSets[nextIndex][index] : service)), batchIndex * 520));
-      setSetIndex(nextIndex);
-    }, 4300);
+      const slot = tick.current % desktopNodes.length;
+      const nextSet = Math.floor(tick.current / desktopNodes.length + 1) % services.length;
+      setVisibleServices((current) => current.map((service, index) => index === slot ? services[nextSet][index] : service));
+      tick.current += 1;
+    }, 3900);
     return () => window.clearInterval(interval);
-  }, [reduceMotion, setIndex]);
-  useEffect(() => {
-    if (reduceMotion) return;
-    const interval = window.setInterval(() => { const picks = [Math.floor(Math.random() * 6), Math.floor(Math.random() * 6)]; setAlternateSlots([...new Set(picks)]); window.setTimeout(() => setAlternateSlots([]), 1900); }, 7200);
-    return () => window.clearInterval(interval);
-  }, [reduceMotion]);
-  useEffect(() => {
-    if (reduceMotion) return;
-    const trigger = () => { const target = Math.floor(Math.random() * 6); setReceivedTarget(undefined); setPulseTarget(target); window.setTimeout(() => setReceivedTarget(target), 1350); };
-    trigger(); const interval = window.setInterval(trigger, 3200); return () => window.clearInterval(interval);
   }, [reduceMotion]);
 
-  return <figure className="relative mx-auto w-full max-w-[29rem] select-none" aria-labelledby="service-orbit-title">
-    <figcaption id="service-orbit-title" className="sr-only">{language === "hi" ? "एक नागरिक प्रोफ़ाइल कई सरकारी सेवाओं में जानकारी का पुन: उपयोग करती है।" : "One citizen profile securely reuses information across many government services."}</figcaption>
-    <div className="relative aspect-[10/9] min-h-[19rem] overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.08] via-background to-sky-50/70 p-3 shadow-sm">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.10),transparent_42%)]" />
-      <svg viewBox="0 0 400 360" className="absolute inset-0 size-full" aria-hidden="true"><defs><linearGradient id="service-orbit-line" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0.55" /><stop offset="100%" stopColor="currentColor" stopOpacity="0.12" /></linearGradient></defs><g className="text-primary">{slots.map((slot, index) => <motion.path key={slot.id} d={path(slot.position)} fill="none" stroke="url(#service-orbit-line)" strokeWidth="1.4" strokeLinecap="round" initial={reduceMotion ? false : { pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 0.7, delay: 0.3 + index * 0.1, ease: "easeOut" }} />)}{!reduceMotion ? <motion.circle key={pulseTarget} r="3.25" fill="currentColor" animate={{ opacity: [0, 0.85, 0], cx: [center.x, slots[pulseTarget].position.x], cy: [center.y, slots[pulseTarget].position.y] }} transition={{ duration: 1.35, ease: "easeInOut" }} /> : null}</g></svg>
-      <motion.div className="absolute inset-0" animate={reduceMotion ? undefined : { rotate: [-1.25, 1.25, -1.25] }} transition={{ duration: 16, ease: "easeInOut", repeat: Infinity }}>
-        {slots.map((slot, index) => { const service = services[index]; const Icon = service.icon; const labelLanguage = alternateSlots.includes(index) ? language === "en" ? "hi" : "en" : language; return <motion.div key={slot.id} className="absolute z-10 -translate-x-1/2 -translate-y-1/2" style={{ left: `${slot.position.x / 4}%`, top: `${slot.position.y / 3.6}%` }} initial={reduceMotion ? false : { opacity: 0, scale: 0.86, y: 5 }} animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: [0, index % 2 ? -2 : 2, 0] }} transition={{ opacity: { duration: 0.35, delay: 0.15 + index * 0.1 }, scale: { duration: 0.35, delay: 0.15 + index * 0.1 }, y: { duration: 4 + index * 0.2, delay: 0.8 + index * 0.1, repeat: Infinity, ease: "easeInOut" } }}><motion.div animate={receivedTarget === index ? { boxShadow: ["0 1px 2px rgb(15 23 42 / 0.08)", "0 0 0 5px rgb(37 99 235 / 0.16)", "0 1px 2px rgb(15 23 42 / 0.08)"] } : undefined} transition={{ duration: 0.7 }} className="flex w-[5.5rem] flex-col items-center gap-1.5 rounded-xl border border-primary/15 bg-background/90 px-2 py-2 text-center shadow-sm backdrop-blur-sm sm:w-[6.25rem]"><span className="grid size-7 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="size-3.5" aria-hidden="true" /></span><AnimatePresence mode="wait" initial={false}><motion.span key={`${service.id}-${labelLanguage}`} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.3, ease: "easeOut" }} className="text-[10px] font-medium leading-tight text-foreground sm:text-xs">{label(service, labelLanguage)}</motion.span></AnimatePresence></motion.div></motion.div>; })}
-      </motion.div>
-      {!reduceMotion ? <motion.span aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.65, 0] }} transition={{ duration: 2.2, delay: 3, repeat: Infinity, repeatDelay: 7 }} className="absolute bottom-3 right-4 z-10 text-[10px] font-medium tracking-wide text-muted-foreground">EN <span className="mx-1 text-primary">↔</span> हिन्दी</motion.span> : null}
-      <motion.div className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: "50%", top: "51.39%" }} initial={reduceMotion ? false : { opacity: 0, scale: 0.72 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45, ease: "easeOut" }}><div className="grid size-[5.7rem] place-items-center rounded-full border-4 border-background bg-primary text-center text-primary-foreground shadow-lg shadow-primary/20 sm:size-24"><div className="flex flex-col items-center gap-0.5"><UserRound className="size-5" aria-hidden="true" /><span className="text-[11px] font-semibold">{t("profile")}</span></div></div></motion.div>
-    </div>
-  </figure>;
+  useEffect(() => {
+    if (reduceMotion) return;
+    let resetTimer: number | undefined;
+    const interval = window.setInterval(() => {
+      const first = Math.floor(Math.random() * desktopNodes.length);
+      const second = Math.floor(Math.random() * desktopNodes.length);
+      setAlternateSlots([...new Set([first, second])]);
+      resetTimer = window.setTimeout(() => setAlternateSlots([]), 1800);
+    }, 7600);
+    return () => { window.clearInterval(interval); if (resetTimer) window.clearTimeout(resetTimer); };
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    let arrivalTimer: number | undefined;
+    const pulse = () => {
+      const slot = Math.floor(Math.random() * desktopNodes.length);
+      setReceivedSlot(undefined);
+      setPulseSlot(slot);
+      arrivalTimer = window.setTimeout(() => setReceivedSlot(slot), 1250);
+    };
+    pulse();
+    const interval = window.setInterval(pulse, 3600);
+    return () => { window.clearInterval(interval); if (arrivalTimer) window.clearTimeout(arrivalTimer); };
+  }, [reduceMotion]);
+
+  const activePoint = point(desktopNodes[pulseSlot]);
+  return (
+    <figure className="relative mx-auto w-full max-w-[27rem] select-none" aria-labelledby="service-orbit-title">
+      <figcaption id="service-orbit-title" className="sr-only">{language === "hi" ? "एक नागरिक प्रोफ़ाइल कई सरकारी सेवाओं में जानकारी का पुन: उपयोग करती है।" : "One citizen profile securely reuses information across many government services."}</figcaption>
+      <div className="relative aspect-square min-h-[18rem] overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.05] via-background to-sky-50/40 p-3">
+        <svg viewBox="0 0 400 360" className="absolute inset-0 size-full" aria-hidden="true">
+          <g className="text-primary/30"><circle className="hidden sm:block" cx="200" cy="180" r="142" fill="none" stroke="currentColor" strokeWidth="1" /><circle className="hidden sm:block" cx="200" cy="180" r="82" fill="none" stroke="currentColor" strokeWidth="1" /><circle className="sm:hidden" cx="200" cy="180" r="112" fill="none" stroke="currentColor" strokeWidth="1" /></g>
+          {!reduceMotion ? <motion.g key={pulseSlot} initial={{ opacity: 0 }} animate={{ opacity: [0, 0.7, 0] }} transition={{ duration: 1.3, ease: "easeInOut" }} className="text-primary"><motion.path d={`M 200 180 L ${activePoint.x} ${activePoint.y}`} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.15, ease: "easeInOut" }} /><motion.circle r="3" fill="currentColor" animate={{ cx: [200, activePoint.x], cy: [180, activePoint.y] }} transition={{ duration: 1.15, ease: "easeInOut" }} /></motion.g> : null}
+        </svg>
+        <OrbitNodes nodes={desktopNodes} className="hidden sm:block" services={visibleServices} language={language} alternateSlots={alternateSlots} receivedSlot={receivedSlot} reduceMotion={reduceMotion} />
+        <OrbitNodes nodes={mobileNodes} className="sm:hidden" services={visibleServices} language={language} alternateSlots={alternateSlots} receivedSlot={receivedSlot} reduceMotion={reduceMotion} mobile />
+        <motion.div className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: "50%", top: "50%" }} initial={reduceMotion ? false : { opacity: 0, scale: 0.78 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}><div className="grid size-[5.3rem] place-items-center rounded-full border-4 border-background bg-primary text-center text-primary-foreground shadow-md shadow-primary/15 sm:size-[5.7rem]"><div className="flex flex-col items-center gap-0.5"><UserRound className="size-5" aria-hidden="true" /><span className="text-[11px] font-semibold">{t("profile")}</span></div></div></motion.div>
+      </div>
+    </figure>
+  );
+}
+
+function OrbitNodes({ nodes, services, language, alternateSlots, receivedSlot, reduceMotion, className, mobile = false }: { nodes: Node[]; services: Service[]; language: Language; alternateSlots: number[]; receivedSlot?: number; reduceMotion: boolean | null; className: string; mobile?: boolean }) {
+  return <div className={`absolute inset-0 ${className}`}>
+    {(["outer", "inner"] as Ring[]).map((ring) => {
+      const ringNodes = nodes.filter((node) => mobile ? true : node.ring === ring);
+      if (ringNodes.length === 0 || (mobile && ring === "inner")) return null;
+      const rotation = mobile ? { duration: 54, direction: 1 as const } : orbit[ring];
+      return <motion.div key={ring} className="absolute inset-0" animate={reduceMotion ? undefined : { rotate: rotation.direction * 360 }} transition={{ duration: rotation.duration, ease: "linear", repeat: Infinity }}>
+        {ringNodes.map((node) => {
+          const service = services[node.slot];
+          const Icon = service.icon;
+          const pointValue = mobile ? { x: 200 + Math.cos(node.angle * Math.PI / 180) * 112, y: 180 + Math.sin(node.angle * Math.PI / 180) * 112 } : point(node);
+          const labelLanguage = alternateSlots.includes(node.slot) ? language === "en" ? "hi" : "en" : language;
+          return <motion.div key={node.slot} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${pointValue.x / 4}%`, top: `${pointValue.y / 3.6}%` }} initial={reduceMotion ? false : { opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.32, delay: node.slot * 0.07 }}>
+            <motion.div animate={reduceMotion ? undefined : { rotate: rotation.direction * -360 }} transition={{ duration: rotation.duration, ease: "linear", repeat: Infinity }} className="origin-center"><motion.div animate={receivedSlot === node.slot ? { boxShadow: ["0 1px 2px rgb(15 23 42 / 0.06)", "0 0 0 4px rgb(37 99 235 / 0.13)", "0 1px 2px rgb(15 23 42 / 0.06)"] } : undefined} transition={{ duration: 0.65 }} className="flex max-w-[4.8rem] items-center gap-1.5 rounded-full border border-primary/15 bg-background/90 px-2 py-1.5 shadow-sm backdrop-blur-sm sm:max-w-[5.7rem]"><Icon className="size-3.5 shrink-0 text-primary" aria-hidden="true" /><AnimatePresence mode="wait" initial={false}><motion.span key={`${service.id}-${labelLanguage}`} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.28, ease: "easeOut" }} className="line-clamp-2 text-[10px] font-medium leading-tight text-foreground sm:text-[11px]">{localizeServiceOrbitName(service.id, service.label, labelLanguage)}</motion.span></AnimatePresence></motion.div></motion.div>
+          </motion.div>;
+        })}
+      </motion.div>;
+    })}
+  </div>;
 }

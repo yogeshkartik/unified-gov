@@ -37,6 +37,13 @@ const hindiCategories: Record<string, string> = {
   "Certificates": "प्रमाण पत्र"
 };
 
+const hindiOrbitServiceNames: Record<string, string> = {
+  JEE_MAIN_001: "जेईई मेन", NEET_UG_001: "नीट यूजी", CUET_UG_001: "सीयूईटी यूजी", SSC_CGL_001: "एसएससी सीजीएल", UPSC_CSE_001: "UPSC",
+  DRIVING_LICENCE_001: "ड्राइविंग लाइसेंस", PASSPORT_001: "पासपोर्ट", PAN_CARD_001: "पैन कार्ड", VOTER_ID_001: "मतदाता पहचान पत्र",
+  PM_KISAN_001: "पीएम-किसान", PMAY_001: "पीएमएवाई", E_SHRAM_001: "ई-श्रम", AYUSHMAN_BHARAT_001: "आयुष्मान भारत",
+  INCOME_CERTIFICATE_001: "आय प्रमाण पत्र", CASTE_CERTIFICATE_001: "जाति प्रमाण पत्र", DOMICILE_CERTIFICATE_001: "निवास प्रमाण पत्र", NATIONAL_SCHOLARSHIP_001: "छात्रवृत्ति"
+};
+
 const hindiFields: Record<string, string> = {
   exam_city: "पसंदीदा परीक्षा शहर", post_preference: "पद वरीयता", course: "वर्तमान पाठ्यक्रम", institution: "संस्थान", academic_year: "शैक्षणिक वर्ष", licence_type: "आवेदन प्रकार", vehicle_class: "वाहन श्रेणी", paper_preference: "पेपर वरीयता", subject_preference: "विषय वरीयता", service_preference: "सेवा वरीयता", application_type: "आवेदन प्रकार", registration_type: "पंजीकरण प्रकार", farmer_declaration: "किसान घोषणा", household_size: "परिवार के सदस्यों की संख्या", housing_need: "आवास आवश्यकता", occupation: "व्यवसाय", certificate_purpose: "प्रमाण पत्र का उद्देश्य"
 };
@@ -78,6 +85,10 @@ export function localizeService<T extends GovernmentService>(service: T, languag
 
 export function localizeServiceName(serviceId: string, fallback: string, language: Language) {
   return language === "hi" ? hindiServices[serviceId]?.name ?? fallback : fallback;
+}
+
+export function localizeServiceOrbitName(serviceId: string, fallback: string, language: Language) {
+  return language === "hi" ? hindiOrbitServiceNames[serviceId] ?? localizeServiceName(serviceId, fallback, language) : fallback;
 }
 
 export function localizeDepartment(serviceId: string, fallback: string, language: Language) {
