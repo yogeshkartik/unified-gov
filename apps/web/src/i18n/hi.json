@@ -1,5 +1,5 @@
 {
-  "appName": "एकीकृत सरकारी सेवाएँ", "loadingDocuments": "आपके दस्तावेज़ लोड हो रहे हैं…", "signIn": "साइन इन करें", "checkingSession": "आपका सत्र जाँचा जा रहा है…", "redirectingSignIn": "साइन इन पर भेजा जा रहा है…",
+  "appName": "एकीकृत सरकारी सेवाएँ", "loadingDocuments": "आपके दस्तावेज़ लोड हो रहे हैं…", "signIn": "साइन इन करें", "checkingSession": "आपका सत्र जाँचा जा रहा है…", "redirectingSignIn": "साइन इन पर भेजा जा रहा है…", "journeyProfileTitle": "अपनी प्रोफ़ाइल बनाएँ", "journeyProfileDescription": "अपने विवरण और दस्तावेज़ एक बार सहेजें।", "journeyServiceTitle": "किसी सेवा के लिए आवेदन करें", "journeyServiceDescription": "आपकी सहेजी हुई जानकारी फिर से उपयोग होती है।", "journeySubmitTitle": "समीक्षा करें और जमा करें", "journeySubmitDescription": "जो जानकारी बाकी है, जोड़ें और जमा करें।",
   "applicationProgress": "आवेदन की प्रगति", "stepOf": "चरण {step}, कुल {total}", "closeReturnApplications": "बंद करें और आवेदनों पर लौटें",
   "appShortName": "एकीकृत सेवाएँ",
   "dashboard": "डैशबोर्ड", "profile": "मेरी प्रोफ़ाइल", "services": "सरकारी सेवाएँ", "applications": "मेरे आवेदन", "documents": "मेरे दस्तावेज़", "settings": "सेटिंग्स",

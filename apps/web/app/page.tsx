@@ -1,18 +1,14 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, Search, UserRound } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { LogoutNotice } from "@/components/layout/logout-notice";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { ServiceOrbitAnimation } from "@/components/landing/service-orbit-animation";
+import { HowItWorksJourney } from "@/components/landing/how-it-works-journey";
 
 export default function Home() {
   const { t } = useCitizenPreferences();
-  const steps = [
-    { icon: UserRound, label: t("saveYourDetails") },
-    { icon: Search, label: t("chooseService") },
-    { icon: CheckCircle2, label: t("reviewSubmit") },
-  ];
   return (
     <div className="min-h-screen">
       <LogoutNotice />
@@ -35,18 +31,7 @@ export default function Home() {
           <ServiceOrbitAnimation />
         </section>
 
-        <section className="max-w-4xl border-t pt-8" aria-labelledby="how-it-works-heading">
-          <h2 id="how-it-works-heading" className="text-lg font-semibold">{t("howItWorks")}</h2>
-          <ol className="mt-5 grid gap-5 sm:grid-cols-3 sm:gap-8">
-            {steps.map(({ icon: Icon, label }, index) => (
-              <li key={label} className="flex items-center gap-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{index + 1}</span>
-                <Icon className="size-5 text-primary" aria-hidden="true" />
-                <span className="font-medium">{label}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <HowItWorksJourney />
       </main>
     </div>
   );
