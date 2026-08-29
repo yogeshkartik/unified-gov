@@ -15,7 +15,7 @@ import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
 import { DocumentFilePicker } from "@/components/documents/document-file-picker";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
-import { localizeDocumentType, localizeProfileField, localizeService } from "@/src/i18n/service-localization";
+import { localizeProfileField, localizeService } from "@/src/i18n/service-localization";
 
 function displayName(value: string) {
   return value

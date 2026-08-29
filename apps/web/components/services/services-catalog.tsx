@@ -21,7 +21,6 @@ export function ServicesCatalog() {
   const [category, setCategory] = useState<string | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => { api.getServices().then(setServices).catch(() => setError(true)); }, []);
-  useEffect(() => { setCategory(null); }, [language]);
   const localizedServices = useMemo(() => (services ?? []).map((service) => localizeService(service, language)), [language, services]);
   const categories = useMemo(() => Array.from(new Set(localizedServices.map((service) => service.category))).sort((first, second) => first.localeCompare(second)).map((name) => ({ name, count: localizedServices.filter((service) => service.category === name).length })), [localizedServices]);
   const visibleServices = useMemo(() => localizedServices.filter((service) => (category === null || service.category === category) && `${service.name} ${service.department} ${service.category} ${service.description}`.toLocaleLowerCase(language).includes(query.toLocaleLowerCase(language))), [category, language, localizedServices, query]);

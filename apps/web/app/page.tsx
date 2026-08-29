@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Search, UserRound } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { LogoutNotice } from "@/components/layout/logout-notice";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { ServiceOrbitAnimation } from "@/components/landing/service-orbit-animation";
 
 export default function Home() {
   const { t } = useCitizenPreferences();
@@ -21,14 +22,17 @@ export default function Home() {
           {t("appName")}
         </header>
 
-        <section className="max-w-3xl py-14 sm:py-20">
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t("landingEyebrow")}</h1>
-          <p className="mt-5 text-lg text-muted-foreground">{t("landingDescription")}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <LinkButton href="/services" size="lg">{t("exploreServices")} <ArrowRight aria-hidden="true" /></LinkButton>
-            <LinkButton href="/login" variant="outline" size="lg">{t("citizenSignIn")}</LinkButton>
+        <section className="grid items-center gap-8 py-12 sm:py-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(20rem,0.8fr)] lg:gap-12 lg:py-20">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t("landingEyebrow")}</h1>
+            <p className="mt-5 text-lg text-muted-foreground">{t("landingDescription")}</p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <LinkButton href="/services" size="lg">{t("exploreServices")} <ArrowRight aria-hidden="true" /></LinkButton>
+              <LinkButton href="/login" variant="outline" size="lg">{t("citizenSignIn")}</LinkButton>
+            </div>
+            <p className="mt-6 text-sm text-muted-foreground">{t("sharingControl")}</p>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">{t("sharingControl")}</p>
+          <ServiceOrbitAnimation />
         </section>
 
         <section className="max-w-4xl border-t pt-8" aria-labelledby="how-it-works-heading">
