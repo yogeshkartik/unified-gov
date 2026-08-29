@@ -69,7 +69,8 @@ export function DashboardContent() {
   const documentCount = data.documents.filter((document) => document.document_type !== "PROFILE_PHOTO").length;
   const draftCount = data.applications.filter((application) => actionableStatuses.has(application.status)).length;
   const submittedCount = data.applications.length - draftCount;
-  const priorityDraft = [...data.applications].filter((application) => application.requires_action || actionableStatuses.has(application.status)).sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime())[0];
+  const mostRecentApplication = [...data.applications].sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime())[0];
+  const priorityDraft = mostRecentApplication && (mostRecentApplication.requires_action || actionableStatuses.has(mostRecentApplication.status)) ? mostRecentApplication : undefined;
   const recentApplications = [...data.applications].sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime()).slice(0, 3);
   const serviceById = new Map(localizedServices.map((service) => [service.id, service]));
   const formatDate = (value: string) => new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", { day: "numeric", month: "short" }).format(new Date(value));
