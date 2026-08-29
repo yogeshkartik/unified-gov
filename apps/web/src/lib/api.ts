@@ -96,10 +96,12 @@ async function download(path: string): Promise<{ blob: Blob; filename: string }>
 export const api = {
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
+  uploadProfilePhoto: (data: FormData) => request<Document>("/api/profile/photo", { method: "PUT", body: data }),
   getEducation: () => request<Education[]>("/api/profile/education"),
   getDocuments: () => request<Document[]>("/api/documents"),
   getDocumentCategories: () => request<DocumentCategory[]>("/api/documents/categories"),
   uploadDocument: (data: FormData) => request<Document>("/api/profile/documents", { method: "POST", body: data }),
+  uploadApplicationDocument: (applicationId: string, data: FormData) => request<Document>(`/api/applications/${applicationId}/documents/upload`, { method: "POST", body: data }),
   replaceDocument: (id: string, data: FormData) => request<Document>(`/api/profile/documents/${id}/file`, { method: "PUT", body: data }),
   deleteDocument: (id: string) => request<void>(`/api/profile/documents/${id}`, { method: "DELETE" }),
   getDigiLockerDocuments: () => request<MockDigiLockerDocument[]>("/api/digilocker/documents"),

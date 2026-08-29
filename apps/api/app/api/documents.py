@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.profile import DocumentType
 from app.schemas.profile import DocumentCategoryResponse, DocumentResponse
 from app.services import profile_service
+from app.services import application_document_service, application_engine
 from app.services.seed import SEED_FILES_DIR, SEED_GENERIC_DOCUMENT_FILENAME
 
 router = APIRouter(tags=["documents"])
@@ -57,6 +58,29 @@ async def upload_document(
     try:
         return await profile_service.save_upload(db, file, document_type, display_name)
     except (profile_service.ProfileNotFoundError, profile_service.InvalidDocumentError) as exc:
+        raise error(exc) from exc
+
+
+@router.post(
+    "/applications/{application_id}/documents/upload",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_application_document(
+    application_id: str,
+    document_type: DocumentType = Form(...),
+    file: UploadFile = File(...),
+    display_name: str | None = Form(None),
+    db: Session = Depends(get_db),
+) -> DocumentResponse:
+    try:
+        application_engine.get_application(db, application_id)
+        document = await profile_service.save_upload(db, file, document_type, display_name)
+        application_document_service.attach_my_documents(db, application_id, [document.id])
+        return document
+    except application_engine.ApplicationNotFoundError as exc:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from exc
+    except profile_service.InvalidDocumentError as exc:
         raise error(exc) from exc
 
 

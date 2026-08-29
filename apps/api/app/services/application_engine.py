@@ -254,7 +254,7 @@ def determine_missing_requirements(db: Session, application: Application) -> tup
     profile_documents = [
         document for document in user.documents
         if document.source == DocumentSource.PROFILE_UPLOAD
-        and document.document_type == DocumentType.PROFILE_PHOTO
+        and document.document_type == DocumentType.PHOTOGRAPH
     ]
     attached_docs = [app_doc.document for app_doc in application.documents if app_doc.document]
     available_docs = list({d.id: d for d in (profile_documents + attached_docs)}.values())
@@ -289,10 +289,7 @@ def document_type_matches(required_type: str, available_type: str) -> bool:
 
 
 def _canonical_document_type(document_type: str) -> str:
-    """Keep compatibility with the reusable profile-photo category in one place."""
-    if document_type == DocumentType.PROFILE_PHOTO:
-        return DocumentType.PHOTOGRAPH
-    return document_type
+    return DocumentType.PHOTOGRAPH if document_type == DocumentType.PROFILE_PHOTO else document_type
 
 
 def has_profile_data(user: User, field: str) -> bool:

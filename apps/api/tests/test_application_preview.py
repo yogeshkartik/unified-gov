@@ -42,7 +42,7 @@ def complete_driving_licence_application(db: Session) -> str:
             }
         ),
     )
-    photograph = db.scalar(select(Document).where(Document.document_type == "PROFILE_PHOTO"))
+    photograph = db.scalar(select(Document).where(Document.document_type == "PHOTOGRAPH"))
     assert photograph is not None
     db.add(ApplicationDocument(application_id=application.id, document_id=photograph.id))
     db.commit()
@@ -59,7 +59,7 @@ def test_preview_combines_profile_education_documents_answers_service_and_fee(db
     assert preview.profile["full_name"] == "Rahul Kumar"
     assert preview.education[0]["level"] == "12TH"
     assert {document["document_type"] for document in preview.documents} == {
-        "PROFILE_PHOTO",
+        "PHOTOGRAPH",
         "DRIVING_LICENCE",
     }
     assert preview.answers == {

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCitizenAuth } from "@/components/providers/citizen-auth";
 import { api } from "@/src/lib/api";
+import { profilePhotoChangedEvent } from "@/src/lib/profile-photo";
 import type { CitizenProfile, Document } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -31,14 +32,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const loadAccount = useCallback(async () => {
     try {
-      const [nextProfile, documents] = await Promise.all([
-        api.getProfile(),
-        api.getDocuments(),
-      ]);
+      const nextProfile = await api.getProfile();
       setProfile(nextProfile);
-      setProfilePhoto(
-        documents.find((document) => document.document_type === "PROFILE_PHOTO"),
-      );
+      setProfilePhoto(nextProfile.profile_photo ?? undefined);
     } catch {
       // The account menu keeps its synthetic fallback while the API is unavailable.
     }
@@ -48,10 +44,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     const refresh = () => void loadAccount();
     const initial = window.setTimeout(refresh, 0);
     window.addEventListener("focus", refresh);
+    window.addEventListener(profilePhotoChangedEvent, refresh);
     const interval = window.setInterval(refresh, 2000);
     return () => {
       window.clearTimeout(initial);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener(profilePhotoChangedEvent, refresh);
       window.clearInterval(interval);
     };
   }, [loadAccount]);

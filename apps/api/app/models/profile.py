@@ -34,6 +34,7 @@ class DocumentSource(StrEnum):
 
 
 class DocumentType(StrEnum):
+    # Retained only so existing callers can be normalized during the transition.
     PROFILE_PHOTO = "PROFILE_PHOTO"
     PHOTOGRAPH = "PHOTOGRAPH"
     SIGNATURE = "SIGNATURE"
@@ -108,6 +109,13 @@ class Profile(TimestampMixin, Base):
     @property
     def addresses(self) -> list[Address]:
         return self.user.addresses
+
+    @property
+    def profile_photo(self) -> Document | None:
+        return next(
+            (document for document in self.user.documents if document.document_type == DocumentType.PHOTOGRAPH),
+            None,
+        )
 
 
 class Address(TimestampMixin, Base):

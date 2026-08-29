@@ -79,13 +79,13 @@ function Dialog({
       <ModalPrimitive
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-entering:animate-in data-entering:fade-in-0 data-entering:zoom-in-95 data-exiting:animate-out data-exiting:fade-out-0 data-exiting:zoom-out-95 sm:max-w-sm",
+          "fixed top-1/2 left-1/2 z-50 grid box-border w-[calc(100%-2rem)] max-w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-entering:animate-in data-entering:fade-in-0 data-entering:zoom-in-95 data-exiting:animate-out data-exiting:fade-out-0 data-exiting:zoom-out-95 sm:max-w-sm",
           className
         )}
       >
         <DialogPrimitive
           data-slot="dialog"
-          className="[display:inherit] [gap:inherit] outline-none"
+          className="w-full min-w-0 max-w-full [display:inherit] [gap:inherit] outline-none"
         >
           {children}
           {showCloseButton && (
@@ -109,7 +109,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex w-full min-w-0 max-w-full flex-col gap-2", className)}
       {...props}
     />
   )
@@ -127,7 +127,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        "box-border flex w-full min-w-0 max-w-full flex-col-reverse gap-2 rounded-lg border bg-muted/50 p-3 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

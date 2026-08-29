@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Upload } from "lucide-react";
 import { ApiError, api } from "@/src/lib/api";
+import { notifyProfilePhotoChanged } from "@/src/lib/profile-photo";
 import type { ApplicationEngineResponse, Document as CitizenDocument, GovernmentServiceDetail, MockDigiLockerDocument } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
@@ -61,8 +62,8 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         const automaticMyDocuments: string[] = [];
         const automaticDigiLockerDocuments: string[] = [];
         for (const requirement of service.document_requirements) {
-          const profile = citizenDocuments.filter((document) => document.document_type === "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
-          const personal = citizenDocuments.filter((document) => document.document_type !== "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+          const profile = citizenDocuments.filter((document) => document.document_type === "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
+          const personal = citizenDocuments.filter((document) => document.document_type !== "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
           const provider = digilockerDocuments.filter((document) => matchesRequirement(requirement.document_type, document.document_type));
           if (profile.length === 0 && personal.length + provider.length === 1) {
             if (personal.length === 1) automaticMyDocuments.push(personal[0].id);
@@ -117,6 +118,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
       await api.selectMyDocuments(applicationId, [document.id]);
       setMyDocuments((current) => [...current, document]);
       setSelectedMyDocumentIds((current) => [...current, document.id]);
+      if (document.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
       setUploadRequirement(undefined);
       setUploadFile(undefined);
     } catch (error) {
@@ -198,8 +200,8 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
               <h3 className="text-sm font-semibold tracking-tight text-foreground">Documents</h3>
               <ul className="space-y-3">
                 {data.service.document_requirements.map((requirement) => {
-                  const profileDocument = myDocuments.find((document) => document.document_type === "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
-                  const personal = myDocuments.filter((document) => document.document_type !== "PROFILE_PHOTO" && matchesRequirement(requirement.document_type, document.document_type));
+                  const profileDocument = myDocuments.find((document) => document.document_type === "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
+                  const personal = myDocuments.filter((document) => document.document_type !== "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
                   const provider = documents.filter((document) => matchesRequirement(requirement.document_type, document.document_type));
                   const hasSource = Boolean(profileDocument) || personal.length > 0 || provider.length > 0;
                   return <li key={requirement.id} className="rounded-lg border bg-muted/20 p-3">

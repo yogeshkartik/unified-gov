@@ -67,6 +67,7 @@ export interface CitizenProfile {
   preferred_language: string | null;
   current_address_same_as_permanent: boolean;
   addresses: Address[];
+  profile_photo: Document | null;
   created_at: string;
   updated_at: string;
 }

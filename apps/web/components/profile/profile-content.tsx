@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Camera, CheckCircle2, CircleAlert, UserRound, X } from "lucide-react";
 import { z } from "zod";
 import { api } from "@/src/lib/api";
+import { notifyProfilePhotoChanged } from "@/src/lib/profile-photo";
 import type { Address, CitizenProfile, Document } from "@/src/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -432,7 +433,7 @@ export function ProfileContent() {
   if (!data) return <LoadingState label="Loading profile…" />;
 
   const profile = data.profile;
-  const photo = data.documents.find((document) => document.document_type === "PROFILE_PHOTO");
+  const photo = profile.profile_photo ?? data.documents.find((document) => document.document_type === "PHOTOGRAPH");
   const permanentAddress = profile.addresses.find((address) => address.type === "PERMANENT");
   const currentAddress = profile.addresses.find(
     (address) => address.type === "CORRESPONDENCE" || address.type === "CURRENT"
@@ -483,12 +484,9 @@ export function ProfileContent() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      if (photo) await api.replaceDocument(photo.id, formData);
-      else {
-        formData.append("document_type", "PROFILE_PHOTO");
-        await api.uploadDocument(formData);
-      }
+      await api.uploadProfilePhoto(formData);
       await loadProfile();
+      notifyProfilePhotoChanged();
       clearPhotoDialog();
       showToast("Profile photo updated.", "success");
     } catch {
@@ -504,6 +502,7 @@ export function ProfileContent() {
     try {
       await api.deleteDocument(photo.id);
       await loadProfile();
+      notifyProfilePhotoChanged();
       setRemoveOpen(false);
       clearPhotoDialog();
       showToast("Profile photo removed.", "success");

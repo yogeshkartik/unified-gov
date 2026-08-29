@@ -111,6 +111,7 @@ class ProfileResponse(BaseModel):
     preferred_language: str | None
     current_address_same_as_permanent: bool
     addresses: list[AddressResponse]
+    profile_photo: DocumentResponse | None
     created_at: datetime
     updated_at: datetime
 
@@ -152,6 +153,9 @@ class DocumentResponse(BaseModel):
 class DocumentCategoryResponse(BaseModel):
     value: str
     label: str
+
+
+ProfileResponse.model_rebuild()
 
 
 class DocumentRename(BaseModel):

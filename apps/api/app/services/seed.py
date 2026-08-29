@@ -84,7 +84,7 @@ def seed_demo_citizen(db: Session) -> None:
         [
             Document(
                 name="Photograph",
-                document_type=DocumentType.PROFILE_PHOTO,
+                document_type=DocumentType.PHOTOGRAPH,
                 source=DocumentSource.PROFILE_UPLOAD,
                 storage_key="synthetic/photograph.png",
                 is_imported=True,

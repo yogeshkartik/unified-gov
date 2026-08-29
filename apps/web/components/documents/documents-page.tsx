@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { CheckCircle2, CircleAlert, Download, FileBadge2, FileText, Landmark, Plus, Trash2, Upload, X } from "lucide-react";
 import { api } from "@/src/lib/api";
+import { notifyProfilePhotoChanged } from "@/src/lib/profile-photo";
 import type { Document, DocumentCategory, MockDigiLockerDocument } from "@/src/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,6 +118,7 @@ export function DocumentsPage() {
       if (category === "OTHER") formData.append("display_name", documentName.trim());
       const document = await api.uploadDocument(formData);
       setData((current) => current ? { ...current, documents: [...current.documents, document].sort((first, second) => first.name.localeCompare(second.name)) } : current);
+      if (document.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
       setAddOpen(false);
       resetUploadForm();
       showToast("Document added successfully.", "success");
@@ -133,6 +135,7 @@ export function DocumentsPage() {
     try {
       await api.deleteDocument(pendingDelete.id);
       setData((current) => current ? { ...current, documents: current.documents.filter((document) => document.id !== pendingDelete.id) } : current);
+      if (pendingDelete.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
       showToast("Document deleted.", "success");
       setPendingDelete(undefined);
     } catch (deleteError) {

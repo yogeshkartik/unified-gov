@@ -51,7 +51,7 @@ def grant_consent(db: Session, application_id: str) -> Consent:
         if document.id in attached_ids
         or (
             document.source == DocumentSource.PROFILE_UPLOAD
-            and document.document_type == "PROFILE_PHOTO"
+            and document.document_type == "PHOTOGRAPH"
         )
     ]
     document_ids = [

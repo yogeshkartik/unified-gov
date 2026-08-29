@@ -59,13 +59,13 @@ export function DocumentFilePicker({ file, onChange, id = "document-file" }: { f
 
   if (file) {
     return (
-      <div className="flex min-h-24 items-center gap-3 rounded-lg border bg-muted/30 p-3">
+      <div className="flex min-h-24 w-full max-w-full min-w-0 flex-col gap-3 rounded-lg border bg-muted/30 p-3 sm:flex-row sm:items-center">
         {previewUrl ? <Image src={previewUrl} alt="Selected document preview" width={56} height={56} unoptimized className="size-14 shrink-0 rounded-md object-cover" /> : <FileText className="size-9 shrink-0 text-primary" aria-hidden="true" />}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <p className="truncate font-medium">{file.name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{formatSize(file.size)}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
           <Button type="button" variant="outline" size="sm" onPress={() => inputRef.current?.click()}>Change</Button>
           <Button type="button" variant="ghost" size="icon-sm" aria-label="Remove selected file" onPress={() => { updatePreview(); onChange(undefined); if (inputRef.current) inputRef.current.value = ""; }}><X aria-hidden="true" /></Button>
         </div>
@@ -75,7 +75,7 @@ export function DocumentFilePicker({ file, onChange, id = "document-file" }: { f
   }
 
   return (
-    <div>
+    <div className="w-full max-w-full min-w-0">
       <input ref={inputRef} id={id} className="sr-only" type="file" accept={accept} aria-label="Choose a file to upload" onChange={(event) => choose(event.target.files?.[0])} />
       <button type="button" className={cn("flex min-h-44 w-full flex-col items-center justify-center rounded-lg border border-dashed p-5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", dragActive ? "border-primary bg-primary/10" : error ? "border-destructive bg-destructive/5" : "border-primary/40 bg-primary/5 hover:border-primary hover:bg-primary/10")} onClick={() => inputRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragActive(true); }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); choose(event.dataTransfer.files?.[0]); }}>
         <ImageUp className="size-7 text-primary" aria-hidden="true" />
