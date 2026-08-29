@@ -11,9 +11,17 @@ import { ErrorState } from "@/components/ui/data-state";
 import { LinkButton } from "@/components/ui/button";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeService, localizeServiceName } from "@/src/i18n/service-localization";
+import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
+
+function applicationStep(status: ApplicationSummary["status"]) {
+  if (status === "ADDITIONAL_INFO_REQUIRED") return "additional" as const;
+  if (status === "DRAFT" || status === "CONSENT_REQUIRED") return "consent" as const;
+  if (status === "PAYMENT_REQUIRED") return "payment" as const;
+  return "preview" as const;
+}
 
 function featuredServices(services: GovernmentService[]) {
   const sorted = [...services].sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
@@ -61,6 +69,7 @@ export function DashboardContent() {
   const documentCount = data.documents.filter((document) => document.document_type !== "PROFILE_PHOTO").length;
   const draftCount = data.applications.filter((application) => actionableStatuses.has(application.status)).length;
   const submittedCount = data.applications.length - draftCount;
+  const priorityDraft = [...data.applications].filter((application) => application.requires_action || actionableStatuses.has(application.status)).sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime())[0];
   const recentApplications = [...data.applications].sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime()).slice(0, 3);
   const serviceById = new Map(localizedServices.map((service) => [service.id, service]));
   const formatDate = (value: string) => new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", { day: "numeric", month: "short" }).format(new Date(value));
@@ -75,11 +84,11 @@ export function DashboardContent() {
     </Reveal>
 
     <Reveal delay={0.08}>
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t("dashboardSummary")}>
+      {priorityDraft ? <ContinueApplicationCard application={priorityDraft} language={language} t={t} /> : <section className="grid gap-3 sm:grid-cols-3" aria-label={t("dashboardSummary")}>
         <SummaryLink href="/profile" icon={CheckCircle2} title={complete ? t("profileReady") : t("profileIncomplete")} detail={t("completePercent", { completion })} action={complete ? t("view") : t("completeProfile")} tone={complete ? "text-emerald-600" : "text-amber-600"} />
         <SummaryLink href="/applications" icon={FileText} title={t("applications")} detail={applicationSummary} action={t("view")} tone="text-primary" />
         <SummaryLink href="/documents" icon={FileCheck2} title={t("documents")} detail={t("dashboardDocumentsSaved", { count: documentCount })} action={t("view")} tone="text-primary" />
-      </section>
+      </section>}
     </Reveal>
 
     <Reveal delay={0.16}>
@@ -92,7 +101,7 @@ export function DashboardContent() {
     <Reveal delay={0.24}>
       <section aria-labelledby="popular-services-heading">
         <SectionHeader id="popular-services-heading" title={t("popularServices")} href="/services" action={t("viewAllServices")} />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{popularServices.map((service) => { const Icon = serviceIcon(service.category); return <Link key={service.id} href={`/services/${service.id}`} className="group flex min-h-28 flex-col rounded-xl border bg-card p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><div className="flex items-start gap-2"><span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="truncate text-sm font-semibold">{service.name}</h3><p className="mt-0.5 truncate text-xs text-muted-foreground">{service.category}</p></div></div><span className="mt-auto flex items-center justify-end gap-1 text-xs font-medium text-primary">{t("view")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></span></Link>; })}</div>
+        <div className="overflow-hidden rounded-xl border bg-card">{popularServices.map((service, index) => { const Icon = serviceIcon(service.category); return <Link key={service.id} href={`/services/${service.id}`} className={`group grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${index > 0 ? "border-t" : ""}`}><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold leading-5">{service.name}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{service.category}</p></div><span className="flex items-center gap-1 text-xs font-medium text-primary">{t("view")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></span></Link>; })}</div>
       </section>
     </Reveal>
   </div>;
@@ -100,6 +109,12 @@ export function DashboardContent() {
 
 function SummaryLink({ href, icon: Icon, title, detail, action, tone }: { href: string; icon: typeof CheckCircle2; title: string; detail: string; action: string; tone: string }) {
   return <Link href={href} className="group flex min-h-20 items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className={`size-5 shrink-0 ${tone}`} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{detail}</p></div><span className="sr-only">{action}</span><ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></Link>;
+}
+
+function ContinueApplicationCard({ application, language, t }: { application: ApplicationSummary; language: "en" | "hi"; t: ReturnType<typeof useCitizenPreferences>["t"] }) {
+  const step = applicationStep(application.status);
+  const stepLabel = t(step === "additional" ? "additionalStep" : step === "consent" ? "consentStep" : step === "payment" ? "paymentStep" : "previewStep");
+  return <section className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-4 sm:px-5" aria-labelledby="continue-application-heading"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><h2 id="continue-application-heading" className="font-semibold text-amber-950">{t("continueApplication")}</h2><p className="mt-1 truncate text-sm text-amber-900">{localizeServiceName(application.service_id, application.service_name, language)} · {t("stepOf", { step: applicationFlowSteps[step].index, total: 5 })} · {stepLabel}</p></div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center"><LinkButton href="/applications" variant="link" size="sm" className="h-10 text-amber-900">{t("viewAllApplications")}</LinkButton><LinkButton href={applicationFlowPath(application.id, step)}>{t("continue")} <ArrowRight aria-hidden="true" /></LinkButton></div></div></section>;
 }
 
 function SectionHeader({ id, title, href, action }: { id: string; title: string; href: string; action: string }) {
