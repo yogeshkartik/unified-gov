@@ -3,12 +3,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import en from "@/src/i18n/en.json";
 import hi from "@/src/i18n/hi.json";
-import ta from "@/src/i18n/ta.json";
 
-type Language = "en" | "hi" | "ta";
+export type Language = "en" | "hi";
 type TextSize = "small" | "default" | "large";
-type TranslationKey = keyof typeof en;
-const dictionaries = { en, hi, ta };
+export type TranslationKey = keyof typeof en;
+type TranslationValues = Record<string, string | number>;
+const dictionaries: Record<Language, Partial<Record<TranslationKey, string>>> = { en, hi };
 const storageKey = "unified-gov-preferences";
 
 interface Preferences {
@@ -20,7 +20,7 @@ interface Preferences {
   setTextSize: (size: TextSize) => void;
   setHighContrast: (enabled: boolean) => void;
   setReduceMotion: (enabled: boolean) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, values?: TranslationValues) => string;
 }
 
 const PreferencesContext = createContext<Preferences | null>(null);
@@ -31,9 +31,16 @@ export function CitizenPreferencesProvider({ children }: { children: ReactNode }
   const [highContrast, setHighContrast] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [ready, setReady] = useState(false);
-  useEffect(() => { const timer = window.setTimeout(() => { try { const saved: Partial<Pick<Preferences, "language" | "textSize" | "highContrast" | "reduceMotion">> = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"); if (saved.language) setLanguage(saved.language); if (saved.textSize) setTextSize(saved.textSize); if (typeof saved.highContrast === "boolean") setHighContrast(saved.highContrast); if (typeof saved.reduceMotion === "boolean") setReduceMotion(saved.reduceMotion); } catch {} finally { setReady(true); } }, 0); return () => window.clearTimeout(timer); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { try { const saved: Partial<Pick<Preferences, "language" | "textSize" | "highContrast" | "reduceMotion">> & { language?: string } = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"); if (saved.language === "en" || saved.language === "hi") setLanguage(saved.language); if (saved.textSize) setTextSize(saved.textSize); if (typeof saved.highContrast === "boolean") setHighContrast(saved.highContrast); if (typeof saved.reduceMotion === "boolean") setReduceMotion(saved.reduceMotion); } catch {} finally { setReady(true); } }, 0); return () => window.clearTimeout(timer); }, []);
   useEffect(() => { if (!ready) return; document.documentElement.lang = language; document.documentElement.dataset.textSize = textSize; document.documentElement.classList.toggle("high-contrast", highContrast); document.documentElement.classList.toggle("reduce-motion", reduceMotion); window.localStorage.setItem(storageKey, JSON.stringify({ language, textSize, highContrast, reduceMotion })); }, [highContrast, language, ready, reduceMotion, textSize]);
-  return <PreferencesContext.Provider value={{ language, textSize, highContrast, reduceMotion, setLanguage, setTextSize, setHighContrast, setReduceMotion, t: (key) => dictionaries[language][key] }}>{children}</PreferencesContext.Provider>;
+  function t(key: TranslationKey, values: TranslationValues = {}) {
+    const template = dictionaries[language][key] ?? en[key];
+    return Object.entries(values).reduce(
+      (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+      template,
+    );
+  }
+  return <PreferencesContext.Provider value={{ language, textSize, highContrast, reduceMotion, setLanguage, setTextSize, setHighContrast, setReduceMotion, t }}>{children}</PreferencesContext.Provider>;
 }
 
 export function useCitizenPreferences() {

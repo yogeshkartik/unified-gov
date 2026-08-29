@@ -21,12 +21,14 @@ import { useCitizenAuth } from "@/components/providers/citizen-auth";
 import { api } from "@/src/lib/api";
 import { profilePhotoChangedEvent } from "@/src/lib/profile-photo";
 import type { CitizenProfile, Document } from "@/src/types";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { signOut } = useCitizenAuth();
+  const { t } = useCitizenPreferences();
   const [profile, setProfile] = useState<CitizenProfile>();
   const [profilePhoto, setProfilePhoto] = useState<Document>();
 
@@ -83,13 +85,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Button
               variant="ghost"
               className="max-w-52 gap-2 px-2"
-              aria-label={`Open account menu for ${name}`}
+              aria-label={t("openAccountMenu", { name })}
             >
               <Avatar size="sm" className="size-8">
-                <AvatarImage src={photoUrl} alt={`${name}'s profile photo`} />
+                <AvatarImage src={photoUrl} alt={t("profileAvatarAlt", { name })} />
                 <AvatarFallback>
                   <UserRound className="size-4" aria-hidden="true" />
-                  <span className="sr-only">Profile avatar</span>
+                  <span className="sr-only">{t("profileAvatar")}</span>
                 </AvatarFallback>
               </Avatar>
               <span className="hidden truncate font-medium xl:inline">{name}</span>
@@ -103,12 +105,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onAction={() => navigate("/settings")}>
                 <Settings aria-hidden="true" />
-                Settings
+                {t("settings")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onAction={logout}>
                 <LogOut aria-hidden="true" />
-                Log out
+                {t("logOut")}
               </DropdownMenuItem>
             </DropdownMenu>
           </DropdownMenuTrigger>

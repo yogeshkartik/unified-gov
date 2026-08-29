@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { type ApplicationFlowDirection, flowDirectionKey } from "@/components/application/application-flow-navigation";
 
 interface ApplicationFlowShellProps {
@@ -31,6 +32,7 @@ export function ApplicationFlowShell({
   onClose,
 }: ApplicationFlowShellProps) {
   const slots = useContext(ApplicationFlowSlots);
+  const { t } = useCitizenPreferences();
   const router = useRouter();
   const [initialDirection] = useState<ApplicationFlowDirection>(() => {
     if (!applicationId || typeof window === "undefined") return "forward";
@@ -112,7 +114,7 @@ export function ApplicationFlowShell({
                 {details.serviceName}
               </h2>
               <p className="mt-0.5 text-xs sm:text-sm font-medium text-muted-foreground">
-                Step {details.step} of 5 · {details.stepName}
+                {t("stepOf", { step: details.step, total: 5 })} · {details.stepName}
               </p>
             </div>
             <Button
@@ -121,7 +123,7 @@ export function ApplicationFlowShell({
               size="icon-sm"
               className="rounded-full shrink-0 -mr-1.5 text-muted-foreground hover:text-foreground"
               onPress={handleClose}
-              aria-label="Close and return to applications"
+              aria-label={t("closeReturnApplications")}
             >
               <X className="size-4" aria-hidden="true" />
             </Button>
@@ -133,7 +135,7 @@ export function ApplicationFlowShell({
             aria-valuenow={details.step}
             aria-valuemin={1}
             aria-valuemax={5}
-            aria-label={`Step ${details.step} of 5: ${details.stepName}`}
+            aria-label={`${t("stepOf", { step: details.step, total: 5 })}: ${details.stepName}`}
             className="mt-3.5 h-1 w-full overflow-hidden rounded-full bg-muted"
           >
             <div

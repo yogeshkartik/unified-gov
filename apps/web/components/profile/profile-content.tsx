@@ -25,6 +25,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeProfileField } from "@/src/i18n/service-localization";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const states = [
@@ -144,7 +146,7 @@ const options: Record<string, string[]> = {
     "Above ₹8 lakh",
     "Prefer not to specify",
   ],
-  preferred_language: ["English", "Hindi", "Tamil"],
+  preferred_language: ["English", "Hindi"],
 };
 
 const addressFields: Array<[AddressField, string]> = [
@@ -361,6 +363,7 @@ function FieldEditor({
 }
 
 export function ProfileContent() {
+  const { language, t } = useCitizenPreferences();
   const [data, setData] = useState<{ profile: CitizenProfile; documents: Document[] }>();
   const [isEditing, setIsEditing] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -429,8 +432,8 @@ export function ProfileContent() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  if (failed) return <ErrorState>We couldn&apos;t load your profile.</ErrorState>;
-  if (!data) return <LoadingState label="Loading profile…" />;
+  if (failed) return <ErrorState>{t("profileLoadError")}</ErrorState>;
+  if (!data) return <LoadingState label={t("loadingProfile")} />;
 
   const profile = data.profile;
   const photo = profile.profile_photo ?? data.documents.find((document) => document.document_type === "PHOTOGRAPH");
@@ -470,7 +473,7 @@ export function ProfileContent() {
   function choosePhoto(selectedFile?: File) {
     if (!selectedFile) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type) || selectedFile.size > 5_242_880) {
-      showToast("Choose a JPG, PNG or WEBP image up to 5 MB.", "error");
+      showToast(t("choosePhotoValidation"), "error");
       return;
     }
     if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -488,9 +491,9 @@ export function ProfileContent() {
       await loadProfile();
       notifyProfilePhotoChanged();
       clearPhotoDialog();
-      showToast("Profile photo updated.", "success");
+      showToast(t("profilePhotoUpdated"), "success");
     } catch {
-      showToast("Could not update profile photo. Please try again.", "error");
+      showToast(t("profilePhotoUpdateError"), "error");
     } finally {
       setPhotoBusy(false);
     }
@@ -505,9 +508,9 @@ export function ProfileContent() {
       notifyProfilePhotoChanged();
       setRemoveOpen(false);
       clearPhotoDialog();
-      showToast("Profile photo removed.", "success");
+      showToast(t("profilePhotoRemoved"), "success");
     } catch {
-      showToast("Could not remove profile photo. Please try again.", "error");
+      showToast(t("profilePhotoRemoveError"), "error");
     } finally {
       setPhotoBusy(false);
     }
@@ -544,9 +547,9 @@ export function ProfileContent() {
       setData((current) => (current ? { ...current, profile: updatedProfile } : current));
       resetForm(updatedProfile);
       setIsEditing(false);
-      showToast("Profile updated successfully.", "success");
+      showToast(t("profileUpdated"), "success");
     } catch {
-      showToast("Could not update your profile. Please try again.", "error");
+      showToast(t("profileUpdateError"), "error");
     }
   });
 
@@ -561,19 +564,19 @@ export function ProfileContent() {
                 type="button"
                 size="icon"
                 className="absolute -right-1 -bottom-1 rounded-full"
-                aria-label="Change profile photo"
+                aria-label={t("changePhoto")}
                 onPress={() => setPhotoOpen(true)}
               >
                 <Camera aria-hidden="true" />
               </Button>
-              <Tooltip>Change profile photo</Tooltip>
+              <Tooltip>{t("changePhoto")}</Tooltip>
             </TooltipTrigger>
           </div>
           <div className="min-w-0 flex-1 text-center sm:text-left">
             <h1 className="text-2xl font-semibold">{profile.full_name}</h1>
             <p className="truncate text-sm text-muted-foreground">{profile.email}</p>
           </div>
-          {isEditing ? <div className="flex w-full gap-2 sm:w-auto"><Button type="button" variant="outline" className="flex-1 sm:flex-none" onPress={cancelEditor} isDisabled={form.formState.isSubmitting}>Cancel</Button><Button type="submit" form="profile-edit-form" className="flex-1 sm:flex-none" isDisabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "Saving…" : "Save Changes"}</Button></div> : <Button type="button" onPress={openEditor}>Edit Profile</Button>}
+          {isEditing ? <div className="flex w-full gap-2 sm:w-auto"><Button type="button" variant="outline" className="flex-1 sm:flex-none" onPress={cancelEditor} isDisabled={form.formState.isSubmitting}>{t("cancel")}</Button><Button type="submit" form="profile-edit-form" className="flex-1 sm:flex-none" isDisabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? t("saving") : t("saveChanges")}</Button></div> : <Button type="button" onPress={openEditor}>{t("editProfile")}</Button>}
         </div>
       </header>
 
@@ -584,7 +587,7 @@ export function ProfileContent() {
               <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent>
-              {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{labels[String(key)]}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd></div>)}</dl>}
+              {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{localizeProfileField(String(key), language)}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd></div>)}</dl>}
             </CardContent>
           </Card>
         ))}
@@ -607,7 +610,7 @@ export function ProfileContent() {
         overlayClassName="bg-black/50 backdrop-blur-sm"
       >
         <DialogHeader>
-          <DialogTitle>{photo ? "Change profile photo" : "Add profile photo"}</DialogTitle>
+          <DialogTitle>{photo ? t("changePhoto") : t("addPhoto")}</DialogTitle>
           <DialogDescription>JPG, PNG or WEBP · maximum 5 MB</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-2">
@@ -620,7 +623,7 @@ export function ProfileContent() {
             onChange={(event) => choosePhoto(event.target.files?.[0])}
           />
           <Button type="button" variant="outline" onPress={() => fileInput.current?.click()}>
-            {file ? "Choose Different Photo" : photo ? "Choose New Photo" : "Choose Image"}
+            {file ? t("chooseDifferentPhoto") : photo ? t("chooseNewPhoto") : t("chooseImage")}
           </Button>
           {file ? (
             <p className="text-sm">
@@ -629,14 +632,14 @@ export function ProfileContent() {
           ) : null}
           {photo ? (
             <Button type="button" variant="destructive" onPress={() => setRemoveOpen(true)}>
-              Remove Photo
+              {t("removePhoto")}
             </Button>
           ) : null}
         </div>
         <DialogFooter>
-          <DialogClose type="button">Cancel</DialogClose>
+          <DialogClose type="button">{t("cancel")}</DialogClose>
           <Button type="button" isDisabled={!file || photoBusy} onPress={uploadPhoto}>
-            {photoBusy ? "Saving…" : photo ? "Save Photo" : "Add Photo"}
+            {photoBusy ? t("saving") : photo ? t("save") : t("addPhoto")}
           </Button>
         </DialogFooter>
       </Dialog>
@@ -648,15 +651,15 @@ export function ProfileContent() {
         overlayClassName="bg-black/50 backdrop-blur-sm"
       >
         <DialogHeader>
-          <DialogTitle>Remove profile photo?</DialogTitle>
+          <DialogTitle>{t("removePhotoTitle")}</DialogTitle>
           <DialogDescription>
-            Your profile photo will no longer be available for future applications.
+            {t("removePhotoDescription")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose type="button">Cancel</DialogClose>
+          <DialogClose type="button">{t("cancel")}</DialogClose>
           <Button type="button" variant="destructive" isDisabled={photoBusy} onPress={removePhoto}>
-            {photoBusy ? "Removing…" : "Remove Photo"}
+            {photoBusy ? t("removing") : t("removePhoto")}
           </Button>
         </DialogFooter>
       </Dialog>

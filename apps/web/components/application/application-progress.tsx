@@ -1,8 +1,12 @@
-const steps = ["Additional information", "Consent", "Preview", "Payment", "Submitted"];
+"use client";
+
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
 export function ApplicationProgress({ currentStep = 1 }: { currentStep?: number }) {
+  const { t } = useCitizenPreferences();
+  const steps = [t("additionalStep"), t("consentStep"), t("previewStep"), t("paymentStep"), t("submittedStep")];
   return (
-    <nav aria-label="Application progress" className="overflow-hidden">
+    <nav aria-label={t("applicationProgress")} className="overflow-hidden">
       <ol className="grid grid-cols-5 gap-1 text-xs sm:gap-2 sm:text-sm">
         {steps.map((step, index) => {
           const stepNumber = index + 1;

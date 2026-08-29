@@ -15,8 +15,8 @@ export function AccessibilityMenu({ showLabel = false }: { showLabel?: boolean }
         <ChevronDown className={showLabel ? "block" : "hidden lg:block"} aria-hidden="true" />
       </Button>
       <DropdownMenu aria-label={t("accessibility")} className="w-52" onAction={(key) => { if (key === "contrast") setHighContrast(!highContrast); if (key === "motion") setReduceMotion(!reduceMotion); }}>
-        <DropdownMenuItem id="contrast">{t("highContrast")}: {highContrast ? "On" : "Off"}</DropdownMenuItem>
-        <DropdownMenuItem id="motion">{t("reduceMotion")}: {reduceMotion ? "On" : "Off"}</DropdownMenuItem>
+        <DropdownMenuItem id="contrast">{t("highContrast")}: {t(highContrast ? "on" : "off")}</DropdownMenuItem>
+        <DropdownMenuItem id="motion">{t("reduceMotion")}: {t(reduceMotion ? "on" : "off")}</DropdownMenuItem>
       </DropdownMenu>
     </DropdownMenuTrigger>
   );

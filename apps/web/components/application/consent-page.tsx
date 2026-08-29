@@ -14,6 +14,8 @@ import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, Dia
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
 import { DocumentFilePicker } from "@/components/documents/document-file-picker";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeDocumentType, localizeProfileField, localizeService } from "@/src/i18n/service-localization";
 
 function displayName(value: string) {
   return value
@@ -31,6 +33,7 @@ function matchesRequirement(requiredType: string, availableType: string) {
 }
 
 export function ConsentPage({ applicationId }: { applicationId: string }) {
+  const { language, t } = useCitizenPreferences();
   const router = useRouter();
   const [data, setData] = useState<{
     application: ApplicationEngineResponse;
@@ -97,11 +100,11 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         ];
         setSubmitError(
           missing.length > 0
-            ? `Complete or select: ${missing.map(displayName).join(", ")}.`
-            : "Complete the missing information before continuing."
+            ? t("completeOrSelect", { items: missing.map((item) => localizeProfileField(item, language)).join(", ") })
+            : t("completeMissing")
         );
       } else {
-        setSubmitError("We could not record your consent. Please try again.");
+        setSubmitError(t("recordConsentError"));
       }
       setSubmitting(false);
     }
@@ -122,7 +125,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
       setUploadRequirement(undefined);
       setUploadFile(undefined);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Could not upload the document.");
+      setSubmitError(error instanceof Error ? error.message : t("uploadDocumentError"));
     } finally {
       setUploading(false);
     }
@@ -131,12 +134,14 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
   if (error) {
     return (
       <ErrorState>
-        This application could not be loaded. Return to the service catalog and try again.
+        {t("applicationNotLoaded")}
       </ErrorState>
     );
   }
 
-  if (!data) return <LoadingState label="Loading consent request…" />;
+  if (!data) return <LoadingState label={t("loadingConsent")} />;
+
+  const localizedService = localizeService(data.service, language);
 
   const profileFields = [
     ...data.service.required_profile_fields,
@@ -145,10 +150,10 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
 
   return (
     <ApplicationFlowShell
-      serviceName={data.service.name}
+      serviceName={localizedService.name}
       applicationId={applicationId}
       step={applicationFlowSteps.consent.index}
-      stepName={applicationFlowSteps.consent.label}
+      stepName={t("consentStep")}
       onClose={() => router.push("/applications")}
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -157,23 +162,23 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
             variant="outline"
             onPress={() => navigateApplicationFlow(router, applicationId, "additional", "back")}
           >
-            Back
+            {t("back")}
           </Button>
           <Button onPress={grantConsent} isDisabled={submitting}>
-            {submitting ? "Recording consent…" : "Agree & Continue"}
+            {submitting ? t("processing") : t("agreeContinue")}
           </Button>
         </div>
       }
     >
       <div className="space-y-5">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Consent</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{t("consent")}</h1>
 
         {/* 1. Who receives */}
         <div className="space-y-0.5">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Shared with
+            {t("sharedWith")}
           </p>
-          <p className="text-sm font-medium text-foreground">{data.service.department}</p>
+          <p className="text-sm font-medium text-foreground">{localizedService.department}</p>
         </div>
 
         <Separator />

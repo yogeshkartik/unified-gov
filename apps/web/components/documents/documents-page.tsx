@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeDocumentType } from "@/src/i18n/service-localization";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const supportedMimeTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -27,10 +29,10 @@ function fileSize(size: number | null) {
   return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileKind(mimeType: string | null) {
+function fileKind(mimeType: string | null, language: "en" | "hi") {
   if (mimeType === "application/pdf") return "PDF";
-  if (mimeType?.startsWith("image/")) return "Image";
-  return "File";
+  if (mimeType?.startsWith("image/")) return language === "hi" ? "छवि" : "Image";
+  return language === "hi" ? "फ़ाइल" : "File";
 }
 
 function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
@@ -39,6 +41,7 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 }
 
 export function DocumentsPage() {
+  const { language, t } = useCitizenPreferences();
   const [data, setData] = useState<DocumentsData>();
   const [error, setError] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -86,11 +89,11 @@ export function DocumentsPage() {
   function chooseFile(nextFile?: File) {
     if (!nextFile) return;
     if (!supportedMimeTypes.includes(nextFile.type)) {
-      setFormErrors((current) => ({ ...current, file: "Choose a PDF, JPG, JPEG, PNG or WEBP file." }));
+      setFormErrors((current) => ({ ...current, file: t("unsupportedFile") }));
       return;
     }
     if (nextFile.size > maximumFileSize) {
-      setFormErrors((current) => ({ ...current, file: "Files must be 5 MB or smaller." }));
+      setFormErrors((current) => ({ ...current, file: t("fileTooLarge") }));
       return;
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -101,9 +104,9 @@ export function DocumentsPage() {
 
   async function uploadDocument() {
     const errors: Record<string, string> = {};
-    if (!category) errors.category = "Select a document category.";
-    if (category === "OTHER" && !documentName.trim()) errors.documentName = "Enter a document name for Other.";
-    if (!file) errors.file = "Choose a file to upload.";
+    if (!category) errors.category = t("selectCategory");
+    if (category === "OTHER" && !documentName.trim()) errors.documentName = t("documentName");
+    if (!file) errors.file = t("chooseFileToUpload");
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -121,9 +124,9 @@ export function DocumentsPage() {
       if (document.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
       setAddOpen(false);
       resetUploadForm();
-      showToast("Document added successfully.", "success");
+      showToast(t("documentAdded"), "success");
     } catch (uploadError) {
-      showToast(uploadError instanceof Error ? uploadError.message : "Could not add the document. Please try again.", "error");
+      showToast(uploadError instanceof Error ? uploadError.message : t("documentAddError"), "error");
     } finally {
       setUploading(false);
     }
@@ -136,43 +139,43 @@ export function DocumentsPage() {
       await api.deleteDocument(pendingDelete.id);
       setData((current) => current ? { ...current, documents: current.documents.filter((document) => document.id !== pendingDelete.id) } : current);
       if (pendingDelete.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
-      showToast("Document deleted.", "success");
+      showToast(t("documentDeleted"), "success");
       setPendingDelete(undefined);
     } catch (deleteError) {
-      showToast(deleteError instanceof Error ? deleteError.message : "Could not delete the document. Please try again.", "error");
+      showToast(deleteError instanceof Error ? deleteError.message : t("documentDeleteError"), "error");
     } finally {
       setDeleting(false);
     }
   }
 
-  const categoryLabel = (value: string) => data?.categories.find((item) => item.value === value)?.label ?? value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  const categoryLabel = (value: string) => localizeDocumentType(value, data?.categories.find((item) => item.value === value)?.label ?? value, language);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My documents" description="Upload and manage documents for future applications.">
-        <Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />Add Document</Button>
+      <PageHeader title={t("documents")} description={t("myDocumentsDescription")}>
+        <Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />{t("addDocument")}</Button>
       </PageHeader>
       {error ? (
         <ErrorState>Documents are unavailable. Start the service API and try again.</ErrorState>
       ) : !data ? (
-        <LoadingState label="Loading your documents…" />
+        <LoadingState label={t("loadingDocuments")} />
       ) : (
         <div className="grid gap-5 lg:grid-cols-2">
           <section>
             {data.documents.filter((document) => document.document_type !== "PROFILE_PHOTO").length === 0 ? (
               <EmptyState>
-                <p className="font-medium text-foreground">No documents uploaded yet.</p>
-                <p>Upload documents you frequently use in applications.</p>
-                <Button className="mt-2" onPress={openAddDialog}><Plus aria-hidden="true" />Add Document</Button>
+                <p className="font-medium text-foreground">{t("noDocuments")}</p>
+                <p>{t("noDocumentsDescription")}</p>
+                <Button className="mt-2" onPress={openAddDialog}><Plus aria-hidden="true" />{t("addDocument")}</Button>
               </EmptyState>
             ) : (
               <Card className="border-t-4 border-t-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="size-4 text-primary" aria-hidden="true" />
-                My documents
+                {t("documents")}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Documents you upload for reuse in applications.</p>
+              <p className="text-sm text-muted-foreground">{t("noDocumentsDescription")}</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
@@ -183,7 +186,7 @@ export function DocumentsPage() {
                         <div className="min-w-0 space-y-1">
                           <p className="truncate text-sm font-medium">{document.display_name || document.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {categoryLabel(document.document_type)} · {fileKind(document.mime_type)}{sizeStr ? ` · ${sizeStr}` : ""}
+                            {categoryLabel(document.document_type)} · {fileKind(document.mime_type, language)}{sizeStr ? ` · ${sizeStr}` : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
@@ -218,9 +221,9 @@ export function DocumentsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Landmark className="size-4 text-emerald-600" aria-hidden="true" />
-                DigiLocker
+                {t("digilocker")}
               </CardTitle>
-              <p className="text-sm text-muted-foreground">Synthetic documents available through mock DigiLocker.</p>
+              <p className="text-sm text-muted-foreground">{t("digilockerDescription")}</p>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
@@ -257,7 +260,7 @@ export function DocumentsPage() {
           <div><Label htmlFor="document-category">Document Category</Label><Select aria-label="Document category" selectedKey={category} onSelectionChange={(value) => { setCategory(String(value)); setFormErrors((current) => ({ ...current, category: "" })); }}><SelectTrigger id="document-category" className="mt-2" aria-invalid={Boolean(formErrors.category)}><SelectValue>{category ? categoryLabel(category) : "Select category"}</SelectValue></SelectTrigger><SelectContent>{data?.categories.map((item) => <SelectItem key={item.value} id={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>{formErrors.category ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.category}</p> : null}</div>
           {category === "OTHER" ? <div><Label htmlFor="document-name">Document Name</Label><Input id="document-name" className="mt-2" value={documentName} onChange={(event) => { setDocumentName(event.target.value); setFormErrors((current) => ({ ...current, documentName: "" })); }} aria-invalid={Boolean(formErrors.documentName)} aria-describedby={formErrors.documentName ? "document-name-error" : undefined} placeholder="e.g. NCC Certificate" />{formErrors.documentName ? <p id="document-name-error" className="mt-1 text-xs text-destructive" role="alert">{formErrors.documentName}</p> : null}</div> : null}
           <div><Label>Upload File</Label><input ref={fileInput} className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} /><Button type="button" variant="outline" className="mt-2 h-32 w-full border-dashed" onPress={() => fileInput.current?.click()}><span className="flex flex-col items-center gap-2"><Upload aria-hidden="true" /><span>Click to choose a file</span><span className="text-xs font-normal text-muted-foreground">PDF, JPG, JPEG, PNG or WEBP · maximum 5 MB</span></span></Button>{formErrors.file ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.file}</p> : null}</div>
-          {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt="Selected document preview" width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type)} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label="Remove selected file" onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
+          {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt={t("chooseFileToUpload")} width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type, language)} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label={t("removeSelectedFile")} onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
         </div>
         <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={uploading} onPress={uploadDocument}>{uploading ? "Uploading…" : "Add Document"}</Button></DialogFooter>
       </Dialog>

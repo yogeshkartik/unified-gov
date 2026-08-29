@@ -11,13 +11,12 @@ export function LanguageSwitcher({ showLabel = false }: { showLabel?: boolean })
     <DropdownMenuTrigger>
       <Button variant="ghost" size="sm" aria-label={t("language")}>
         <Languages aria-hidden="true" />
-        <span className={showLabel ? "inline" : "hidden sm:inline"}>{t(language === "en" ? "english" : language === "hi" ? "hindi" : "tamil")}</span>
+        <span className={showLabel ? "inline" : "hidden sm:inline"}>{t(language === "en" ? "english" : "hindi")}</span>
         <ChevronDown className={showLabel ? "block" : "hidden sm:block"} aria-hidden="true" />
       </Button>
-      <DropdownMenu aria-label={t("language")} className="w-40" onAction={(key) => setLanguage(String(key) as "en" | "hi" | "ta")}>
+      <DropdownMenu aria-label={t("language")} className="w-40" onAction={(key) => setLanguage(String(key) as "en" | "hi")}>
         <DropdownMenuItem id="en">{t("english")}</DropdownMenuItem>
         <DropdownMenuItem id="hi">{t("hindi")}</DropdownMenuItem>
-        <DropdownMenuItem id="ta">{t("tamil")}</DropdownMenuItem>
       </DropdownMenu>
     </DropdownMenuTrigger>
   );
