@@ -4,20 +4,18 @@ import { ChevronDown, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { languageLabel, supportedLanguages } from "@/src/i18n/languages";
 
 export function LanguageSwitcher({ showLabel = false }: { showLabel?: boolean }) {
   const { language, setLanguage, t } = useCitizenPreferences();
-  return (
-    <DropdownMenuTrigger>
+  return <DropdownMenuTrigger>
       <Button variant="ghost" size="sm" aria-label={t("language")}>
         <Languages aria-hidden="true" />
-        <span className={showLabel ? "inline" : "hidden sm:inline"}>{t(language === "en" ? "english" : "hindi")}</span>
+        <span className={showLabel ? "inline" : "hidden sm:inline"}>{languageLabel(language)}</span>
         <ChevronDown className={showLabel ? "block" : "hidden sm:block"} aria-hidden="true" />
       </Button>
-      <DropdownMenu aria-label={t("language")} className="w-40" onAction={(key) => setLanguage(String(key) as "en" | "hi")}>
-        <DropdownMenuItem id="en">{t("english")}</DropdownMenuItem>
-        <DropdownMenuItem id="hi">{t("hindi")}</DropdownMenuItem>
+      <DropdownMenu aria-label={t("language")} className="w-56" onAction={(key) => setLanguage(String(key) as typeof language)}>
+        {supportedLanguages.map(([code, name, nativeName]) => <DropdownMenuItem key={code} id={code}>{nativeName} <span className="text-xs text-muted-foreground">{name}</span></DropdownMenuItem>)}
       </DropdownMenu>
-    </DropdownMenuTrigger>
-  );
+    </DropdownMenuTrigger>;
 }

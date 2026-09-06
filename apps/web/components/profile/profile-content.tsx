@@ -584,7 +584,7 @@ export function ProfileContent() {
         {profileGroups.map(({ title, keys }) => (
           <Card key={title} className={isEditing ? "border-primary/20" : undefined}>
             <CardHeader>
-              <CardTitle>{title}</CardTitle>
+            <CardTitle>{t(({ "Personal Details": "personalDetails", "Contact Details": "contactDetails", "Parents Details": "parentsDetails", "Social / Reservation Details": "socialDetails", "Basic Education": "basicEducation", "Other General Details": "otherDetails" }[title] ?? "personalDetails") as Parameters<typeof t>[0])}</CardTitle>
             </CardHeader>
             <CardContent>
               {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{localizeProfileField(String(key), language)}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd></div>)}</dl>}
@@ -593,10 +593,10 @@ export function ProfileContent() {
         ))}
         <Card className={`xl:col-span-2 ${isEditing ? "border-primary/20" : ""}`}>
           <CardHeader>
-            <CardTitle>Address</CardTitle>
+            <CardTitle>{t("address")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {isEditing ? <div className="space-y-6"><section><h3 className="text-sm font-medium">Permanent Address</h3><div className="mt-4"><AddressEditor prefix="permanent" form={form} /></div></section><div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3.5"><Checkbox id="same-address" aria-label="Current correspondence address is the same as permanent address" isSelected={sameAddress} onChange={setSameAddress} /><label htmlFor="same-address" className="cursor-pointer text-sm leading-5 font-medium">Current / correspondence address is same as permanent address</label></div>{sameAddress ? <p className="text-sm text-muted-foreground">Current / correspondence address will use the permanent address.</p> : <section><h3 className="text-sm font-medium">Current / Correspondence Address</h3><div className="mt-4"><AddressEditor prefix="current" form={form} /></div></section>}</div> : <div className="grid gap-6 sm:grid-cols-2"><AddressView title="Permanent Address" address={permanentAddress} /><AddressView title="Current / Correspondence Address" address={profile.current_address_same_as_permanent ? permanentAddress : currentAddress} /></div>}
+            {isEditing ? <div className="space-y-6"><section><h3 className="text-sm font-medium">{t("permanentAddress")}</h3><div className="mt-4"><AddressEditor prefix="permanent" form={form} /></div></section><div className="flex items-start gap-3 rounded-lg border bg-muted/40 p-3.5"><Checkbox id="same-address" aria-label={t("sameAsPermanent")} isSelected={sameAddress} onChange={setSameAddress} /><label htmlFor="same-address" className="cursor-pointer text-sm leading-5 font-medium">{t("sameAsPermanent")}</label></div>{sameAddress ? <p className="text-sm text-muted-foreground">{t("sameAsPermanent")}</p> : <section><h3 className="text-sm font-medium">{t("currentAddress")}</h3><div className="mt-4"><AddressEditor prefix="current" form={form} /></div></section>}</div> : <div className="grid gap-6 sm:grid-cols-2"><AddressView title={t("permanentAddress")} address={permanentAddress} /><AddressView title={t("currentAddress")} address={profile.current_address_same_as_permanent ? permanentAddress : currentAddress} /></div>}
           </CardContent>
         </Card>
       </form>

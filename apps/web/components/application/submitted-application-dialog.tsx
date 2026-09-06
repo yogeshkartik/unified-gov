@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeServiceName } from "@/src/i18n/service-localization";
+import { statusTranslationKey } from "@/components/application/status-badge";
 
 function formatFieldLabel(key: string): string {
   return key
@@ -45,6 +48,7 @@ export function SubmittedApplicationDialog({
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string>();
+  const { language, t } = useCitizenPreferences();
 
   if (!application) return null;
 
@@ -78,7 +82,7 @@ export function SubmittedApplicationDialog({
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setDownloadError("Could not download application PDF.");
+      setDownloadError(t("applicationLoadError"));
     } finally {
       setDownloading(false);
     }
@@ -93,7 +97,7 @@ export function SubmittedApplicationDialog({
     >
       <DialogHeader className="gap-1.5 pr-8">
         <DialogTitle className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
-          {application.service_name}
+          {localizeServiceName(application.service_id, application.service_name, language)}
         </DialogTitle>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5 font-medium">
@@ -107,14 +111,14 @@ export function SubmittedApplicationDialog({
               ? "border-destructive/30 bg-destructive/5 text-destructive font-medium"
               : "border-emerald-200 bg-emerald-50 text-emerald-800 font-medium"}
           >
-            {statusLabel(application.status)}
+            {t(statusTranslationKey(application.status))}
           </Badge>
         </div>
       </DialogHeader>
 
       {referenceNumber ? <div className="mt-4 rounded-lg border bg-muted/20 p-4">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Reference number
+          {t("reference")}
         </p>
         <div className="mt-1 flex items-center justify-between gap-3">
           <span className="font-mono text-base sm:text-lg font-semibold tracking-wide text-foreground break-all">
@@ -130,12 +134,12 @@ export function SubmittedApplicationDialog({
             {copied ? (
               <>
                 <Check className="size-3.5 text-emerald-600" aria-hidden="true" />
-                <span className="text-emerald-700 font-medium">Copied</span>
+                <span className="text-emerald-700 font-medium">{t("copiedToClipboard")}</span>
               </>
             ) : (
               <>
                 <Copy className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <span>Copy</span>
+                <span>{t("copyReferenceNumber")}</span>
               </>
             )}
           </Button>
@@ -146,7 +150,7 @@ export function SubmittedApplicationDialog({
 
       <section>
         <h3 className="text-sm font-semibold tracking-tight text-foreground">
-          Application information
+          {t("applicationInformation")}
         </h3>
         {hasAnswers ? (
           <dl className="mt-3.5 grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-2">
@@ -174,7 +178,7 @@ export function SubmittedApplicationDialog({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Submission
+              {t("submission")}
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <SummaryIcon successful={Boolean(application.submission_status && application.submission_status !== "REJECTED" && application.submission_status !== "CANCELLED")} />
@@ -183,7 +187,7 @@ export function SubmittedApplicationDialog({
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Payment
+              {t("payment")}
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <SummaryIcon successful={application.payment_status === "COMPLETED" || application.payment_status === "NOT_REQUIRED"} />
@@ -192,7 +196,7 @@ export function SubmittedApplicationDialog({
           </div>
           <div className="space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Consent
+              {t("consent")}
             </p>
             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <SummaryIcon successful={application.consent_status === "GRANTED"} />
@@ -204,7 +208,7 @@ export function SubmittedApplicationDialog({
 
       <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:justify-end">
         <DialogClose variant="outline" className="w-full sm:w-auto">
-          Close
+          {t("close")}
         </DialogClose>
         {canDownload ? <Button
           type="button"
@@ -213,7 +217,7 @@ export function SubmittedApplicationDialog({
           isDisabled={downloading}
           aria-live="polite"
         >
-          <span>{downloading ? "Preparing PDF…" : "Download Application PDF"}</span>
+          <span>{downloading ? t("loading") : t("downloadApplicationPdf")}</span>
           <Download className="size-4" aria-hidden="true" />
         </Button> : null}
       </div>

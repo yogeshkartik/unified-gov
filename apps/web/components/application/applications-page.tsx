@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight, Ellipsis, Eye, Landmark, Search, Trash2 } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationDetail, ApplicationStatus, ApplicationSummary } from "@/src/types";
-import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,6 +12,9 @@ import { EmptyState, LoadingState } from "@/components/ui/data-state";
 import { Input } from "@/components/ui/input";
 import { SubmittedApplicationDialog } from "@/components/application/submitted-application-dialog";
 import { applicationFlowPath } from "@/components/application/application-flow-navigation";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeServiceName } from "@/src/i18n/service-localization";
+import { ApplicationStatusBadge } from "@/components/application/status-badge";
 
 type Filter = "All" | "Draft" | "Submitted";
 export type ApplicationListItem = ApplicationSummary;
@@ -29,15 +31,6 @@ function isDraft(status: ApplicationStatus) {
   return actionableStatuses.includes(status);
 }
 
-function statusLabel(status: ApplicationStatus) {
-  if (isDraft(status)) return "Draft";
-  if (status === "SUBMITTED") return "Submitted";
-  if (status === "PROCESSING") return "Processing";
-  if (status === "COMPLETED") return "Completed";
-  if (status === "REJECTED") return "Rejected";
-  return "Cancelled";
-}
-
 function resumeRoute(application: ApplicationDetail) {
   if (application.status === "ADDITIONAL_INFO_REQUIRED") return "additional";
   if (application.status === "DRAFT" || application.status === "CONSENT_REQUIRED") return "consent";
@@ -45,8 +38,8 @@ function resumeRoute(application: ApplicationDetail) {
   return "preview";
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value));
+function formatDate(value: string, language: string) {
+  return new Intl.DateTimeFormat(`${language}-IN`, { dateStyle: "medium" }).format(new Date(value));
 }
 
 function ApplicationRow({
@@ -62,21 +55,11 @@ function ApplicationRow({
   onViewDetails: (application: ApplicationListItem) => void;
   onDelete: (application: ApplicationListItem) => void;
 }) {
+  const { language, t } = useCitizenPreferences();
   const draft = isDraft(application.status);
   const canDelete = draft;
-  const viewLabel = draft ? "Continue" : "View";
-  const badge = draft ? (
-    <Badge variant="secondary" className="bg-amber-100 text-amber-900">
-      Draft
-    </Badge>
-  ) : (
-    <Badge
-      variant="outline"
-      className={application.status === "SUBMITTED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : undefined}
-    >
-      {statusLabel(application.status)}
-    </Badge>
-  );
+  const viewLabel = draft ? t("continue") : t("view");
+  const badge = <ApplicationStatusBadge status={application.status} />;
 
   return (
     <article
@@ -85,7 +68,7 @@ function ApplicationRow({
       } sm:items-center sm:gap-6 ${draft ? "bg-amber-50/30" : ""}`}
     >
       <div className="min-w-0">
-        <p className="text-base font-medium text-foreground sm:text-sm">{application.service_name}</p>
+        <p className="text-base font-medium text-foreground sm:text-sm">{localizeServiceName(application.service_id, application.service_name, language)}</p>
         <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
           <Landmark className="size-4 shrink-0" aria-hidden="true" />
           {application.department}
@@ -93,8 +76,8 @@ function ApplicationRow({
       </div>
       {showUpdated ? (
         <div className="flex items-baseline justify-between gap-3 sm:block">
-          <p className="text-xs text-muted-foreground sm:hidden">Updated</p>
-          <p className="text-sm text-muted-foreground">{formatDate(application.updated_at)}</p>
+          <p className="text-xs text-muted-foreground sm:hidden">{t("updated")}</p>
+          <p className="text-sm text-muted-foreground">{formatDate(application.updated_at, language)}</p>
         </div>
       ) : null}
       <div className="flex items-center gap-2">{badge}</div>
@@ -115,19 +98,19 @@ function ApplicationRow({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label={`More actions for ${application.service_name}`}
+              aria-label={t("moreActions", { name: application.service_name })}
             >
               <Ellipsis aria-hidden="true" />
             </Button>
             <DropdownMenu placement="bottom end">
               <DropdownMenuItem onAction={() => onViewDetails(application)}>
                 <Eye aria-hidden="true" />
-                View details
+                {t("viewDetails")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onAction={() => onDelete(application)}>
                 <Trash2 aria-hidden="true" />
-                Delete draft
+                {t("deleteDraft")}
               </DropdownMenuItem>
             </DropdownMenu>
           </DropdownMenuTrigger>
@@ -150,17 +133,18 @@ function ApplicationList({
   onViewDetails: (application: ApplicationListItem) => void;
   onDelete: (application: ApplicationListItem) => void;
 }) {
+  const { t } = useCitizenPreferences();
   return (
-    <section className="overflow-hidden rounded-xl border bg-card shadow-sm" aria-label="Applications">
+    <section className="overflow-hidden rounded-xl border bg-card shadow-sm" aria-label={t("applications")}>
       <div
         className={`hidden ${
           showUpdated ? "grid-cols-[minmax(0,1fr)_130px_110px_140px]" : "grid-cols-[minmax(0,1fr)_110px_140px]"
         } gap-6 border-b px-5 py-3 text-xs font-medium text-muted-foreground sm:grid`}
       >
-        <span>Application</span>
-        {showUpdated ? <span>Updated</span> : null}
-        <span>Status</span>
-        <span className="sr-only">Action</span>
+        <span>{t("applicationColumn")}</span>
+        {showUpdated ? <span>{t("updated")}</span> : null}
+        <span>{t("status")}</span>
+        <span className="sr-only">{t("action")}</span>
       </div>
       {applications.map((application, index) => (
         <div key={application.id} className={index > 0 ? "border-t" : undefined}>
@@ -179,6 +163,7 @@ function ApplicationList({
 
 export function ApplicationsPage() {
   const router = useRouter();
+  const { t } = useCitizenPreferences();
   const [applications, setApplications] = useState<ApplicationListItem[]>();
   const [filter, setFilter] = useState<Filter>("Draft");
   const [query, setQuery] = useState("");
@@ -228,7 +213,7 @@ export function ApplicationsPage() {
       setApplications((current) => current?.filter((item) => item.id !== application.id));
       setPendingDelete(undefined);
     } catch {
-      setDeleteError("We could not delete this draft. Please try again.");
+      setDeleteError(t("deleteDraftError"));
     } finally {
       setDeletingId(undefined);
     }
@@ -243,7 +228,7 @@ export function ApplicationsPage() {
       }
       setSelectedSubmittedApplication(detail);
     } catch {
-      setDeleteError("We could not load this application. Please try again.");
+      setDeleteError(t("applicationLoadError"));
     }
   }
 
@@ -255,7 +240,7 @@ export function ApplicationsPage() {
     try {
       setSelectedSubmittedApplication(await api.getApplication(application.id));
     } catch {
-      setDeleteError("We could not load this application. Please try again.");
+      setDeleteError(t("applicationLoadError"));
     }
   }
 
@@ -263,18 +248,18 @@ export function ApplicationsPage() {
     if (query.trim()) {
       return (
         <EmptyState>
-          <p className="font-medium text-foreground">No applications found</p>
-          <p className="mt-1">Try changing your search or filter.</p>
+          <p className="font-medium text-foreground">{t("noApplications")}</p>
+          <p className="mt-1">{t("changeApplicationSearch")}</p>
         </EmptyState>
       );
     }
     if (filter === "Draft") {
       return (
         <EmptyState>
-          <p className="font-medium text-foreground">No draft applications</p>
-          <p className="mt-1">You don&apos;t have any applications waiting for completion.</p>
+          <p className="font-medium text-foreground">{t("noDraftApplications")}</p>
+          <p className="mt-1">{t("noDraftApplicationsDescription")}</p>
           <LinkButton href="/services" className="mt-4">
-            Browse Government Services
+            {t("browseServices")}
           </LinkButton>
         </EmptyState>
       );
@@ -282,17 +267,17 @@ export function ApplicationsPage() {
     if (filter === "Submitted") {
       return (
         <EmptyState>
-          <p className="font-medium text-foreground">No submitted applications</p>
-          <p className="mt-1">Submitted applications will appear here.</p>
+          <p className="font-medium text-foreground">{t("noSubmittedApplications")}</p>
+          <p className="mt-1">{t("noSubmittedApplicationsDescription")}</p>
         </EmptyState>
       );
     }
     return (
       <EmptyState>
-        <p className="font-medium text-foreground">No applications yet</p>
-        <p className="mt-1">Browse government services to start your first application.</p>
+        <p className="font-medium text-foreground">{t("noApplicationsYet")}</p>
+        <p className="mt-1">{t("noApplicationsYetDescription")}</p>
         <LinkButton href="/services" className="mt-4">
-          Browse Government Services
+          {t("browseServices")}
         </LinkButton>
       </EmptyState>
     );
@@ -317,7 +302,7 @@ export function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label className="relative block sm:max-w-sm sm:flex-1">
-          <span className="sr-only">Search applications</span>
+          <span className="sr-only">{t("searchApplications")}</span>
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -325,14 +310,14 @@ export function ApplicationsPage() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search applications"
+            placeholder={t("searchApplications")}
             className="min-h-11 pl-9"
           />
         </label>
-        <div className="flex flex-wrap gap-2" aria-label="Filter applications">
-          {filterButton("All", "All", counts.all)}
-          {filterButton("Draft", "Draft", counts.draft)}
-          {filterButton("Submitted", "Submitted", counts.submitted)}
+        <div className="flex flex-wrap gap-2" aria-label={t("filterApplications")}>
+          {filterButton("All", t("all"), counts.all)}
+          {filterButton("Draft", t("draft"), counts.draft)}
+          {filterButton("Submitted", t("submitted"), counts.submitted)}
         </div>
       </div>
       {deleteError ? (
@@ -341,13 +326,13 @@ export function ApplicationsPage() {
         </p>
       ) : null}
       {!applications ? (
-        <LoadingState label="Loading your applications…" />
+        <LoadingState label={t("loadingApplications")} />
       ) : sortedApplications.length === 0 ? (
         emptyState()
       ) : filter === "All" && draftApplications.length > 0 ? (
         <div className="space-y-7">
           <section className="space-y-3">
-            <h2 className="text-base font-semibold">Needs your attention</h2>
+            <h2 className="text-base font-semibold">{t("needsAttention")}</h2>
             <ApplicationList
               applications={draftApplications}
               showUpdated={true}
@@ -358,7 +343,7 @@ export function ApplicationsPage() {
           </section>
           {historyApplications.length > 0 ? (
             <section className="space-y-3">
-              <h2 className="text-base font-semibold">Application history</h2>
+              <h2 className="text-base font-semibold">{t("applicationHistory")}</h2>
               <ApplicationList
                 applications={historyApplications}
                 showUpdated={false}
@@ -385,13 +370,13 @@ export function ApplicationsPage() {
         }}
       >
         <DialogHeader>
-          <DialogTitle>Delete draft?</DialogTitle>
+          <DialogTitle>{t("deleteDraftTitle")}</DialogTitle>
           <DialogDescription>
-            This will permanently delete the draft for {pendingDelete?.service_name}. This action cannot be undone.
+            {t("deleteDraftDescription")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose type="button">Cancel</DialogClose>
+          <DialogClose type="button">{t("cancel")}</DialogClose>
           <Button
             type="button"
             variant="destructive"
@@ -400,7 +385,7 @@ export function ApplicationsPage() {
             }}
             isDisabled={!pendingDelete || deletingId === pendingDelete.id}
           >
-            {deletingId ? "Deleting…" : "Delete"}
+            {deletingId ? t("deleting") : t("delete")}
           </Button>
         </DialogFooter>
       </Dialog>

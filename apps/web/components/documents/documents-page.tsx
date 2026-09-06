@@ -29,7 +29,7 @@ function fileSize(size: number | null) {
   return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileKind(mimeType: string | null, language: "en" | "hi") {
+function fileKind(mimeType: string | null, language: import("@/src/i18n/languages").Language) {
   if (mimeType === "application/pdf") return "PDF";
   if (mimeType?.startsWith("image/")) return language === "hi" ? "छवि" : "Image";
   return language === "hi" ? "फ़ाइल" : "File";
