@@ -4,13 +4,13 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import en from "@/src/i18n/en.json";
 import hi from "@/src/i18n/hi.json";
 import { isSupportedLanguage, type Language } from "@/src/i18n/languages";
-import { regionalDictionaries } from "@/src/i18n/regional";
+import { applicationUi, regionalDictionaries, statusUi } from "@/src/i18n/regional";
 
 export type { Language } from "@/src/i18n/languages";
 type TextSize = "small" | "default" | "large";
 export type TranslationKey = keyof typeof en;
 type TranslationValues = Record<string, string | number>;
-const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en, hi, ...regionalDictionaries };
+const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en, hi, kn: { ...regionalDictionaries.kn, ...applicationUi.kn, ...statusUi.kn }, ta: { ...regionalDictionaries.ta, ...applicationUi.ta, ...statusUi.ta }, te: { ...regionalDictionaries.te, ...applicationUi.te, ...statusUi.te }, bn: { ...regionalDictionaries.bn, ...applicationUi.bn, ...statusUi.bn } };
 const storageKey = "unified-gov-preferences";
 
 interface Preferences {
