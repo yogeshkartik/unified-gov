@@ -12,6 +12,7 @@ import { LinkButton } from "@/components/ui/button";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeService, localizeServiceName } from "@/src/i18n/service-localization";
 import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
+import type { Language } from "@/src/i18n/languages";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
@@ -112,7 +113,7 @@ function SummaryLink({ href, icon: Icon, title, detail, action, tone }: { href: 
   return <Link href={href} className="group flex min-h-20 items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className={`size-5 shrink-0 ${tone}`} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{detail}</p></div><span className="sr-only">{action}</span><ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></Link>;
 }
 
-function ContinueApplicationCard({ application, language, t }: { application: ApplicationSummary; language: "en" | "hi"; t: ReturnType<typeof useCitizenPreferences>["t"] }) {
+function ContinueApplicationCard({ application, language, t }: { application: ApplicationSummary; language: Language; t: ReturnType<typeof useCitizenPreferences>["t"] }) {
   const step = applicationStep(application.status);
   const stepLabel = t(step === "additional" ? "additionalStep" : step === "consent" ? "consentStep" : step === "payment" ? "paymentStep" : "previewStep");
   return <section className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-4 sm:px-5" aria-labelledby="continue-application-heading"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><h2 id="continue-application-heading" className="font-semibold text-amber-950">{t("continueApplication")}</h2><p className="mt-1 truncate text-sm text-amber-900">{localizeServiceName(application.service_id, application.service_name, language)} · {t("stepOf", { step: applicationFlowSteps[step].index, total: 5 })} · {stepLabel}</p></div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center"><LinkButton href="/applications" variant="link" size="sm" className="h-10 text-amber-900">{t("viewAllApplications")}</LinkButton><LinkButton href={applicationFlowPath(application.id, step)}>{t("continue")} <ArrowRight aria-hidden="true" /></LinkButton></div></div></section>;

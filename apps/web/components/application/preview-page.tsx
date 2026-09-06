@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/src/lib/api";
-import type { ApplicationPreview } from "@/src/types";
+import type { ApplicationPreview, GovernmentServiceDetail } from "@/src/types";
 import { ApplicationFlowShell } from "@/components/application/application-flow-shell";
 import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeDocumentType, localizeService } from "@/src/i18n/service-localization";
 
 function formatKey(value: string) {
   return value
@@ -40,13 +42,15 @@ function formatAddress(address: unknown) {
 export function PreviewPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [preview, setPreview] = useState<ApplicationPreview>();
+  const [service, setService] = useState<GovernmentServiceDetail>();
+  const { language, t } = useCitizenPreferences();
   const [error, setError] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string>();
 
   useEffect(() => {
-    api.getPreview(applicationId).then(setPreview).catch(() => setError(true));
-  }, [applicationId]);
+    api.getPreview(applicationId).then(async (result) => { setPreview(result); setService(localizeService(await api.getService(String(result.service.id)), language)); }).catch(() => setError(true));
+  }, [applicationId, language]);
 
   async function confirm() {
     setFinalizing(true);
@@ -86,7 +90,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
 
   return (
     <ApplicationFlowShell
-      serviceName={String(preview.service.name)}
+      serviceName={service?.name ?? String(preview.service.name)}
       applicationId={applicationId}
       step={applicationFlowSteps.preview.index}
       stepName={applicationFlowSteps.preview.label}
@@ -100,10 +104,10 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
                 variant="outline"
                 onPress={() => navigateApplicationFlow(router, applicationId, "consent", "back")}
               >
-                Back
+                {t("back")}
               </Button>
               <Button onPress={confirm} isDisabled={finalizing}>
-                {finalizing ? "Creating snapshot…" : "Confirm & Continue"}
+                {finalizing ? t("processing") : t("confirmContinue")}
               </Button>
             </>
           ) : (
@@ -121,7 +125,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
     >
       <div className="space-y-5">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          {isSubmitted ? "Application preview" : "Review application"}
+          {isSubmitted ? t("previewStep") : t("reviewApplication")}
         </h1>
 
         {/* Personal Info Summary */}
@@ -152,8 +156,8 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
               <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
                 {Object.entries(preview.answers).map(([key, value]) => (
                   <div key={key} className="space-y-0.5">
-                    <dt className="text-xs text-muted-foreground">{formatKey(key)}</dt>
-                    <dd className="font-medium text-foreground">{String(value ?? "—")}</dd>
+                    <dt className="text-xs text-muted-foreground">{service?.fields.find((field) => field.key === key)?.label ?? formatKey(key)}</dt>
+                    <dd className="font-medium text-foreground">{service?.fields.find((field) => field.key === key)?.option_labels?.[String(value)] ?? String(value ?? "—")}</dd>
                   </div>
                 ))}
               </dl>
@@ -168,7 +172,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
             {/* Selected Documents */}
             <section className="space-y-2.5 text-sm">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Documents
+                {t("documents")}
               </h3>
               <ul className="space-y-2">
                 {preview.documents.map((document, index) => (
@@ -176,7 +180,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
                     key={String(document.id ?? index)}
                     className="flex items-center justify-between gap-3 font-medium text-foreground"
                   >
-                    <span>{String(document.name)}</span>
+                    <span>{localizeDocumentType(String(document.document_type), String(document.name), language)}</span>
                     <span className="text-xs text-muted-foreground">
                       {String(document.source) === "DIGILOCKER" ? "DigiLocker" : "My Documents"}
                     </span>
@@ -191,7 +195,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
 
         {/* Fee */}
         <section className="flex items-center justify-between text-sm">
-          <span className="font-medium text-muted-foreground">Fee</span>
+          <span className="font-medium text-muted-foreground">{t("totalFee")}</span>
           <span className="font-semibold text-foreground">
             {preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free"}
           </span>

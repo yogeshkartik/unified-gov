@@ -81,32 +81,69 @@ const hindiOptions: Record<string, string> = {
   "MCWOG — Motorcycle without gear": "MCWOG — बिना गियर मोटरसाइकिल", "MCWG — Motorcycle with gear": "MCWG — गियर वाली मोटरसाइकिल", "LMV-NT — Light motor vehicle (non-transport)": "LMV-NT — हल्का मोटर वाहन (गैर-परिवहन)", "LMV-TR — Light motor vehicle (transport)": "LMV-TR — हल्का मोटर वाहन (परिवहन)", "Transport — Medium/heavy goods or passenger vehicle": "परिवहन — मध्यम/भारी माल या यात्री वाहन", "E-rickshaw": "ई-रिक्शा", "E-cart": "ई-कार्ट", "Road roller": "रोड रोलर", "Adapted vehicle for persons with disability": "दिव्यांग व्यक्ति के लिए अनुकूलित वाहन", "Other specified vehicle": "अन्य निर्दिष्ट वाहन"
 };
 
+const regionalServiceNames: Partial<Record<Language, Record<string, string>>> = {
+  kn: { RECRUITMENT_EXAM_001: "ಸರ್ಕಾರಿ ನೇಮಕಾತಿ ಪರೀಕ್ಷೆ", SCHOLARSHIP_001: "ಮೆಟ್ರಿಕ್ ನಂತರದ ವಿದ್ಯಾರ್ಥಿವೇತನ", DRIVING_LICENCE_001: "ಚಾಲನಾ ಪರವಾನಗಿ ಅರ್ಜಿ", JEE_MAIN_001: "JEE Main", NEET_UG_001: "NEET UG", CUET_UG_001: "CUET UG", WBJEE_001: "WBJEE", SSC_CGL_001: "SSC CGL", UPSC_CSE_001: "UPSC ನಾಗರಿಕ ಸೇವಾ ಪರೀಕ್ಷೆ", IBPS_PO_001: "IBPS PO", PAN_CARD_001: "PAN ಕಾರ್ಡ್", VOTER_ID_001: "ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ", PASSPORT_001: "ಪಾಸ್‌ಪೋರ್ಟ್", NATIONAL_SCHOLARSHIP_001: "ರಾಷ್ಟ್ರೀಯ ವಿದ್ಯಾರ್ಥಿವೇತನ", STATE_MERIT_SCHOLARSHIP_001: "ರಾಜ್ಯ ಪ್ರತಿಭಾ ವಿದ್ಯಾರ್ಥಿವೇತನ", HIGHER_EDUCATION_SCHOLARSHIP_001: "ಉನ್ನತ ಶಿಕ್ಷಣ ವಿದ್ಯಾರ್ಥಿವೇತನ", PM_KISAN_001: "PM-KISAN", AYUSHMAN_BHARAT_001: "ಆಯುಷ್ಮಾನ್ ಭಾರತ್", PMAY_001: "PMAY ವಸತಿ ನೆರವು", E_SHRAM_001: "ಇ-ಶ್ರಮ್ ನೋಂದಣಿ", INCOME_CERTIFICATE_001: "ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ", CASTE_CERTIFICATE_001: "ಜಾತಿ ಪ್ರಮಾಣ ಪತ್ರ", DOMICILE_CERTIFICATE_001: "ನಿವಾಸ ಪ್ರಮಾಣ ಪತ್ರ" },
+  ta: { RECRUITMENT_EXAM_001: "அரசுப் பணியாளர் தேர்வு", SCHOLARSHIP_001: "மெட்ரிக் பிந்தைய உதவித்தொகை", DRIVING_LICENCE_001: "ஓட்டுநர் உரிம விண்ணப்பம்", JEE_MAIN_001: "JEE Main", NEET_UG_001: "NEET UG", CUET_UG_001: "CUET UG", WBJEE_001: "WBJEE", SSC_CGL_001: "SSC CGL", UPSC_CSE_001: "UPSC குடிமைப் பணித் தேர்வு", IBPS_PO_001: "IBPS PO", PAN_CARD_001: "PAN அட்டை", VOTER_ID_001: "வாக்காளர் அடையாள அட்டை", PASSPORT_001: "கடவுச்சீட்டு", NATIONAL_SCHOLARSHIP_001: "தேசிய உதவித்தொகை", STATE_MERIT_SCHOLARSHIP_001: "மாநில திறமை உதவித்தொகை", HIGHER_EDUCATION_SCHOLARSHIP_001: "உயர்கல்வி உதவித்தொகை", PM_KISAN_001: "PM-KISAN", AYUSHMAN_BHARAT_001: "ஆயுஷ்மான் பாரத்", PMAY_001: "PMAY வீட்டு உதவி", E_SHRAM_001: "இ-ஷ்ரம் பதிவு", INCOME_CERTIFICATE_001: "வருமானச் சான்றிதழ்", CASTE_CERTIFICATE_001: "சாதிச் சான்றிதழ்", DOMICILE_CERTIFICATE_001: "இருப்பிடச் சான்றிதழ்" },
+  te: { RECRUITMENT_EXAM_001: "ప్రభుత్వ నియామక పరీక్ష", SCHOLARSHIP_001: "పోస్ట్-మెట్రిక్ ఉపకార వేతనం", DRIVING_LICENCE_001: "డ్రైవింగ్ లైసెన్స్ దరఖాస్తు", JEE_MAIN_001: "JEE Main", NEET_UG_001: "NEET UG", CUET_UG_001: "CUET UG", WBJEE_001: "WBJEE", SSC_CGL_001: "SSC CGL", UPSC_CSE_001: "UPSC సివిల్ సర్వీసెస్ పరీక్ష", IBPS_PO_001: "IBPS PO", PAN_CARD_001: "PAN కార్డు", VOTER_ID_001: "ఓటరు గుర్తింపు కార్డు", PASSPORT_001: "పాస్‌పోర్ట్", NATIONAL_SCHOLARSHIP_001: "జాతీయ ఉపకార వేతనం", STATE_MERIT_SCHOLARSHIP_001: "రాష్ట్ర ప్రతిభ ఉపకార వేతనం", HIGHER_EDUCATION_SCHOLARSHIP_001: "ఉన్నత విద్య ఉపకార వేతనం", PM_KISAN_001: "PM-KISAN", AYUSHMAN_BHARAT_001: "ఆయుష్మాన్ భారత్", PMAY_001: "PMAY గృహ సహాయం", E_SHRAM_001: "ఈ-శ్రమ్ నమోదు", INCOME_CERTIFICATE_001: "ఆదాయ ధృవీకరణ పత్రం", CASTE_CERTIFICATE_001: "కుల ధృవీకరణ పత్రం", DOMICILE_CERTIFICATE_001: "నివాస ధృవీకరణ పత్రం" },
+  bn: { RECRUITMENT_EXAM_001: "সরকারি নিয়োগ পরীক্ষা", SCHOLARSHIP_001: "পোস্ট-ম্যাট্রিক বৃত্তি", DRIVING_LICENCE_001: "ড্রাইভিং লাইসেন্স আবেদন", JEE_MAIN_001: "JEE Main", NEET_UG_001: "NEET UG", CUET_UG_001: "CUET UG", WBJEE_001: "WBJEE", SSC_CGL_001: "SSC CGL", UPSC_CSE_001: "UPSC সিভিল সার্ভিস পরীক্ষা", IBPS_PO_001: "IBPS PO", PAN_CARD_001: "PAN কার্ড", VOTER_ID_001: "ভোটার পরিচয়পত্র", PASSPORT_001: "পাসপোর্ট", NATIONAL_SCHOLARSHIP_001: "জাতীয় বৃত্তি", STATE_MERIT_SCHOLARSHIP_001: "রাজ্য মেধা বৃত্তি", HIGHER_EDUCATION_SCHOLARSHIP_001: "উচ্চশিক্ষা বৃত্তি", PM_KISAN_001: "PM-KISAN", AYUSHMAN_BHARAT_001: "আয়ুষ্মান ভারত", PMAY_001: "PMAY আবাসন সহায়তা", E_SHRAM_001: "ই-শ্রম নিবন্ধন", INCOME_CERTIFICATE_001: "আয় শংসাপত্র", CASTE_CERTIFICATE_001: "জাতি শংসাপত্র", DOMICILE_CERTIFICATE_001: "বাসস্থান শংসাপত্র" }
+};
+
+const regionalCategories: Partial<Record<Language, Record<string, string>>> = {
+  kn: { Examinations: "ಪರೀಕ್ಷೆಗಳು", "Identity & Licences": "ಗುರುತು ಮತ್ತು ಪರವಾನಗಿಗಳು", "Education & Scholarships": "ಶಿಕ್ಷಣ ಮತ್ತು ವಿದ್ಯಾರ್ಥಿವೇತನ", "Government Schemes": "ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು", Certificates: "ಪ್ರಮಾಣ ಪತ್ರಗಳು" },
+  ta: { Examinations: "தேர்வுகள்", "Identity & Licences": "அடையாளம் மற்றும் உரிமங்கள்", "Education & Scholarships": "கல்வி மற்றும் உதவித்தொகைகள்", "Government Schemes": "அரசுத் திட்டங்கள்", Certificates: "சான்றிதழ்கள்" },
+  te: { Examinations: "పరీక్షలు", "Identity & Licences": "గుర్తింపు మరియు లైసెన్సులు", "Education & Scholarships": "విద్య మరియు ఉపకార వేతనాలు", "Government Schemes": "ప్రభుత్వ పథకాలు", Certificates: "ధృవీకరణ పత్రాలు" },
+  bn: { Examinations: "পরীক্ষা", "Identity & Licences": "পরিচয় ও লাইসেন্স", "Education & Scholarships": "শিক্ষা ও বৃত্তি", "Government Schemes": "সরকারি প্রকল্প", Certificates: "শংসাপত্র" }
+};
+
+const regionalDescriptions: Partial<Record<Language, Record<string, string>>> = {
+  kn: { Examinations: "ಈ ಪರೀಕ್ಷೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ ಮತ್ತು ಅರ್ಜಿಯ ಸ್ಥಿತಿಯನ್ನು ಪರಿಶೀಲಿಸಿ.", "Identity & Licences": "ಈ ಗುರುತು ಅಥವಾ ಪರವಾನಗಿ ಸೇವೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ.", "Education & Scholarships": "ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ ಶಿಕ್ಷಣ ಮತ್ತು ಹಣಕಾಸಿನ ನೆರವು.", "Government Schemes": "ಅರ್ಹ ನಾಗರಿಕರಿಗಾಗಿ ಸರ್ಕಾರಿ ಯೋಜನೆಯ ಪ್ರಾಯೋಗಿಕ ಸೇವೆ.", Certificates: "ಈ ಪ್ರಮಾಣ ಪತ್ರದ ವಿತರಣೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿ." },
+  ta: { Examinations: "இந்தத் தேர்வுக்கு விண்ணப்பித்து விண்ணப்ப நிலையைப் பார்க்கவும்.", "Identity & Licences": "இந்த அடையாள அல்லது உரிம சேவைக்கு விண்ணப்பிக்கவும்.", "Education & Scholarships": "மாணவர்களுக்கான கல்வி மற்றும் நிதி உதவி.", "Government Schemes": "தகுதியான குடிமக்களுக்கான அரசுத் திட்ட மாதிரி சேவை.", Certificates: "இந்தச் சான்றிதழை வழங்க விண்ணப்பிக்கவும்." },
+  te: { Examinations: "ఈ పరీక్షకు దరఖాస్తు చేసి దరఖాస్తు స్థితిని చూడండి.", "Identity & Licences": "ఈ గుర్తింపు లేదా లైసెన్స్ సేవకు దరఖాస్తు చేయండి.", "Education & Scholarships": "విద్యార్థులకు విద్యా మరియు ఆర్థిక సహాయం.", "Government Schemes": "అర్హులైన పౌరుల కోసం ప్రభుత్వ పథకం నమూనా సేవ.", Certificates: "ఈ ధృవీకరణ పత్రం జారీ కోసం దరఖాస్తు చేయండి." },
+  bn: { Examinations: "এই পরীক্ষার জন্য আবেদন করুন এবং আবেদনের অবস্থা দেখুন।", "Identity & Licences": "এই পরিচয় বা লাইসেন্স পরিষেবার জন্য আবেদন করুন।", "Education & Scholarships": "শিক্ষার্থীদের জন্য শিক্ষা ও আর্থিক সহায়তা।", "Government Schemes": "যোগ্য নাগরিকদের জন্য সরকারি প্রকল্পের নমুনা পরিষেবা।", Certificates: "এই শংসাপত্র জারির জন্য আবেদন করুন।" }
+};
+
+const regionalFields: Partial<Record<Language, Record<string, string>>> = {
+  kn: { exam_city: "ಆದ್ಯತೆಯ ಪರೀಕ್ಷಾ ನಗರ", post_preference: "ಹುದ್ದೆಯ ಆದ್ಯತೆ", course: "ಪ್ರಸ್ತುತ ಕೋರ್ಸ್", institution: "ಸಂಸ್ಥೆ", academic_year: "ಶೈಕ್ಷಣಿಕ ವರ್ಷ", licence_type: "ಅರ್ಜಿಯ ವಿಧ", vehicle_class: "ವಾಹನ ವರ್ಗ", paper_preference: "ಪ್ರಶ್ನೆಪತ್ರದ ಆದ್ಯತೆ", subject_preference: "ವಿಷಯದ ಆದ್ಯತೆ", service_preference: "ಸೇವೆಯ ಆದ್ಯತೆ", application_type: "ಅರ್ಜಿಯ ವಿಧ", registration_type: "ನೋಂದಣಿ ವಿಧ", farmer_declaration: "ರೈತರ ಘೋಷಣೆ", household_size: "ಕುಟುಂಬದ ಸದಸ್ಯರ ಸಂಖ್ಯೆ", housing_need: "ವಸತಿ ಅಗತ್ಯ", occupation: "ವೃತ್ತಿ", certificate_purpose: "ಪ್ರಮಾಣ ಪತ್ರದ ಉದ್ದೇಶ" },
+  ta: { exam_city: "விருப்பத் தேர்வு நகரம்", post_preference: "பதவி விருப்பம்", course: "தற்போதைய பாடநெறி", institution: "நிறுவனம்", academic_year: "கல்வியாண்டு", licence_type: "விண்ணப்ப வகை", vehicle_class: "வாகன வகை", paper_preference: "தாள் விருப்பம்", application_type: "விண்ணப்ப வகை", registration_type: "பதிவு வகை", farmer_declaration: "விவசாயி உறுதிமொழி", household_size: "குடும்ப உறுப்பினர் எண்ணிக்கை", housing_need: "வீட்டு தேவை", occupation: "தொழில்", certificate_purpose: "சான்றிதழின் நோக்கம்" },
+  te: { exam_city: "ప్రాధాన్య పరీక్ష నగరం", post_preference: "పోస్ట్ ప్రాధాన్యత", course: "ప్రస్తుత కోర్సు", institution: "సంస్థ", academic_year: "విద్యా సంవత్సరం", licence_type: "దరఖాస్తు రకం", vehicle_class: "వాహన తరగతి", paper_preference: "పేపర్ ప్రాధాన్యత", application_type: "దరఖాస్తు రకం", registration_type: "నమోదు రకం", farmer_declaration: "రైతు ప్రకటన", household_size: "కుటుంబ సభ్యుల సంఖ్య", housing_need: "గృహ అవసరం", occupation: "వృత్తి", certificate_purpose: "ధృవీకరణ పత్రం ఉద్దేశ్యం" },
+  bn: { exam_city: "পছন্দের পরীক্ষার শহর", post_preference: "পদের পছন্দ", course: "বর্তমান কোর্স", institution: "প্রতিষ্ঠান", academic_year: "শিক্ষাবর্ষ", licence_type: "আবেদনের ধরন", vehicle_class: "যানের শ্রেণি", paper_preference: "পত্রের পছন্দ", application_type: "আবেদনের ধরন", registration_type: "নিবন্ধনের ধরন", farmer_declaration: "কৃষকের ঘোষণা", household_size: "পরিবারের সদস্য সংখ্যা", housing_need: "আবাসনের প্রয়োজন", occupation: "পেশা", certificate_purpose: "শংসাপত্রের উদ্দেশ্য" }
+};
+
+const regionalDocuments: Partial<Record<Language, Record<string, string>>> = { kn: { PHOTOGRAPH: "ಛಾಯಾಚಿತ್ರ", SIGNATURE: "ಸಹಿ", DEGREE_CERTIFICATE: "ಪದವಿ ಪ್ರಮಾಣ ಪತ್ರ", IDENTITY_DOCUMENT: "ಗುರುತಿನ ದಾಖಲೆ", INCOME_CERTIFICATE: "ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ", MARKSHEET: "ಅಂಕಪಟ್ಟಿ", OTHER: "ಪೂರಕ ದಾಖಲೆ" }, ta: { PHOTOGRAPH: "புகைப்படம்", SIGNATURE: "கையொப்பம்", DEGREE_CERTIFICATE: "பட்டச் சான்றிதழ்", IDENTITY_DOCUMENT: "அடையாள ஆவணம்", INCOME_CERTIFICATE: "வருமானச் சான்றிதழ்", MARKSHEET: "மதிப்பெண் பட்டியல்", OTHER: "ஆதார ஆவணம்" }, te: { PHOTOGRAPH: "ఫోటో", SIGNATURE: "సంతకం", DEGREE_CERTIFICATE: "డిగ్రీ ధృవీకరణ పత్రం", IDENTITY_DOCUMENT: "గుర్తింపు పత్రం", INCOME_CERTIFICATE: "ఆదాయ ధృవీకరణ పత్రం", MARKSHEET: "మార్కుల జాబితా", OTHER: "సహాయక పత్రం" }, bn: { PHOTOGRAPH: "ছবি", SIGNATURE: "স্বাক্ষর", DEGREE_CERTIFICATE: "ডিগ্রি শংসাপত্র", IDENTITY_DOCUMENT: "পরিচয় নথি", INCOME_CERTIFICATE: "আয় শংসাপত্র", MARKSHEET: "মার্কশিট", OTHER: "সহায়ক নথি" } };
+
+const commonRegionalOptions: Partial<Record<Language, Record<string, string>>> = { kn: { "New Delhi": "ನವದೆಹಲಿ", Mumbai: "ಮುಂಬೈ", Bengaluru: "ಬೆಂಗಳೂರು", "Paper 1": "ಪೇಪರ್ 1", "Paper 2": "ಪೇಪರ್ 2", "2026-27": "2026-27", "2027-28": "2027-28" }, ta: { "New Delhi": "புது தில்லி", Mumbai: "மும்பை", Bengaluru: "பெங்களூரு", "Paper 1": "தாள் 1", "Paper 2": "தாள் 2" }, te: { "New Delhi": "న్యూఢిల్లీ", Mumbai: "ముంబై", Bengaluru: "బెంగళూరు", "Paper 1": "పేపర్ 1", "Paper 2": "పేపర్ 2" }, bn: { "New Delhi": "নয়াদিল্লি", Mumbai: "মুম্বই", Bengaluru: "বেঙ্গালুরু", "Paper 1": "পত্র 1", "Paper 2": "পত্র 2" } };
+
 export function localizeService<T extends GovernmentService>(service: T, language: Language): T {
-  if (language !== "hi") return service;
-  const copy = hindiServices[service.id];
+  if (language === "en") return service;
+  const copy = language === "hi" ? hindiServices[service.id] : undefined;
+  const regionalName = regionalServiceNames[language]?.[service.id];
+  const category = (language === "hi" ? hindiCategories : regionalCategories[language])?.[service.category] ?? service.category;
   const localized = {
     ...service,
-    name: copy?.name ?? service.name,
+    name: copy?.name ?? regionalName ?? service.name,
     department: copy?.department ?? service.department,
-    description: copy?.description ?? service.description,
-    category: hindiCategories[service.category] ?? service.category
+    description: copy?.description ?? regionalDescriptions[language]?.[service.category] ?? service.description,
+    category
   };
   if (!("fields" in service) || !("document_requirements" in service) || !("required_profile_fields" in service)) return localized;
   const detail = service as unknown as GovernmentServiceDetail;
   return {
     ...localized,
     required_profile_fields: detail.required_profile_fields,
-    fields: detail.fields.map((field) => ({ ...field, label: hindiFields[field.key] ?? field.label, options: field.options?.map((option) => hindiOptions[option] ?? option) ?? null })),
-    document_requirements: detail.document_requirements.map((document) => ({ ...document, label: hindiDocuments[document.document_type] ?? document.label }))
+    fields: detail.fields.map((field) => {
+      const optionCopy = language === "hi" ? hindiOptions : commonRegionalOptions[language];
+      return { ...field, label: (language === "hi" ? hindiFields : regionalFields[language])?.[field.key] ?? field.label, option_labels: Object.fromEntries((field.options ?? []).map((option) => [option, optionCopy?.[option] ?? option])) };
+    }),
+    document_requirements: detail.document_requirements.map((document) => ({ ...document, label: (language === "hi" ? hindiDocuments : regionalDocuments[language])?.[document.document_type] ?? document.label }))
   } as T;
 }
 
 export function localizeServiceName(serviceId: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiServices[serviceId]?.name ?? fallback : fallback;
+  return language === "hi" ? hindiServices[serviceId]?.name ?? fallback : regionalServiceNames[language]?.[serviceId] ?? fallback;
 }
 
 export function localizeServiceOrbitName(serviceId: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiOrbitServiceNames[serviceId] ?? localizeServiceName(serviceId, fallback, language) : fallback;
+  return language === "hi" ? hindiOrbitServiceNames[serviceId] ?? localizeServiceName(serviceId, fallback, language) : localizeServiceName(serviceId, fallback, language);
 }
 
 export function localizeDepartment(serviceId: string, fallback: string, language: Language) {
@@ -118,5 +155,5 @@ export function localizeProfileField(field: string, language: Language) {
 }
 
 export function localizeDocumentType(type: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiDocuments[type] ?? fallback : fallback;
+  return language === "hi" ? hindiDocuments[type] ?? fallback : regionalDocuments[language]?.[type] ?? fallback;
 }

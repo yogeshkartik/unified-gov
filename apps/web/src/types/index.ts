@@ -125,6 +125,7 @@ export interface ServiceField {
   field_type: ServiceFieldType;
   required: boolean;
   options: string[] | null;
+  option_labels?: Record<string, string>;
   help_text: string | null;
   position: number;
 }
