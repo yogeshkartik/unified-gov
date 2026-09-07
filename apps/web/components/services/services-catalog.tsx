@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServiceCard } from "@/components/services/service-card";
 import { useCitizenPreferences, type Language } from "@/components/providers/citizen-preferences";
 import { localizeService } from "@/src/i18n/service-localization";
@@ -25,7 +24,7 @@ export function ServicesCatalog() {
   const [services, setServices] = useState<GovernmentService[]>();
   const [jurisdiction, setJurisdiction] = useState<ServiceJurisdictionCode>();
   const [profileJurisdiction, setProfileJurisdiction] = useState<ServiceJurisdictionCode>();
-  const [mode, setMode] = useState<"RECOMMENDED" | "CENTRAL" | "STATE">("RECOMMENDED");
+  const [scope, setScope] = useState<"RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode>("RECOMMENDED");
   const [recommendations, setRecommendations] = useState<RecommendedService[]>();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -48,14 +47,14 @@ export function ServicesCatalog() {
   useEffect(() => {
     if (!jurisdiction) return;
     let active = true;
-    const request = mode === "RECOMMENDED"
+    const request = scope === "RECOMMENDED"
       ? api.getRecommendedServices().then((result) => { if (active) { setRecommendations(result); return result.map((item) => item.service); } return []; })
-      : api.getServices(mode === "CENTRAL" ? "IN" : jurisdiction);
+      : api.getServices(scope === "CENTRAL" ? "IN" : scope);
     request
       .then((result) => { if (active) setServices(result); })
       .catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [jurisdiction, mode]);
+  }, [jurisdiction, scope]);
 
   const localizedServices = useMemo(() => (services ?? []).map((service) => localizeService(service, language)), [language, services]);
   const categories = useMemo(() => Array.from(new Set((services ?? []).map((service) => service.category)))
@@ -90,11 +89,11 @@ export function ServicesCatalog() {
     setJurisdiction(nextJurisdiction);
   }
 
-  function changeMode(nextMode: "RECOMMENDED" | "CENTRAL" | "STATE") {
-    setMode(nextMode);
+  function changeScope(nextScope: "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode) {
+    setScope(nextScope);
     setError(false);
     setServices(undefined);
-    if (nextMode === "STATE" && profileJurisdiction) setJurisdiction(profileJurisdiction);
+    if (nextScope !== "RECOMMENDED" && nextScope !== "CENTRAL") setJurisdiction(nextScope);
   }
 
   function clearQuery() {
@@ -104,28 +103,21 @@ export function ServicesCatalog() {
 
   return (
     <div className="space-y-6">
-      <Tabs selectedKey={mode} onSelectionChange={(key) => changeMode(String(key) as "RECOMMENDED" | "CENTRAL" | "STATE")}>
-        <TabsList className="w-full sm:w-fit">
-          <TabsTrigger id="RECOMMENDED">{serviceDiscoveryText(language, "recommended")}</TabsTrigger>
-          <TabsTrigger id="CENTRAL">{serviceDiscoveryText(language, "centralServices")}</TabsTrigger>
-          <TabsTrigger id="STATE">{serviceDiscoveryText(language, "stateServices")}</TabsTrigger>
-        </TabsList>
-      </Tabs>
       <div className="rounded-xl border border-border/80 bg-card/60 p-4 sm:p-5">
-        <div className={mode === "STATE" ? "grid gap-4 md:grid-cols-3 md:items-end" : "grid gap-4 md:grid-cols-2 md:items-end"}>
-          {mode === "STATE" ? <div>
+        <div className="grid gap-4 md:grid-cols-3 md:items-end">
+          <div>
             <Label htmlFor="service-search" className="text-foreground">{t("searchServices")}</Label>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input id="service-search" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={t("searchServices")} className="min-h-11 border-border bg-background/80 py-2 pr-11 pl-9 hover:border-foreground/25" />
               {query ? <Button variant="ghost" size="icon-sm" onPress={clearQuery} aria-label={serviceDiscoveryText(language, "clearSearch")} className="absolute right-1 top-1/2 -translate-y-1/2"><X aria-hidden="true" /></Button> : null}
             </div>
-          </div> : null}
+          </div>
           <div>
             <Label htmlFor="service-jurisdiction">{t("servicesFor")}</Label>
-            <Select selectedKey={jurisdiction} onSelectionChange={(key) => changeJurisdiction(String(key) as ServiceJurisdictionCode)} aria-label={t("selectState")}>
-              <SelectTrigger id="service-jurisdiction" className="mt-2 min-h-11"><SelectValue>{selectedJurisdictionName}</SelectValue></SelectTrigger>
-              <SelectContent>{serviceJurisdictions.map((item) => <SelectItem id={item.code} key={item.code} textValue={jurisdictionName(item.code, language)}>{jurisdictionName(item.code, language)}</SelectItem>)}</SelectContent>
+            <Select selectedKey={scope} onSelectionChange={(key) => changeScope(String(key) as "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode)} aria-label={t("servicesFor")}>
+              <SelectTrigger id="service-jurisdiction" className="mt-2 min-h-11"><SelectValue>{scope === "RECOMMENDED" ? serviceDiscoveryText(language, "recommendedForYou") : scope === "CENTRAL" ? t("centralGovernment") : jurisdictionName(scope, language)}</SelectValue></SelectTrigger>
+              <SelectContent><SelectItem id="RECOMMENDED" textValue={serviceDiscoveryText(language, "recommendedForYou")}>{serviceDiscoveryText(language, "recommendedForYou")}</SelectItem><SelectItem id="CENTRAL" textValue={t("centralGovernment")}>{t("centralGovernment")}</SelectItem>{serviceJurisdictions.filter((item) => item.code !== "IN").map((item) => <SelectItem id={item.code} key={item.code} textValue={jurisdictionName(item.code, language)}>{jurisdictionName(item.code, language)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
@@ -146,8 +138,8 @@ export function ServicesCatalog() {
 
       <section aria-live="polite">
         {visibleServices.length === 0 ? <EmptyResults state={selectedJurisdictionName} /> : (
-          mode === "RECOMMENDED" ? <RecommendedResults recommendations={recommendations ?? []} language={language} /> :
-          mode === "CENTRAL" ? <ServiceGroup title={serviceDiscoveryText(language, "centralServices")} services={centralServices} /> :
+          scope === "RECOMMENDED" ? <RecommendedResults recommendations={recommendations ?? []} language={language} /> :
+          scope === "CENTRAL" ? <ServiceGroup title={serviceDiscoveryText(language, "centralServices")} services={centralServices} /> :
           <ServiceGroup title={t("stateGovernmentServices", { state: selectedJurisdictionName })} services={stateServices} />
         )}
       </section>
