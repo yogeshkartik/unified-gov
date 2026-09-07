@@ -18,13 +18,13 @@ function SuccessReveal({ delay, play, children, reference }: { delay: number; pl
   return <motion.div initial={initial} animate={{ opacity: 1, y: 0, scale: 1 }} transition={play && !reduceMotion ? { duration: 0.28, delay, ease: "easeOut" } : { duration: 0 }}>{children}</motion.div>;
 }
 
-function SubmissionSuccessIcon({ play }: { play: boolean }) {
+function SubmissionSuccessIcon({ play, label }: { play: boolean; label: string }) {
   const reduceMotion = useReducedMotion();
   const animate = play && !reduceMotion;
   return <div className="relative grid size-14 place-items-center">
     {animate ? <motion.span aria-hidden="true" className="absolute inset-0 rounded-full border border-emerald-300" initial={{ opacity: 0.25, scale: 0.6 }} animate={{ opacity: 0, scale: 1.6 }} transition={{ duration: 0.55, ease: "easeOut" }} /> : null}
     <motion.div className="relative grid size-14 place-items-center rounded-full bg-emerald-100 text-emerald-700" initial={animate ? { opacity: 0, scale: 0.3 } : false} animate={{ opacity: 1, scale: animate ? [1, 1.04, 1] : 1 }} transition={{ duration: animate ? 0.55 : 0, times: [0, 0.8, 1], ease: "easeOut" }}>
-      <svg viewBox="0 0 36 36" className="size-8" aria-label="Success" role="img"><motion.path d="M 8.5 18.5 L 14.5 24.5 L 27.5 11.5" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" initial={animate ? { pathLength: 0, opacity: 0 } : false} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: animate ? 0.36 : 0, delay: animate ? 0.15 : 0, ease: "easeOut" }} /></svg>
+      <svg viewBox="0 0 36 36" className="size-8" aria-label={label} role="img"><motion.path d="M 8.5 18.5 L 14.5 24.5 L 27.5 11.5" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" initial={animate ? { pathLength: 0, opacity: 0 } : false} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: animate ? 0.36 : 0, delay: animate ? 0.15 : 0, ease: "easeOut" }} /></svg>
     </motion.div>
   </div>;
 }
@@ -48,7 +48,7 @@ export function SuccessPage({ applicationId }: { applicationId: string }) {
 
   return <ApplicationFlowShell serviceName={String(preview.service.name)} applicationId={applicationId} step={applicationFlowSteps.success.index} stepName={t("submittedStep")} onClose={() => router.push("/applications")} footer={footer}>
     <div className="flex flex-col items-center space-y-4 py-4 text-center sm:py-6">
-      <SubmissionSuccessIcon play={playSuccessAnimation} />
+      <SubmissionSuccessIcon play={playSuccessAnimation} label={t("success")} />
       <SuccessReveal delay={0.5} play={playSuccessAnimation}><h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{t("applicationSubmitted")}</h1></SuccessReveal>
       <SuccessReveal delay={0.6} play={playSuccessAnimation}><p className="text-sm text-muted-foreground">{String(preview.service.name)}</p></SuccessReveal>
       <SuccessReveal delay={0.7} play={playSuccessAnimation} reference><div className="w-full max-w-xs rounded-lg border border-border bg-muted/20 p-3.5"><p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("reference")}</p><div className="mt-1 flex items-center justify-center gap-2"><span className="min-w-0 break-all font-mono text-base font-bold tracking-wide text-foreground">{reference}</span><Button type="button" variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground" onPress={handleCopy} aria-label={t("copyReferenceNumber")}>{copied ? <Check className="size-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}</Button></div>{copied ? <p className="mt-1 text-xs font-medium text-emerald-700">{t("copiedToClipboard")}</p> : null}</div></SuccessReveal>

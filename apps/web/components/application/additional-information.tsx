@@ -9,9 +9,12 @@ import { applicationFlowSteps, navigateApplicationFlow } from "@/components/appl
 import { type DynamicFormValues } from "@/components/application/dynamic-field";
 import { DynamicForm } from "@/components/application/dynamic-form";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeService } from "@/src/i18n/service-localization";
 
 export function AdditionalInformation({ applicationId }: { applicationId: string }) {
   const router = useRouter();
+  const { language, t } = useCitizenPreferences();
   const [data, setData] = useState<{
     application: ApplicationEngineResponse;
     service: GovernmentServiceDetail;
@@ -40,7 +43,7 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
       setSubmitError(
         err instanceof ApiError
           ? err.message
-          : "We could not save your information. Check your entries and try again."
+          : t("completeMissing")
       );
       setSubmitting(false);
     }
@@ -49,12 +52,14 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
   if (error) {
     return (
       <ErrorState>
-        This application could not be loaded. Return to services and create a new draft.
+        {t("applicationNotLoaded")}
       </ErrorState>
     );
   }
 
-  if (!data) return <LoadingState label="Loading application fields…" />;
+  if (!data) return <LoadingState label={t("loadingApplicationDetails")} />;
+
+  const localizedService = localizeService(data.service, language);
 
   const defaultValues = data.service.fields.reduce<DynamicFormValues>(
     (values, field) => ({
@@ -70,23 +75,23 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
 
   return (
     <ApplicationFlowShell
-      serviceName={data.service.name}
+      serviceName={localizedService.name}
       applicationId={applicationId}
       step={applicationFlowSteps.additional.index}
-      stepName={applicationFlowSteps.additional.label}
+      stepName={t("additionalStep")}
       onClose={() => router.push("/applications")}
     >
       <div className="space-y-6">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Additional information
+          {t("additionalInformation")}
         </h1>
 
         <DynamicForm
-          fields={data.service.fields}
+          fields={localizedService.fields}
           defaultValues={defaultValues}
           onSubmit={save}
           isSubmitting={submitting}
-          submitLabel="Continue"
+          submitLabel={t("continue")}
           onBack={() => router.push("/services")}
         />
 

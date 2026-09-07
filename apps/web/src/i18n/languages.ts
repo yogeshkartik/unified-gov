@@ -1,5 +1,5 @@
 export const supportedLanguages = [
-  ["en", "English", "English"], ["hi", "Hindi", "हिन्दी"], ["kn", "Kannada", "ಕನ್ನಡ"], ["te", "Telugu", "తెలుగు"], ["ta", "Tamil", "தமிழ்"], ["bn", "Bengali", "বাংলা"],
+  ["en", "English", "English"], ["hi", "Hindi", "हिन्दी"], ["mr", "Marathi", "मराठी"], ["kn", "Kannada", "ಕನ್ನಡ"], ["ta", "Tamil", "தமிழ்"], ["te", "Telugu", "తెలుగు"], ["bn", "Bengali", "বাংলা"],
 ] as const satisfies readonly (readonly [string, string, string])[];
 
 export type Language = (typeof supportedLanguages)[number][0];

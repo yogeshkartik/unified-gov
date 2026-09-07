@@ -13,6 +13,7 @@ import { useCitizenPreferences } from "@/components/providers/citizen-preference
 import { localizeService, localizeServiceName } from "@/src/i18n/service-localization";
 import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import type { Language } from "@/src/i18n/languages";
+import { localeFor } from "@/src/i18n/locale-format";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
@@ -74,7 +75,7 @@ export function DashboardContent() {
   const priorityDraft = mostRecentApplication && (mostRecentApplication.requires_action || actionableStatuses.has(mostRecentApplication.status)) ? mostRecentApplication : undefined;
   const recentApplications = [...data.applications].sort((first, second) => new Date(second.updated_at).getTime() - new Date(first.updated_at).getTime()).slice(0, 3);
   const serviceById = new Map(localizedServices.map((service) => [service.id, service]));
-  const formatDate = (value: string) => new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", { day: "numeric", month: "short" }).format(new Date(value));
+  const formatDate = (value: string) => new Intl.DateTimeFormat(localeFor(language), { day: "numeric", month: "short" }).format(new Date(value));
   const applicationSummary = draftCount > 0 ? t("dashboardApplicationsWithDrafts", { drafts: draftCount, submitted: submittedCount }) : t("dashboardApplicationsSubmitted", { submitted: submittedCount });
 
   return <div className="space-y-6">

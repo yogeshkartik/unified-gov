@@ -29,12 +29,42 @@ const hindiServices: Record<string, ServiceCopy> = {
   DOMICILE_CERTIFICATE_001: { name: "निवास प्रमाण पत्र", department: "डेमो प्रमाण पत्र सेवाएँ", description: "निवास प्रमाण पत्र के लिए आवेदन करें।" }
 };
 
+const marathiServices: Record<string, ServiceCopy> = {
+  RECRUITMENT_EXAM_001: { name: "सरकारी भरती परीक्षा", department: "सार्वजनिक भरती विभाग", description: "खुल्या सरकारी भरती परीक्षांसाठी अर्ज करा आणि अर्जाचा मागोवा घ्या." },
+  SCHOLARSHIP_001: { name: "मॅट्रिकोत्तर शिष्यवृत्ती", department: "शिक्षण सहाय्य विभाग", description: "मॅट्रिकोत्तर शिक्षण घेणाऱ्या पात्र विद्यार्थ्यांसाठी आर्थिक मदत." },
+  DRIVING_LICENCE_001: { name: "वाहनचालक परवाना अर्ज", department: "परिवहन विभाग", description: "शिकाऊ, कायमस्वरूपी, नूतनीकरण आणि वाहन-वर्ग परवाना सेवांसाठी अर्ज करा." },
+  JEE_MAIN_001: { name: "JEE Main", department: "राष्ट्रीय परीक्षा संस्था", description: "अभियांत्रिकी प्रवेश परीक्षा." },
+  NEET_UG_001: { name: "NEET UG", department: "राष्ट्रीय परीक्षा संस्था", description: "पदवीपूर्व वैद्यकीय प्रवेश परीक्षा." },
+  CUET_UG_001: { name: "CUET UG", department: "राष्ट्रीय परीक्षा संस्था", description: "सामायिक विद्यापीठ पदवीपूर्व प्रवेश परीक्षा." },
+  WBJEE_001: { name: "WBJEE", department: "पश्चिम बंगाल संयुक्त प्रवेश परीक्षा मंडळ", description: "पश्चिम बंगाल अभियांत्रिकी प्रवेश परीक्षा." },
+  SSC_CGL_001: { name: "SSC CGL", department: "कर्मचारी निवड आयोग", description: "सरकारी भरती परीक्षा." },
+  UPSC_CSE_001: { name: "UPSC नागरी सेवा परीक्षा", department: "संघ लोकसेवा आयोग", description: "नागरी सेवा भरती परीक्षा." },
+  IBPS_PO_001: { name: "IBPS PO", department: "बँकिंग कर्मचारी निवड संस्था", description: "बँक परिविक्षाधीन अधिकारी भरती परीक्षा." },
+  PAN_CARD_001: { name: "PAN कार्ड", department: "नमुना कर सेवा", description: "PAN तपशीलांसाठी अर्ज करा किंवा ते अद्ययावत करा." },
+  VOTER_ID_001: { name: "मतदार ओळखपत्र", department: "नमुना निवडणूक सेवा", description: "मतदार नोंदणी किंवा मतदार माहिती अद्ययावत करण्यासाठी अर्ज करा." },
+  PASSPORT_001: { name: "पासपोर्ट", department: "नमुना पासपोर्ट सेवा", description: "पासपोर्टशी संबंधित सेवांसाठी अर्ज करा." },
+  NATIONAL_SCHOLARSHIP_001: { name: "राष्ट्रीय शिष्यवृत्ती", department: "शिक्षण सहाय्य विभाग", description: "पात्र विद्यार्थ्यांसाठी आर्थिक मदत." },
+  STATE_MERIT_SCHOLARSHIP_001: { name: "राज्य गुणवत्ता शिष्यवृत्ती", department: "राज्य शिक्षण विभाग", description: "विद्यार्थ्यांसाठी गुणवत्तेवर आधारित आर्थिक मदत." },
+  HIGHER_EDUCATION_SCHOLARSHIP_001: { name: "उच्च शिक्षण शिष्यवृत्ती", department: "उच्च शिक्षण विभाग", description: "उच्च शिक्षण घेणाऱ्या विद्यार्थ्यांसाठी मदत." },
+  PM_KISAN_001: { name: "PM-KISAN", department: "नमुना कृषी सेवा", description: "शेतकरी उत्पन्न सहाय्य योजनेचा नमुना अर्ज." },
+  AYUSHMAN_BHARAT_001: { name: "आयुष्मान भारत", department: "नमुना आरोग्य लाभ सेवा", description: "आरोग्य लाभ नोंदणीचा नमुना अर्ज." },
+  PMAY_001: { name: "PMAY गृहनिर्माण सहाय्य", department: "नमुना गृहनिर्माण सेवा", description: "गृहनिर्माण सहाय्य योजनेचा नमुना अर्ज." },
+  E_SHRAM_001: { name: "ई-श्रम नोंदणी", department: "नमुना कामगार सेवा", description: "सामाजिक सुरक्षा योजनांसाठी कामगार नोंदणीचा नमुना." },
+  INCOME_CERTIFICATE_001: { name: "उत्पन्न प्रमाणपत्र", department: "नमुना प्रमाणपत्र सेवा", description: "उत्पन्न प्रमाणपत्रासाठी अर्ज करा." },
+  CASTE_CERTIFICATE_001: { name: "जात प्रमाणपत्र", department: "नमुना प्रमाणपत्र सेवा", description: "जात प्रमाणपत्रासाठी अर्ज करा." },
+  DOMICILE_CERTIFICATE_001: { name: "अधिवास प्रमाणपत्र", department: "नमुना प्रमाणपत्र सेवा", description: "अधिवास प्रमाणपत्रासाठी अर्ज करा." }
+};
+
 const hindiCategories: Record<string, string> = {
   "Examinations": "परीक्षाएँ",
   "Identity & Licences": "पहचान और लाइसेंस",
   "Education & Scholarships": "शिक्षा और छात्रवृत्तियाँ",
   "Government Schemes": "सरकारी योजनाएँ",
   "Certificates": "प्रमाण पत्र"
+};
+
+const marathiCategories: Record<string, string> = {
+  Examinations: "परीक्षा", "Identity & Licences": "ओळख आणि परवाने", "Education & Scholarships": "शिक्षण आणि शिष्यवृत्ती", "Government Schemes": "सरकारी योजना", Certificates: "प्रमाणपत्रे"
 };
 
 const hindiOrbitServiceNames: Record<string, string> = {
@@ -44,16 +74,33 @@ const hindiOrbitServiceNames: Record<string, string> = {
   INCOME_CERTIFICATE_001: "आय प्रमाण पत्र", CASTE_CERTIFICATE_001: "जाति प्रमाण पत्र", DOMICILE_CERTIFICATE_001: "निवास प्रमाण पत्र", NATIONAL_SCHOLARSHIP_001: "छात्रवृत्ति"
 };
 
+const marathiOrbitServiceNames: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(marathiServices).map(([id, copy]) => [id, copy.name])),
+  DRIVING_LICENCE_001: "वाहनचालक परवाना", UPSC_CSE_001: "UPSC", PMAY_001: "PMAY", NATIONAL_SCHOLARSHIP_001: "शिष्यवृत्ती"
+};
+
 const hindiFields: Record<string, string> = {
   exam_city: "पसंदीदा परीक्षा शहर", post_preference: "पद वरीयता", course: "वर्तमान पाठ्यक्रम", institution: "संस्थान", academic_year: "शैक्षणिक वर्ष", licence_type: "आवेदन प्रकार", vehicle_class: "वाहन श्रेणी", paper_preference: "पेपर वरीयता", subject_preference: "विषय वरीयता", service_preference: "सेवा वरीयता", application_type: "आवेदन प्रकार", registration_type: "पंजीकरण प्रकार", farmer_declaration: "किसान घोषणा", household_size: "परिवार के सदस्यों की संख्या", housing_need: "आवास आवश्यकता", occupation: "व्यवसाय", certificate_purpose: "प्रमाण पत्र का उद्देश्य"
+};
+
+const marathiFields: Record<string, string> = {
+  exam_city: "पसंतीचे परीक्षा शहर", post_preference: "पदाची पसंती", course: "सध्याचा अभ्यासक्रम", institution: "संस्था", academic_year: "शैक्षणिक वर्ष", licence_type: "अर्जाचा प्रकार", vehicle_class: "वाहन वर्ग", paper_preference: "प्रश्नपत्रिकेची पसंती", subject_preference: "विषयाची पसंती", service_preference: "सेवेची पसंती", application_type: "अर्जाचा प्रकार", registration_type: "नोंदणीचा प्रकार", farmer_declaration: "शेतकरी घोषणापत्र", household_size: "कुटुंबातील सदस्यांची संख्या", housing_need: "निवासाची गरज", occupation: "व्यवसाय", certificate_purpose: "प्रमाणपत्राचा उद्देश"
 };
 
 const hindiDocuments: Record<string, string> = {
   PHOTOGRAPH: "फोटो", SIGNATURE: "हस्ताक्षर", DEGREE_CERTIFICATE: "डिग्री प्रमाण पत्र", IDENTITY_DOCUMENT: "पहचान दस्तावेज़", INCOME_CERTIFICATE: "आय प्रमाण पत्र", MARKSHEET: "अंकपत्र", OTHER: "भूमि या सहायक दस्तावेज़"
 };
 
+const marathiDocuments: Record<string, string> = {
+  PHOTOGRAPH: "छायाचित्र", SIGNATURE: "स्वाक्षरी", DEGREE_CERTIFICATE: "पदवी प्रमाणपत्र", IDENTITY_DOCUMENT: "ओळख कागदपत्र", INCOME_CERTIFICATE: "उत्पन्न प्रमाणपत्र", MARKSHEET: "गुणपत्रिका", OTHER: "पूरक कागदपत्र"
+};
+
 const hindiProfileFields: Record<string, string> = {
   full_name: "पूरा नाम", date_of_birth: "जन्म तिथि", gender: "लिंग", nationality: "राष्ट्रीयता", marital_status: "वैवाहिक स्थिति", mobile: "प्राथमिक मोबाइल", alternate_mobile: "वैकल्पिक मोबाइल", email: "ईमेल पता", father_name: "पिता का नाम", mother_name: "माता का नाम", guardian_name: "अभिभावक का नाम", guardian_relationship: "अभिभावक से संबंध", category: "श्रेणी", ews_status: "EWS स्थिति", disability_status: "दिव्यांग व्यक्ति (PwD)", ex_serviceman_status: "पूर्व सैनिक स्थिति", minority_status: "अल्पसंख्यक स्थिति", highest_qualification: "उच्चतम योग्यता", current_education_status: "वर्तमान शिक्षा स्थिति", current_course: "वर्तमान पाठ्यक्रम", current_institution: "संस्थान", employment_status: "रोज़गार स्थिति", occupation: "व्यवसाय", annual_family_income_range: "वार्षिक पारिवारिक आय सीमा", preferred_language: "पसंदीदा भाषा", address: "पता"
+};
+
+const marathiProfileFields: Record<string, string> = {
+  full_name: "पूर्ण नाव", date_of_birth: "जन्मतारीख", gender: "लिंग", nationality: "राष्ट्रीयत्व", marital_status: "वैवाहिक स्थिती", mobile: "मुख्य मोबाइल", alternate_mobile: "पर्यायी मोबाइल", email: "ईमेल पत्ता", father_name: "वडिलांचे नाव", mother_name: "आईचे नाव", guardian_name: "पालकाचे नाव", guardian_relationship: "पालकाशी नाते", category: "प्रवर्ग", ews_status: "EWS स्थिती", disability_status: "दिव्यांग स्थिती", ex_serviceman_status: "माजी सैनिक स्थिती", minority_status: "अल्पसंख्याक स्थिती", highest_qualification: "सर्वोच्च शैक्षणिक पात्रता", current_education_status: "सध्याची शैक्षणिक स्थिती", current_course: "सध्याचा अभ्यासक्रम", current_institution: "संस्था", employment_status: "रोजगार स्थिती", occupation: "व्यवसाय", annual_family_income_range: "वार्षिक कौटुंबिक उत्पन्न श्रेणी", preferred_language: "पसंतीची भाषा", address: "पत्ता", address_line1: "पत्ता ओळ 1", address_line2: "पत्ता ओळ 2", city: "गाव / शहर", district: "जिल्हा", state: "राज्य / केंद्रशासित प्रदेश", pincode: "पिन कोड", country: "देश"
 };
 
 const kannadaProfileFields: Record<string, string> = {
@@ -72,13 +119,20 @@ const tamilProfileFields: Record<string, string> = {
   full_name: "முழுப் பெயர்", date_of_birth: "பிறந்த தேதி", gender: "பாலினம்", nationality: "தேசியம்", marital_status: "திருமண நிலை", mobile: "முதன்மை மொபைல்", alternate_mobile: "மாற்று மொபைல்", email: "மின்னஞ்சல் முகவரி", father_name: "தந்தையின் பெயர்", mother_name: "தாயின் பெயர்", guardian_name: "பாதுகாவலரின் பெயர்", guardian_relationship: "பாதுகாவலருடனான உறவு", category: "வகை", ews_status: "EWS நிலை", disability_status: "மாற்றுத்திறன் நிலை", ex_serviceman_status: "முன்னாள் ராணுவ வீரர் நிலை", minority_status: "சிறுபான்மை நிலை", highest_qualification: "உயர்ந்த தகுதி", current_education_status: "தற்போதைய கல்வி நிலை", current_course: "தற்போதைய பாடநெறி", current_institution: "நிறுவனம்", employment_status: "வேலைவாய்ப்பு நிலை", occupation: "தொழில்", annual_family_income_range: "வருடாந்திர குடும்ப வருமான வரம்பு", preferred_language: "விருப்ப மொழி", address: "முகவரி"
 };
 
-const profileFieldsByLanguage: Partial<Record<Language, Record<string, string>>> = { hi: hindiProfileFields, kn: kannadaProfileFields, te: teluguProfileFields, bn: bengaliProfileFields, ta: tamilProfileFields };
+const profileFieldsByLanguage: Partial<Record<Language, Record<string, string>>> = { hi: hindiProfileFields, mr: marathiProfileFields, kn: kannadaProfileFields, te: teluguProfileFields, bn: bengaliProfileFields, ta: tamilProfileFields };
 
 const hindiOptions: Record<string, string> = {
   "New Delhi": "नई दिल्ली", Mumbai: "मुंबई", Bengaluru: "बेंगलुरु", "Paper 1": "पेपर 1", "Paper 2": "पेपर 2",
   "New application": "नया आवेदन", "Update details": "विवरण अपडेट करें", "New registration": "नया पंजीकरण", "Update information": "जानकारी अपडेट करें", "New passport": "नया पासपोर्ट", "Reissue passport": "पासपोर्ट पुनः जारी करें",
   "Learner's Licence": "लर्नर लाइसेंस", "Permanent Driving Licence": "स्थायी ड्राइविंग लाइसेंस", "Add Vehicle Class to Existing Licence": "मौजूदा लाइसेंस में वाहन श्रेणी जोड़ें", "Renew Driving Licence": "ड्राइविंग लाइसेंस नवीनीकरण", "Duplicate Driving Licence": "डुप्लिकेट ड्राइविंग लाइसेंस",
   "MCWOG — Motorcycle without gear": "MCWOG — बिना गियर मोटरसाइकिल", "MCWG — Motorcycle with gear": "MCWG — गियर वाली मोटरसाइकिल", "LMV-NT — Light motor vehicle (non-transport)": "LMV-NT — हल्का मोटर वाहन (गैर-परिवहन)", "LMV-TR — Light motor vehicle (transport)": "LMV-TR — हल्का मोटर वाहन (परिवहन)", "Transport — Medium/heavy goods or passenger vehicle": "परिवहन — मध्यम/भारी माल या यात्री वाहन", "E-rickshaw": "ई-रिक्शा", "E-cart": "ई-कार्ट", "Road roller": "रोड रोलर", "Adapted vehicle for persons with disability": "दिव्यांग व्यक्ति के लिए अनुकूलित वाहन", "Other specified vehicle": "अन्य निर्दिष्ट वाहन"
+};
+
+const marathiOptions: Record<string, string> = {
+  "New Delhi": "नवी दिल्ली", Mumbai: "मुंबई", Bengaluru: "बेंगळुरू", "Paper 1": "पेपर 1", "Paper 2": "पेपर 2",
+  "New application": "नवीन अर्ज", "Update details": "तपशील अद्ययावत करा", "New registration": "नवीन नोंदणी", "Update information": "माहिती अद्ययावत करा", "New passport": "नवीन पासपोर्ट", "Reissue passport": "पासपोर्ट पुन्हा जारी करा",
+  "Learner's Licence": "शिकाऊ परवाना", "Permanent Driving Licence": "कायमस्वरूपी वाहनचालक परवाना", "Add Vehicle Class to Existing Licence": "विद्यमान परवान्यात वाहन वर्ग जोडा", "Renew Driving Licence": "वाहनचालक परवान्याचे नूतनीकरण", "Duplicate Driving Licence": "दुय्यम वाहनचालक परवाना",
+  "MCWOG — Motorcycle without gear": "MCWOG — गियर नसलेली मोटारसायकल", "MCWG — Motorcycle with gear": "MCWG — गियर असलेली मोटारसायकल", "LMV-NT — Light motor vehicle (non-transport)": "LMV-NT — हलके मोटार वाहन (बिगर-वाहतूक)", "LMV-TR — Light motor vehicle (transport)": "LMV-TR — हलके मोटार वाहन (वाहतूक)", "Transport — Medium/heavy goods or passenger vehicle": "वाहतूक — मध्यम/जड माल किंवा प्रवासी वाहन", "E-rickshaw": "ई-रिक्षा", "E-cart": "ई-कार्ट", "Road roller": "रोड रोलर", "Adapted vehicle for persons with disability": "दिव्यांग व्यक्तींसाठी अनुकूलित वाहन", "Other specified vehicle": "इतर निर्दिष्ट वाहन"
 };
 
 const regionalServiceNames: Partial<Record<Language, Record<string, string>>> = {
@@ -115,9 +169,10 @@ const commonRegionalOptions: Partial<Record<Language, Record<string, string>>> =
 
 export function localizeService<T extends GovernmentService>(service: T, language: Language): T {
   if (language === "en") return service;
-  const copy = language === "hi" ? hindiServices[service.id] : undefined;
+  const copy = ({ hi: hindiServices, mr: marathiServices } as Partial<Record<Language, Record<string, ServiceCopy>>>)[language]?.[service.id];
   const regionalName = regionalServiceNames[language]?.[service.id];
-  const category = (language === "hi" ? hindiCategories : regionalCategories[language])?.[service.category] ?? service.category;
+  const categoryCopy = ({ hi: hindiCategories, mr: marathiCategories } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalCategories[language];
+  const category = categoryCopy?.[service.category] ?? service.category;
   const localized = {
     ...service,
     name: copy?.name ?? regionalName ?? service.name,
@@ -131,23 +186,24 @@ export function localizeService<T extends GovernmentService>(service: T, languag
     ...localized,
     required_profile_fields: detail.required_profile_fields,
     fields: detail.fields.map((field) => {
-      const optionCopy = language === "hi" ? hindiOptions : commonRegionalOptions[language];
-      return { ...field, label: (language === "hi" ? hindiFields : regionalFields[language])?.[field.key] ?? field.label, option_labels: Object.fromEntries((field.options ?? []).map((option) => [option, optionCopy?.[option] ?? option])) };
+      const optionCopy = ({ hi: hindiOptions, mr: marathiOptions } as Partial<Record<Language, Record<string, string>>>)[language] ?? commonRegionalOptions[language];
+      const fieldCopy = ({ hi: hindiFields, mr: marathiFields } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalFields[language];
+      return { ...field, label: fieldCopy?.[field.key] ?? field.label, option_labels: Object.fromEntries((field.options ?? []).map((option) => [option, optionCopy?.[option] ?? option])) };
     }),
-    document_requirements: detail.document_requirements.map((document) => ({ ...document, label: (language === "hi" ? hindiDocuments : regionalDocuments[language])?.[document.document_type] ?? document.label }))
+    document_requirements: detail.document_requirements.map((document) => ({ ...document, label: (({ hi: hindiDocuments, mr: marathiDocuments } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalDocuments[language])?.[document.document_type] ?? document.label }))
   } as T;
 }
 
 export function localizeServiceName(serviceId: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiServices[serviceId]?.name ?? fallback : regionalServiceNames[language]?.[serviceId] ?? fallback;
+  return ({ hi: hindiServices, mr: marathiServices } as Partial<Record<Language, Record<string, ServiceCopy>>>)[language]?.[serviceId]?.name ?? regionalServiceNames[language]?.[serviceId] ?? fallback;
 }
 
 export function localizeServiceOrbitName(serviceId: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiOrbitServiceNames[serviceId] ?? localizeServiceName(serviceId, fallback, language) : localizeServiceName(serviceId, fallback, language);
+  return ({ hi: hindiOrbitServiceNames, mr: marathiOrbitServiceNames } as Partial<Record<Language, Record<string, string>>>)[language]?.[serviceId] ?? localizeServiceName(serviceId, fallback, language);
 }
 
 export function localizeDepartment(serviceId: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiServices[serviceId]?.department ?? fallback : fallback;
+  return ({ hi: hindiServices, mr: marathiServices } as Partial<Record<Language, Record<string, ServiceCopy>>>)[language]?.[serviceId]?.department ?? fallback;
 }
 
 export function localizeProfileField(field: string, language: Language) {
@@ -155,5 +211,5 @@ export function localizeProfileField(field: string, language: Language) {
 }
 
 export function localizeDocumentType(type: string, fallback: string, language: Language) {
-  return language === "hi" ? hindiDocuments[type] ?? fallback : regionalDocuments[language]?.[type] ?? fallback;
+  return ({ hi: hindiDocuments, mr: marathiDocuments } as Partial<Record<Language, Record<string, string>>>)[language]?.[type] ?? regionalDocuments[language]?.[type] ?? fallback;
 }

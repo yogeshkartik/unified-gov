@@ -11,6 +11,7 @@ import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Separator } from "@/components/ui/separator";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeDocumentType, localizeService } from "@/src/i18n/service-localization";
+import { localeFor } from "@/src/i18n/locale-format";
 
 function formatKey(value: string) {
   return value
@@ -18,11 +19,11 @@ function formatKey(value: string) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function formatDate(value: unknown) {
+function formatDate(value: unknown, locale: string) {
   if (!value || typeof value !== "string") return null;
   const date = new Date(value);
   if (isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(date);
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
 
 function formatAddress(address: unknown) {
@@ -60,7 +61,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
       navigateApplicationFlow(router, applicationId, "payment", "forward");
     } catch {
       setFinalizeError(
-        "This application is not ready to finalize. Check your entries and try again."
+        t("finalizeError")
       );
       setFinalizing(false);
     }
@@ -69,12 +70,12 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
   if (error) {
     return (
       <ErrorState>
-        We could not load the application preview. Confirm consent and try again.
+        {t("previewLoadError")}
       </ErrorState>
     );
   }
 
-  if (!preview) return <LoadingState label="Preparing application preview…" />;
+  if (!preview) return <LoadingState label={t("preparingPreview")} />;
 
   const profile = preview.profile;
   const addresses = Array.isArray(profile.addresses) ? profile.addresses : [];
@@ -117,7 +118,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
               className="ml-auto"
               onPress={() => router.push("/applications")}
             >
-              Close
+              {t("close")}
             </Button>
           )}
         </div>
@@ -131,11 +132,11 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
         {/* Personal Info Summary */}
         <section className="space-y-1.5 text-sm">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Personal
+            {t("personal")}
           </h3>
-          <p className="font-semibold text-foreground text-base">{String(profile.full_name ?? "Citizen")}</p>
+          <p className="font-semibold text-foreground text-base">{String(profile.full_name ?? t("citizen"))}</p>
           {profile.date_of_birth ? (
-            <p className="text-muted-foreground">{formatDate(profile.date_of_birth)}</p>
+            <p className="text-muted-foreground">{formatDate(profile.date_of_birth, localeFor(language))}</p>
           ) : null}
           {genderNationality ? <p className="text-muted-foreground">{genderNationality}</p> : null}
           {profile.email ? <p className="text-muted-foreground">{String(profile.email)}</p> : null}
@@ -151,7 +152,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
             {/* Application Specific Answers */}
             <section className="space-y-3 text-sm">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Application
+                {t("application")}
               </h3>
               <dl className="grid grid-cols-1 gap-y-3 gap-x-6 sm:grid-cols-2">
                 {Object.entries(preview.answers).map(([key, value]) => (
@@ -182,7 +183,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
                   >
                     <span>{localizeDocumentType(String(document.document_type), String(document.name), language)}</span>
                     <span className="text-xs text-muted-foreground">
-                      {String(document.source) === "DIGILOCKER" ? "DigiLocker" : "My Documents"}
+                      {String(document.source) === "DIGILOCKER" ? t("digilockerSource") : t("myDocumentsSource")}
                     </span>
                   </li>
                 ))}
@@ -197,7 +198,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
         <section className="flex items-center justify-between text-sm">
           <span className="font-medium text-muted-foreground">{t("totalFee")}</span>
           <span className="font-semibold text-foreground">
-            {preview.fee > 0 ? `${preview.currency} ${preview.fee}` : "Free"}
+            {preview.fee > 0 ? new Intl.NumberFormat(localeFor(language), { style: "currency", currency: preview.currency }).format(preview.fee) : t("free")}
           </span>
         </section>
 

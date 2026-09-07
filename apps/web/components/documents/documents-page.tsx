@@ -29,15 +29,15 @@ function fileSize(size: number | null) {
   return size < 1024 * 1024 ? `${Math.max(1, Math.round(size / 1024))} KB` : `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function fileKind(mimeType: string | null, language: import("@/src/i18n/languages").Language) {
+function fileKind(mimeType: string | null, imageLabel: string, fileLabel: string) {
   if (mimeType === "application/pdf") return "PDF";
-  if (mimeType?.startsWith("image/")) return language === "hi" ? "छवि" : "Image";
-  return language === "hi" ? "फ़ाइल" : "File";
+  if (mimeType?.startsWith("image/")) return imageLabel;
+  return fileLabel;
 }
 
-function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
+function Toast({ toast, onDismiss, dismissLabel }: { toast: ToastState; onDismiss: () => void; dismissLabel: string }) {
   const Icon = toast.tone === "success" ? CheckCircle2 : CircleAlert;
-  return <div role={toast.tone === "error" ? "alert" : "status"} className="fixed right-4 top-4 z-[70] flex max-w-sm items-center gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-xl"><Icon className={`size-5 shrink-0 ${toast.tone === "success" ? "text-emerald-600" : "text-destructive"}`} aria-hidden="true" /><p className="font-medium">{toast.message}</p><Button type="button" variant="ghost" size="icon-sm" aria-label="Dismiss notification" onPress={onDismiss}><X aria-hidden="true" /></Button></div>;
+  return <div role={toast.tone === "error" ? "alert" : "status"} className="fixed right-4 top-4 z-[70] flex max-w-sm items-center gap-3 rounded-xl border bg-popover px-4 py-3 text-sm shadow-xl"><Icon className={`size-5 shrink-0 ${toast.tone === "success" ? "text-emerald-600" : "text-destructive"}`} aria-hidden="true" /><p className="font-medium">{toast.message}</p><Button type="button" variant="ghost" size="icon-sm" aria-label={dismissLabel} onPress={onDismiss}><X aria-hidden="true" /></Button></div>;
 }
 
 export function DocumentsPage() {
@@ -156,7 +156,7 @@ export function DocumentsPage() {
         <Button onPress={openAddDialog} isDisabled={!data}><Plus aria-hidden="true" />{t("addDocument")}</Button>
       </PageHeader>
       {error ? (
-        <ErrorState>Documents are unavailable. Start the service API and try again.</ErrorState>
+        <ErrorState>{t("documentsUnavailable")}</ErrorState>
       ) : !data ? (
         <LoadingState label={t("loadingDocuments")} />
       ) : (
@@ -186,7 +186,7 @@ export function DocumentsPage() {
                         <div className="min-w-0 space-y-1">
                           <p className="truncate text-sm font-medium">{document.display_name || document.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {categoryLabel(document.document_type)} · {fileKind(document.mime_type, language)}{sizeStr ? ` · ${sizeStr}` : ""}
+                            {categoryLabel(document.document_type)} · {fileKind(document.mime_type, t("image"), t("file"))}{sizeStr ? ` · ${sizeStr}` : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1">
@@ -194,7 +194,7 @@ export function DocumentsPage() {
                             href={`${apiBaseUrl}/api/profile/documents/${document.id}/download`}
                             download
                             className="inline-flex size-8 items-center justify-center rounded-lg text-primary hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`Download ${document.display_name || document.name}`}
+                            aria-label={t("downloadNamed", { name: document.display_name || document.name })}
                           >
                             <Download className="size-4" aria-hidden="true" />
                           </a>
@@ -202,7 +202,7 @@ export function DocumentsPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              aria-label={`Delete ${document.display_name || document.name}`}
+                              aria-label={t("deleteNamed", { name: document.display_name || document.name })}
                               onPress={() => setPendingDelete(document)}
                             >
                               <Trash2 className="text-destructive" aria-hidden="true" />
@@ -241,7 +241,7 @@ export function DocumentsPage() {
                         href={`${apiBaseUrl}/api/digilocker/documents/${document.id}/download`}
                         download
                         className="inline-flex size-8 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`Download ${document.name}`}
+                        aria-label={t("downloadNamed", { name: document.name })}
                       >
                         <Download className="size-4" aria-hidden="true" />
                       </a>
@@ -255,18 +255,18 @@ export function DocumentsPage() {
       )}
 
       <Dialog isOpen={addOpen} onOpenChange={(open) => { if (!open) { setAddOpen(false); resetUploadForm(); } }} className="w-[calc(100%-2rem)] max-w-lg">
-        <DialogHeader><DialogTitle>Add Document</DialogTitle><DialogDescription>Upload a document to your reusable document collection.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{t("addDocument")}</DialogTitle><DialogDescription>{t("uploadDocumentDescription")}</DialogDescription></DialogHeader>
         <div className="space-y-5">
-          <div><Label htmlFor="document-category">Document Category</Label><Select aria-label="Document category" selectedKey={category} onSelectionChange={(value) => { setCategory(String(value)); setFormErrors((current) => ({ ...current, category: "" })); }}><SelectTrigger id="document-category" className="mt-2" aria-invalid={Boolean(formErrors.category)}><SelectValue>{category ? categoryLabel(category) : "Select category"}</SelectValue></SelectTrigger><SelectContent>{data?.categories.map((item) => <SelectItem key={item.value} id={item.value}>{item.label}</SelectItem>)}</SelectContent></Select>{formErrors.category ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.category}</p> : null}</div>
-          {category === "OTHER" ? <div><Label htmlFor="document-name">Document Name</Label><Input id="document-name" className="mt-2" value={documentName} onChange={(event) => { setDocumentName(event.target.value); setFormErrors((current) => ({ ...current, documentName: "" })); }} aria-invalid={Boolean(formErrors.documentName)} aria-describedby={formErrors.documentName ? "document-name-error" : undefined} placeholder="e.g. NCC Certificate" />{formErrors.documentName ? <p id="document-name-error" className="mt-1 text-xs text-destructive" role="alert">{formErrors.documentName}</p> : null}</div> : null}
-          <div><Label>Upload File</Label><input ref={fileInput} className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} /><Button type="button" variant="outline" className="mt-2 h-32 w-full border-dashed" onPress={() => fileInput.current?.click()}><span className="flex flex-col items-center gap-2"><Upload aria-hidden="true" /><span>Click to choose a file</span><span className="text-xs font-normal text-muted-foreground">PDF, JPG, JPEG, PNG or WEBP · maximum 5 MB</span></span></Button>{formErrors.file ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.file}</p> : null}</div>
-          {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt={t("chooseFileToUpload")} width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type, language)} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label={t("removeSelectedFile")} onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
+          <div><Label htmlFor="document-category">{t("documentCategory")}</Label><Select aria-label={t("documentCategory")} selectedKey={category} onSelectionChange={(value) => { setCategory(String(value)); setFormErrors((current) => ({ ...current, category: "" })); }}><SelectTrigger id="document-category" className="mt-2" aria-invalid={Boolean(formErrors.category)}><SelectValue>{category ? categoryLabel(category) : t("selectCategory")}</SelectValue></SelectTrigger><SelectContent>{data?.categories.map((item) => <SelectItem key={item.value} id={item.value}>{categoryLabel(item.value)}</SelectItem>)}</SelectContent></Select>{formErrors.category ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.category}</p> : null}</div>
+          {category === "OTHER" ? <div><Label htmlFor="document-name">{t("documentName")}</Label><Input id="document-name" className="mt-2" value={documentName} onChange={(event) => { setDocumentName(event.target.value); setFormErrors((current) => ({ ...current, documentName: "" })); }} aria-invalid={Boolean(formErrors.documentName)} aria-describedby={formErrors.documentName ? "document-name-error" : undefined} placeholder={t("documentNamePlaceholder")} />{formErrors.documentName ? <p id="document-name-error" className="mt-1 text-xs text-destructive" role="alert">{formErrors.documentName}</p> : null}</div> : null}
+          <div><Label>{t("uploadFile")}</Label><input ref={fileInput} className="sr-only" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => chooseFile(event.target.files?.[0])} /><Button type="button" variant="outline" className="mt-2 h-32 w-full border-dashed" onPress={() => fileInput.current?.click()}><span className="flex flex-col items-center gap-2"><Upload aria-hidden="true" /><span>{t("clickChooseFile")}</span><span className="text-xs font-normal text-muted-foreground">{t("fileFormats")}</span></span></Button>{formErrors.file ? <p className="mt-1 text-xs text-destructive" role="alert">{formErrors.file}</p> : null}</div>
+          {file ? <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">{previewUrl ? <Image src={previewUrl} alt={t("chooseFileToUpload")} width={48} height={48} unoptimized className="size-12 rounded object-cover" /> : <FileText className="size-8 text-primary" aria-hidden="true" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className="text-xs text-muted-foreground">{fileKind(file.type, t("image"), t("file"))} · {fileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon-sm" aria-label={t("removeSelectedFile")} onPress={() => { if (previewUrl) URL.revokeObjectURL(previewUrl); setFile(undefined); setPreviewUrl(undefined); if (fileInput.current) fileInput.current.value = ""; }}><X aria-hidden="true" /></Button></div> : null}
         </div>
-        <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={uploading} onPress={uploadDocument}>{uploading ? "Uploading…" : "Add Document"}</Button></DialogFooter>
+        <DialogFooter><DialogClose type="button">{t("cancel")}</DialogClose><Button type="button" isDisabled={uploading} onPress={uploadDocument}>{uploading ? t("uploading") : t("addDocument")}</Button></DialogFooter>
       </Dialog>
 
-      <Dialog isOpen={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(undefined); }}><DialogHeader><DialogTitle>Delete document?</DialogTitle><DialogDescription>This will permanently remove {pendingDelete?.display_name || pendingDelete?.name} from your reusable documents.</DialogDescription></DialogHeader><DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" variant="destructive" isDisabled={!pendingDelete || deleting} onPress={deleteDocument}>{deleting ? "Deleting…" : "Delete"}</Button></DialogFooter></Dialog>
-      {toast ? <Toast toast={toast} onDismiss={() => setToast(undefined)} /> : null}
+      <Dialog isOpen={Boolean(pendingDelete)} onOpenChange={(open) => { if (!open) setPendingDelete(undefined); }}><DialogHeader><DialogTitle>{t("deleteDocumentTitle")}</DialogTitle><DialogDescription>{t("deleteDocumentDescription", { name: pendingDelete?.display_name || pendingDelete?.name || "" })}</DialogDescription></DialogHeader><DialogFooter><DialogClose type="button">{t("cancel")}</DialogClose><Button type="button" variant="destructive" isDisabled={!pendingDelete || deleting} onPress={deleteDocument}>{deleting ? t("deleting") : t("delete")}</Button></DialogFooter></Dialog>
+      {toast ? <Toast toast={toast} onDismiss={() => setToast(undefined)} dismissLabel={t("dismissNotification")} /> : null}
     </div>
   );
 }

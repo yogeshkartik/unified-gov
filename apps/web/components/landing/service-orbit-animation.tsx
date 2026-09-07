@@ -79,7 +79,7 @@ export function ServiceOrbitAnimation() {
   const activePoint = point(desktopNodes[pulseSlot]);
   return (
     <figure className="relative mx-auto w-full max-w-[27rem] select-none" aria-labelledby="service-orbit-title">
-      <figcaption id="service-orbit-title" className="sr-only">{language === "hi" ? "एक नागरिक प्रोफ़ाइल कई सरकारी सेवाओं में जानकारी का पुन: उपयोग करती है।" : "One citizen profile securely reuses information across many government services."}</figcaption>
+      <figcaption id="service-orbit-title" className="sr-only">{t("serviceOrbitDescription")}</figcaption>
       <div className="relative aspect-square min-h-[18rem] overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/[0.05] via-background to-sky-50/40 p-3">
         <svg viewBox="0 0 400 360" className="absolute inset-0 size-full" aria-hidden="true">
           <g className="text-primary/30"><circle className="hidden sm:block" cx="200" cy="180" r="142" fill="none" stroke="currentColor" strokeWidth="1" /><circle className="hidden sm:block" cx="200" cy="180" r="82" fill="none" stroke="currentColor" strokeWidth="1" /><circle className="sm:hidden" cx="200" cy="180" r="112" fill="none" stroke="currentColor" strokeWidth="1" /></g>
