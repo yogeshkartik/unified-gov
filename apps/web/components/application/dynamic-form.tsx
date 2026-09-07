@@ -6,19 +6,20 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { DynamicField, type DynamicFormValues } from "@/components/application/dynamic-field";
 import type { ServiceField } from "@/src/types";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
-function fieldSchema(field: ServiceField) {
+function fieldSchema(field: ServiceField, validationMessage: string) {
   if (field.field_type === "CHECKBOX")
-    return z.boolean().refine((value) => !field.required || value, "Please confirm this item.");
+    return z.boolean().refine((value) => !field.required || value, validationMessage);
   if (field.field_type === "NUMBER")
     return z
       .string()
       .trim()
       .refine(
         (value) => value.length === 0 || /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value),
-        "Enter a valid number."
+        validationMessage
       )
-      .refine((value) => !field.required || value.length > 0, `${field.label} is required.`);
+      .refine((value) => !field.required || value.length > 0, validationMessage);
   if ((field.options?.length ?? 0) > 0) {
     const allowedValues = field.options ?? [];
     const selection = z
@@ -26,18 +27,18 @@ function fieldSchema(field: ServiceField) {
       .trim()
       .refine(
         (value) => value.length === 0 || allowedValues.length === 0 || allowedValues.includes(value),
-        `Choose a valid ${field.label.toLowerCase()} option.`
+        validationMessage
       );
     return field.required
-      ? selection.refine((value) => value.length > 0, `${field.label} is required.`)
+      ? selection.refine((value) => value.length > 0, validationMessage)
       : selection.optional();
   }
-  const required = z.string().trim().min(1, `${field.label} is required.`);
+  const required = z.string().trim().min(1, validationMessage);
   return field.required ? required : z.string().optional();
 }
 
-function formSchema(fields: ServiceField[]) {
-  return z.object(Object.fromEntries(fields.map((field) => [field.key, fieldSchema(field)])));
+function formSchema(fields: ServiceField[], validationMessage: string) {
+  return z.object(Object.fromEntries(fields.map((field) => [field.key, fieldSchema(field, validationMessage)])));
 }
 
 interface DynamicFormProps {
@@ -55,11 +56,12 @@ export function DynamicForm({
   fields,
   defaultValues,
   isSubmitting,
-  submitLabel = "Continue",
+  submitLabel,
   onBack,
   onSubmit,
 }: DynamicFormProps) {
-  const form = useForm<DynamicFormValues>({ resolver: zodResolver(formSchema(fields)), defaultValues });
+  const { t } = useCitizenPreferences();
+  const form = useForm<DynamicFormValues>({ resolver: zodResolver(formSchema(fields, t("completeMissing"))), defaultValues });
 
   return (
     <form id={id} className="space-y-6" noValidate onSubmit={form.handleSubmit(onSubmit)}>
@@ -84,13 +86,13 @@ export function DynamicForm({
       <div className="flex flex-col-reverse gap-3 pt-4 border-t sm:flex-row sm:justify-between sm:items-center">
         {onBack ? (
           <Button type="button" variant="outline" onPress={onBack}>
-            Back
+            {t("back")}
           </Button>
         ) : (
           <div />
         )}
         <Button type="submit" isDisabled={isSubmitting}>
-          {isSubmitting ? "Saving…" : submitLabel}
+          {isSubmitting ? t("saving") : submitLabel ?? t("continue")}
         </Button>
       </div>
     </form>

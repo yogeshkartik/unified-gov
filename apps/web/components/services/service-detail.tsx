@@ -12,6 +12,7 @@ import { useCitizenAuth } from "@/components/providers/citizen-auth";
 import { applicationFlowPath } from "@/components/application/application-flow-navigation";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeProfileField, localizeService } from "@/src/i18n/service-localization";
+import { localeFor } from "@/src/i18n/locale-format";
 
 function formatFieldName(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -46,7 +47,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
   if (!service) return <LoadingState label={t("loadingServiceDetails")} />;
 
   const localizedService = localizeService(service, language);
-  const locale = language === "hi" ? "hi-IN" : "en-IN";
+  const locale = localeFor(language);
   const deadline = service.end_date ? new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(service.end_date)) : t("noDeadline");
   const fee = service.fee > 0 ? t("fee", { amount: new Intl.NumberFormat(locale, { style: "currency", currency: service.currency, maximumFractionDigits: 0 }).format(service.fee) }) : t("noApplicationFee");
   const requiredDocuments = [...localizedService.document_requirements]
@@ -73,7 +74,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
         <CardContent className="grid gap-6 sm:grid-cols-3">
           <section aria-labelledby="profile-requirements-heading">
             <h2 id="profile-requirements-heading" className="text-sm font-medium">{t("fromProfile")}</h2>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{localizedService.required_profile_fields.map((field) => <li key={field} className="flex items-center gap-2"><CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden="true" />{language === "hi" ? localizeProfileField(field, language) : formatFieldName(field)}</li>)}</ul>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">{localizedService.required_profile_fields.map((field) => <li key={field} className="flex items-center gap-2"><CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden="true" />{language === "en" ? formatFieldName(field) : localizeProfileField(field, language)}</li>)}</ul>
           </section>
           <section aria-labelledby="document-requirements-heading">
             <h2 id="document-requirements-heading" className="text-sm font-medium">{t("documents")}</h2>

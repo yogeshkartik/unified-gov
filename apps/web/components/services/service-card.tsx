@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LinkButton } from "@/components/ui/button";
 import type { GovernmentService } from "@/src/types";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localeFor } from "@/src/i18n/locale-format";
 
 export function ServiceCard({ service }: { service: GovernmentService }) {
   const { language, t } = useCitizenPreferences();
-  const locale = language === "hi" ? "hi-IN" : "en-IN";
+  const locale = localeFor(language);
   const deadline = service.end_date ? t("applyBy", { date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(service.end_date)) }) : t("noDeadline");
   const fee = service.fee > 0 ? new Intl.NumberFormat(locale, { style: "currency", currency: service.currency, maximumFractionDigits: 0 }).format(service.fee) : t("free");
   return (

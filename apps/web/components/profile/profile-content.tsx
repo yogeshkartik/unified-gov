@@ -77,34 +77,6 @@ const profileGroups: Array<{ title: string; keys: ProfileKey[] }> = [
   },
 ];
 
-const labels: Record<string, string> = {
-  full_name: "Full Name",
-  date_of_birth: "Date of Birth",
-  gender: "Gender",
-  nationality: "Nationality",
-  marital_status: "Marital Status",
-  mobile: "Primary Mobile",
-  alternate_mobile: "Alternate Mobile",
-  email: "Email Address",
-  father_name: "Father's Name",
-  mother_name: "Mother's Name",
-  guardian_name: "Guardian Name",
-  guardian_relationship: "Guardian Relationship",
-  category: "Category",
-  ews_status: "EWS Status",
-  disability_status: "Person with Disability (PwD)",
-  ex_serviceman_status: "Ex-Serviceman Status",
-  minority_status: "Minority Status",
-  highest_qualification: "Highest Qualification",
-  current_education_status: "Current Education Status",
-  current_course: "Current Course",
-  current_institution: "Current Institution",
-  employment_status: "Employment Status",
-  occupation: "Occupation",
-  annual_family_income_range: "Annual Family Income Range",
-  preferred_language: "Preferred Language",
-};
-
 const options: Record<string, string[]> = {
   gender: ["Male", "Female", "Other"],
   nationality: ["Indian"],
@@ -170,6 +142,7 @@ function ProfilePicture({
   name: string;
   size?: string;
 }) {
+  const { t } = useCitizenPreferences();
   const src =
     preview ||
     (photo
@@ -177,10 +150,10 @@ function ProfilePicture({
       : undefined);
   return (
     <Avatar className={`${size} bg-muted ring-2 ring-background`}>
-      <AvatarImage src={src} alt={`${name}'s profile photo`} className="object-cover" />
+      <AvatarImage src={src} alt={t("profileAvatarAlt", { name })} className="object-cover" />
       <AvatarFallback>
         <UserRound className="size-10" aria-hidden="true" />
-        <span className="sr-only">Profile photo unavailable</span>
+        <span className="sr-only">{t("profileAvatarFallback")}</span>
       </AvatarFallback>
     </Avatar>
   );
@@ -207,6 +180,7 @@ function displayValue(value: unknown) {
 }
 
 function AddressView({ title, address }: { title: string; address?: Address }) {
+  const { t } = useCitizenPreferences();
   return (
     <section>
       <h3 className="mb-2 text-sm font-medium">{title}</h3>
@@ -227,13 +201,14 @@ function AddressView({ title, address }: { title: string; address?: Address }) {
           {address.country}
         </address>
       ) : (
-        <p className="text-sm text-muted-foreground">Not provided</p>
+        <p className="text-sm text-muted-foreground">{t("notProvided")}</p>
       )}
     </section>
   );
 }
 
 function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
+  const { t } = useCitizenPreferences();
   const Icon = toast.tone === "success" ? CheckCircle2 : CircleAlert;
   return (
     <div
@@ -249,7 +224,7 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Dismiss notification"
+        aria-label={t("dismissNotification")}
         onPress={onDismiss}
       >
         <X aria-hidden="true" />
@@ -265,10 +240,12 @@ function AddressEditor({
   prefix: AddressPrefix;
   form: ReturnType<typeof useForm<ProfileFormValues>>;
 }) {
+  const { language } = useCitizenPreferences();
   const errors = form.formState.errors as Record<string, { message?: string }>;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {addressFields.map(([key, label]) => {
+      {addressFields.map(([key, fallbackLabel]) => {
+        const label = localizeProfileField(key === "line1" || key === "line2" ? `address_${key}` : key, language) || fallbackLabel;
         const name = `${prefix}_${key}`;
         const error = errors[name]?.message;
         return (
@@ -317,15 +294,16 @@ function FieldEditor({
   field: ProfileKey;
   form: ReturnType<typeof useForm<ProfileFormValues>>;
 }) {
+  const { language, t } = useCitizenPreferences();
   const name = String(field);
   const error = (form.formState.errors as Record<string, { message?: string }>)[name]?.message;
   const choices = options[name];
   return (
     <div>
-      <Label htmlFor={name}>{labels[name]}</Label>
+      <Label htmlFor={name}>{localizeProfileField(name, language)}</Label>
       {choices ? (
         <Select
-          aria-label={labels[name]}
+          aria-label={localizeProfileField(name, language)}
           selectedKey={String(form.watch(name) || "")}
           onSelectionChange={(value) =>
             form.setValue(name, String(value), { shouldDirty: true, shouldValidate: true })
@@ -334,14 +312,14 @@ function FieldEditor({
           <SelectTrigger id={name} className="mt-2" aria-invalid={Boolean(error)}>
             <SelectValue>
               {displayValue(form.watch(name)) === "Not provided"
-                ? "Select an option"
+                ? t("notProvided")
                 : displayValue(form.watch(name))}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {choices.map((choice) => (
               <SelectItem id={choice} key={choice}>
-                {choice}
+                {choice === "Male" ? t("enumMALE") : choice === "Female" ? t("enumFEMALE") : choice === "Other" ? t("enumOTHER") : choice === "General" ? t("enumGENERAL") : choice === "Married" ? t("enumMARRIED") : choice === "Unmarried" ? t("enumUNMARRIED") : choice === "Employed" ? t("enumEMPLOYED") : choice === "Self-employed" ? t("enumSELF_EMPLOYED") : choice === "Unemployed" ? t("enumUNEMPLOYED") : choice === "Student" ? t("enumSTUDENT") : choice === "Indian" ? t("enumINDIAN") : choice === "Yes" ? t("yes") : choice === "No" ? t("no") : choice}
               </SelectItem>
             ))}
           </SelectContent>
@@ -587,7 +565,7 @@ export function ProfileContent() {
             <CardTitle>{t(({ "Personal Details": "personalDetails", "Contact Details": "contactDetails", "Parents Details": "parentsDetails", "Social / Reservation Details": "socialDetails", "Basic Education": "basicEducation", "Other General Details": "otherDetails" }[title] ?? "personalDetails") as Parameters<typeof t>[0])}</CardTitle>
             </CardHeader>
             <CardContent>
-              {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{localizeProfileField(String(key), language)}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key])}</dd></div>)}</dl>}
+              {isEditing ? <div className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <FieldEditor key={String(key)} field={key} form={form} />)}</div> : <dl className="grid gap-4 sm:grid-cols-2">{visibleFields(keys).map((key) => <div key={String(key)}><dt className="text-xs text-muted-foreground">{localizeProfileField(String(key), language)}</dt><dd className="mt-1 text-sm font-medium">{displayValue(profile[key]) === "Not provided" ? t("notProvided") : displayValue(profile[key])}</dd></div>)}</dl>}
             </CardContent>
           </Card>
         ))}
@@ -611,7 +589,7 @@ export function ProfileContent() {
       >
         <DialogHeader>
           <DialogTitle>{photo ? t("changePhoto") : t("addPhoto")}</DialogTitle>
-          <DialogDescription>JPG, PNG or WEBP · maximum 5 MB</DialogDescription>
+          <DialogDescription>{t("choosePhotoValidation")}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 py-2">
           <ProfilePicture photo={photo} preview={photoPreview} name={profile.full_name} size="size-28" />

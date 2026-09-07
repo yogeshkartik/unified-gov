@@ -185,12 +185,12 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
 
         {/* 2. Profile Information */}
         <section className="space-y-2.5">
-          <h3 className="text-sm font-semibold tracking-tight text-foreground">Profile</h3>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{t("profileSection")}</h3>
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {profileFields.map((field) => (
               <li key={field} className="flex items-center gap-2 text-sm text-foreground">
                 <CheckCircle2 className="size-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                <span>{displayName(field)}</span>
+                <span>{language === "en" ? displayName(field) : localizeProfileField(field, language)}</span>
               </li>
             ))}
           </ul>
@@ -202,19 +202,19 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
 
             {/* 3. Documents */}
             <section className="space-y-2.5">
-              <h3 className="text-sm font-semibold tracking-tight text-foreground">Documents</h3>
+              <h3 className="text-sm font-semibold tracking-tight text-foreground">{t("documents")}</h3>
               <ul className="space-y-3">
-                {data.service.document_requirements.map((requirement) => {
+                {localizedService.document_requirements.map((requirement) => {
                   const profileDocument = myDocuments.find((document) => document.document_type === "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
                   const personal = myDocuments.filter((document) => document.document_type !== "PHOTOGRAPH" && matchesRequirement(requirement.document_type, document.document_type));
                   const provider = documents.filter((document) => matchesRequirement(requirement.document_type, document.document_type));
                   const hasSource = Boolean(profileDocument) || personal.length > 0 || provider.length > 0;
                   return <li key={requirement.id} className="rounded-lg border bg-muted/20 p-3">
                     <p className="font-medium text-sm">{requirement.label}</p>
-                    {profileDocument ? <p className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700"><CheckCircle2 className="size-4" />My Profile</p> : null}
-                    {personal.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedMyDocumentIds.includes(document.id)} onChange={(selected) => setSelectedMyDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />My Documents — {document.display_name || document.name}</label>)}
+                    {profileDocument ? <p className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700"><CheckCircle2 className="size-4" />{t("myProfileSource")}</p> : null}
+                    {personal.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedMyDocumentIds.includes(document.id)} onChange={(selected) => setSelectedMyDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />{t("myDocumentsSource")} — {document.display_name || document.name}</label>)}
                     {provider.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedDocumentIds.includes(document.id)} onChange={(selected) => setSelectedDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />DigiLocker — {document.name}</label>)}
-                    {!hasSource ? <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-destructive">Missing</span><Button type="button" size="sm" variant="outline" onPress={() => setUploadRequirement({ document_type: requirement.document_type, label: requirement.label })}><Upload aria-hidden="true" />Upload document</Button></div> : null}
+                    {!hasSource ? <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-destructive">{t("missing")}</span><Button type="button" size="sm" variant="outline" onPress={() => setUploadRequirement({ document_type: requirement.document_type, label: requirement.label })}><Upload aria-hidden="true" />{t("uploadDocument")}</Button></div> : null}
                   </li>;
                 })}
               </ul>
@@ -229,9 +229,9 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
         ) : null}
       </div>
       <Dialog isOpen={Boolean(uploadRequirement)} onOpenChange={(open) => { if (!open) { setUploadRequirement(undefined); setUploadFile(undefined); } }}>
-        <DialogHeader><DialogTitle>Upload {uploadRequirement?.label}</DialogTitle><DialogDescription>This file will be saved to My Documents and used for this application.</DialogDescription></DialogHeader>
-        <div className="space-y-4"><div><p className="text-sm font-medium">Document type</p><div className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-sm"><p>{uploadRequirement?.label}</p><p className="mt-0.5 text-xs text-muted-foreground">Required for this application</p></div></div><DocumentFilePicker id="required-document-file" file={uploadFile} onChange={setUploadFile} /></div>
-        <DialogFooter><DialogClose type="button">Cancel</DialogClose><Button type="button" isDisabled={!uploadFile || uploading} onPress={uploadRequiredDocument}>{uploading ? "Uploading…" : "Upload"}</Button></DialogFooter>
+        <DialogHeader><DialogTitle>{t("uploadNamed", { name: uploadRequirement?.label ?? "" })}</DialogTitle><DialogDescription>{t("savedToDocuments")}</DialogDescription></DialogHeader>
+        <div className="space-y-4"><div><p className="text-sm font-medium">{t("documentType")}</p><div className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-sm"><p>{uploadRequirement?.label}</p><p className="mt-0.5 text-xs text-muted-foreground">{t("requiredForApplication")}</p></div></div><DocumentFilePicker id="required-document-file" file={uploadFile} onChange={setUploadFile} /></div>
+        <DialogFooter><DialogClose type="button">{t("cancel")}</DialogClose><Button type="button" isDisabled={!uploadFile || uploading} onPress={uploadRequiredDocument}>{uploading ? t("uploading") : t("upload")}</Button></DialogFooter>
       </Dialog>
     </ApplicationFlowShell>
   );

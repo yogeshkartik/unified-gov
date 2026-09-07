@@ -9,9 +9,13 @@ import { ApplicationFlowShell } from "@/components/application/application-flow-
 import { applicationFlowSteps, navigateApplicationFlow } from "@/components/application/application-flow-navigation";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
+import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { localizeServiceName } from "@/src/i18n/service-localization";
+import { localeFor } from "@/src/i18n/locale-format";
 
 export function PaymentPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
+  const { language, t } = useCitizenPreferences();
   const [preview, setPreview] = useState<ApplicationPreview>();
   const [error, setError] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -38,7 +42,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
           }
         } catch {
           if (!cancelled) {
-            setPaymentError("We could not submit this free application. Please try again.");
+            setPaymentError(t("freeSubmissionError"));
             setProcessing(false);
           }
         }
@@ -49,7 +53,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [applicationId, router]);
+  }, [applicationId, router, t]);
 
   async function submitAfterPayment() {
     const submission = await api.submitApplication(applicationId);
@@ -68,11 +72,11 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
       if (payment.skipped || payment.status === "SUCCESS") {
         await submitAfterPayment();
       } else {
-        setPaymentError("Payment was not successful. Please try again.");
+        setPaymentError(t("paymentFailed"));
         setProcessing(false);
       }
     } catch {
-      setPaymentError("We could not process the payment. Please try again.");
+      setPaymentError(t("paymentProcessError"));
       setProcessing(false);
     }
   }
@@ -80,21 +84,21 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
   if (error) {
     return (
       <ErrorState>
-        We could not load payment information. Return to the preview and try again.
+        {t("paymentLoadError")}
       </ErrorState>
     );
   }
 
-  if (!preview) return <LoadingState label="Loading payment details…" />;
+  if (!preview) return <LoadingState label={t("loadingPaymentDetails")} />;
 
   const isFree = preview.fee <= 0;
 
   return (
     <ApplicationFlowShell
-      serviceName={String(preview.service.name)}
+      serviceName={localizeServiceName(String(preview.service.id), String(preview.service.name), language)}
       applicationId={applicationId}
       step={applicationFlowSteps.payment.index}
-      stepName={applicationFlowSteps.payment.label}
+      stepName={t("paymentStep")}
       onClose={() => router.push("/applications")}
       footer={
         !isFree ? (
@@ -104,16 +108,16 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
               variant="outline"
               onPress={() => navigateApplicationFlow(router, applicationId, "preview", "back")}
             >
-              Back
+              {t("back")}
             </Button>
             <Button onPress={pay} isDisabled={processing}>
               {processing ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  <span>Processing payment…</span>
+                  <span>{t("processingPayment")}</span>
                 </>
               ) : (
-                `Pay ${preview.currency} ${preview.fee}`
+                t("payAmount", { amount: new Intl.NumberFormat(localeFor(language), { style: "currency", currency: preview.currency }).format(preview.fee) })
               )}
             </Button>
           </div>
@@ -124,8 +128,8 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
         <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
           <Loader2 className="size-7 animate-spin text-primary" aria-hidden="true" />
           <div>
-            <h1 className="text-base font-medium text-foreground">Submitting free application…</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">No payment is required.</p>
+            <h1 className="text-base font-medium text-foreground">{t("submittingFreeApplication")}</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("paymentNotRequired")}</p>
           </div>
           {paymentError ? (
             <div className="space-y-3 pt-2">
@@ -133,7 +137,7 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
                 {paymentError}
               </p>
               <Button onPress={pay} isDisabled={processing}>
-                Retry submission
+                {t("retrySubmission")}
               </Button>
             </div>
           ) : null}
@@ -141,15 +145,15 @@ export function PaymentPage({ applicationId }: { applicationId: string }) {
       ) : (
         <div className="space-y-5">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Application fee
+            {t("applicationFee")}
           </h1>
 
           <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-1.5">
             <p className="text-3xl font-bold tracking-tight text-foreground">
-              {preview.currency} {preview.fee}
+              {new Intl.NumberFormat(localeFor(language), { style: "currency", currency: preview.currency }).format(preview.fee)}
             </p>
             <p className="text-xs text-muted-foreground">
-              Demo payment · No real money will be charged.
+              {t("demoPaymentNotice")}
             </p>
           </div>
 
