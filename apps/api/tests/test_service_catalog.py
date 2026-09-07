@@ -126,3 +126,12 @@ def test_all_india_view_is_central_only(db: Session) -> None:
     services = list_services(db, "IN")
     assert len(services) == 11  # JEE Main and NEET UG are separate concrete services in one UI group.
     assert all(service.government_level == "CENTRAL" for service in services)
+
+
+def test_all_india_search_scope_includes_only_curated_open_state_variants(db: Session) -> None:
+    services = list_services(db, "IN", include_all_supported_states=True)
+
+    assert len(services) == 47
+    assert "BR_INCOME_CERTIFICATE_001" in {service.id for service in services}
+    assert "INCOME_CERTIFICATE_001" not in {service.id for service in services}
+    assert all(service.status == ServiceStatus.OPEN for service in services)

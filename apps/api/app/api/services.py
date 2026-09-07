@@ -16,9 +16,13 @@ def service_not_found(service_id: str) -> HTTPException:
 
 
 @router.get("/services", response_model=list[ServiceResponse])
-def read_services(state: str | None = Query(default=None, min_length=2, max_length=2), db: Session = Depends(get_db)) -> list[ServiceResponse]:
+def read_services(
+    state: str | None = Query(default=None, min_length=2, max_length=2),
+    include_all_supported_states: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> list[ServiceResponse]:
     try:
-        return service_catalog.list_services(db, state)
+        return service_catalog.list_services(db, state, include_all_supported_states=include_all_supported_states)
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"code": "INVALID_STATE", "message": str(error)}) from error
 

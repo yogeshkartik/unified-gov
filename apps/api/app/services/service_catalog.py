@@ -10,10 +10,16 @@ class ServiceNotFoundError(Exception):
     pass
 
 
-def list_services(db: Session, state_code: str | None = None) -> list[Service]:
+def list_services(
+    db: Session,
+    state_code: str | None = None,
+    *,
+    include_all_supported_states: bool = False,
+) -> list[Service]:
     query = select(Service).where(Service.status == ServiceStatus.OPEN)
     if state_code == "IN":
-        query = query.where(Service.government_level == GovernmentLevel.CENTRAL)
+        if not include_all_supported_states:
+            query = query.where(Service.government_level == GovernmentLevel.CENTRAL)
     elif state_code is not None:
         normalized = state_code.upper()
         if normalized not in SUPPORTED_STATE_CODES:

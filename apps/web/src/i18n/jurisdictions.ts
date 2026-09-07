@@ -12,6 +12,25 @@ export const serviceJurisdictions = [
 
 export type ServiceJurisdictionCode = (typeof serviceJurisdictions)[number]["code"];
 
+const profileStateAliases: Record<string, ServiceJurisdictionCode> = {
+  BIHAR: "BR",
+  KARNATAKA: "KA",
+  MAHARASHTRA: "MH",
+  "TAMIL NADU": "TN",
+  "UTTAR PRADESH": "UP",
+  "WEST BENGAL": "WB",
+};
+
+/** Converts the structured profile address value into a supported catalog jurisdiction. */
+export function profileStateToJurisdiction(state: string | null | undefined): ServiceJurisdictionCode | undefined {
+  const normalized = state?.trim().toUpperCase();
+  if (!normalized) return undefined;
+  if (serviceJurisdictions.some((jurisdiction) => jurisdiction.code === normalized)) {
+    return normalized as ServiceJurisdictionCode;
+  }
+  return profileStateAliases[normalized];
+}
+
 export function jurisdictionName(code: string, language: Language) {
   const jurisdiction = serviceJurisdictions.find((item) => item.code === code);
   return jurisdiction?.names[language] ?? code;
