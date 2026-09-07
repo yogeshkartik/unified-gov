@@ -37,6 +37,9 @@ type RecommendationCopy = {
   EMPLOYMENT_STATUS_MATCH: string;
   OCCUPATION_MATCH: string;
   viewDetails: string;
+  browseServices?: string;
+  viewAll?: string;
+  centralSearchStateFallback?: string;
 };
 
 const copy: Record<Language, ServiceDiscoveryCopy> = {
@@ -70,8 +73,8 @@ const relevanceCopy: Record<Language, SearchRelevanceCopy> = {
 };
 
 const recommendationCopy: Record<Language, RecommendationCopy> = {
-  en: { recommended: "Recommended", centralServices: "Central Services", stateServices: "State Services", recommendedForYou: "Recommended for You", recommendationsDescription: "Services selected from your profile, education and permanent state.", GENERAL_RELEVANCE: "Useful government service to explore", PERMANENT_STATE_MATCH: "Matches your permanent state", EDUCATION_STAGE_MATCH: "Relevant to your education stage", AGE_RELEVANCE: "Relevant to your life stage", EMPLOYMENT_STATUS_MATCH: "Relevant to your work status", OCCUPATION_MATCH: "Relevant to your occupation", viewDetails: "View details" },
-  hi: { recommended: "अनुशंसित", centralServices: "केंद्र सेवाएँ", stateServices: "राज्य सेवाएँ", recommendedForYou: "आपके लिए अनुशंसित", recommendationsDescription: "आपकी प्रोफ़ाइल, शिक्षा और स्थायी राज्य के आधार पर चुनी गई सेवाएँ।", GENERAL_RELEVANCE: "उपयोगी सरकारी सेवा", PERMANENT_STATE_MATCH: "आपके स्थायी राज्य से मेल खाती है", EDUCATION_STAGE_MATCH: "आपकी शिक्षा अवस्था के लिए प्रासंगिक", AGE_RELEVANCE: "आपकी जीवन अवस्था के लिए प्रासंगिक", EMPLOYMENT_STATUS_MATCH: "आपकी कार्य स्थिति के लिए प्रासंगिक", OCCUPATION_MATCH: "आपके व्यवसाय के लिए प्रासंगिक", viewDetails: "विवरण देखें" },
+  en: { recommended: "Recommended", centralServices: "Central Services", stateServices: "State Services", recommendedForYou: "Recommended for You", recommendationsDescription: "Services selected from your profile, education and permanent state.", GENERAL_RELEVANCE: "Useful government service to explore", PERMANENT_STATE_MATCH: "Matches your permanent state", EDUCATION_STAGE_MATCH: "Relevant to your education stage", AGE_RELEVANCE: "Relevant to your life stage", EMPLOYMENT_STATUS_MATCH: "Relevant to your work status", OCCUPATION_MATCH: "Relevant to your occupation", viewDetails: "View details", browseServices: "Browse services", viewAll: "View all", centralSearchStateFallback: "No Central service matched. Showing a service from your permanent state." },
+  hi: { recommended: "अनुशंसित", centralServices: "केंद्र सेवाएँ", stateServices: "राज्य सेवाएँ", recommendedForYou: "आपके लिए अनुशंसित", recommendationsDescription: "आपकी प्रोफ़ाइल, शिक्षा और स्थायी राज्य के आधार पर चुनी गई सेवाएँ।", GENERAL_RELEVANCE: "उपयोगी सरकारी सेवा", PERMANENT_STATE_MATCH: "आपके स्थायी राज्य से मेल खाती है", EDUCATION_STAGE_MATCH: "आपकी शिक्षा अवस्था के लिए प्रासंगिक", AGE_RELEVANCE: "आपकी जीवन अवस्था के लिए प्रासंगिक", EMPLOYMENT_STATUS_MATCH: "आपकी कार्य स्थिति के लिए प्रासंगिक", OCCUPATION_MATCH: "आपके व्यवसाय के लिए प्रासंगिक", viewDetails: "विवरण देखें", browseServices: "सेवाएँ ब्राउज़ करें", viewAll: "सभी देखें" },
   mr: { recommended: "शिफारस केलेले", centralServices: "केंद्र सेवा", stateServices: "राज्य सेवा", recommendedForYou: "तुमच्यासाठी शिफारस केलेले", recommendationsDescription: "तुमच्या प्रोफाइल, शिक्षण आणि कायमच्या राज्यावरून निवडलेल्या सेवा.", GENERAL_RELEVANCE: "उपयुक्त सरकारी सेवा", PERMANENT_STATE_MATCH: "तुमच्या कायमच्या राज्याशी जुळते", EDUCATION_STAGE_MATCH: "तुमच्या शिक्षणाच्या टप्प्यासाठी संबंधित", AGE_RELEVANCE: "तुमच्या जीवनाच्या टप्प्यासाठी संबंधित", EMPLOYMENT_STATUS_MATCH: "तुमच्या कामाच्या स्थितीसाठी संबंधित", OCCUPATION_MATCH: "तुमच्या व्यवसायासाठी संबंधित", viewDetails: "तपशील पहा" },
   kn: { recommended: "ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ", centralServices: "ಕೇಂದ್ರ ಸೇವೆಗಳು", stateServices: "ರಾಜ್ಯ ಸೇವೆಗಳು", recommendedForYou: "ನಿಮಗಾಗಿ ಶಿಫಾರಸುಗಳು", recommendationsDescription: "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್, ಶಿಕ್ಷಣ ಮತ್ತು ಶಾಶ್ವತ ರಾಜ್ಯದ ಆಧಾರದ ಸೇವೆಗಳು.", GENERAL_RELEVANCE: "ಉಪಯುಕ್ತ ಸರ್ಕಾರಿ ಸೇವೆ", PERMANENT_STATE_MATCH: "ನಿಮ್ಮ ಶಾಶ್ವತ ರಾಜ್ಯಕ್ಕೆ ಹೊಂದಿಕೆಯಾಗುತ್ತದೆ", EDUCATION_STAGE_MATCH: "ನಿಮ್ಮ ಶಿಕ್ಷಣ ಹಂತಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ", AGE_RELEVANCE: "ನಿಮ್ಮ ಜೀವನ ಹಂತಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ", EMPLOYMENT_STATUS_MATCH: "ನಿಮ್ಮ ಕೆಲಸದ ಸ್ಥಿತಿಗೆ ಸಂಬಂಧಿಸಿದೆ", OCCUPATION_MATCH: "ನಿಮ್ಮ ಉದ್ಯೋಗಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ", viewDetails: "ವಿವರಗಳನ್ನು ನೋಡಿ" },
   ta: { recommended: "பரிந்துரைக்கப்பட்டது", centralServices: "மத்திய சேவைகள்", stateServices: "மாநில சேவைகள்", recommendedForYou: "உங்களுக்கான பரிந்துரைகள்", recommendationsDescription: "உங்கள் சுயவிவரம், கல்வி மற்றும் நிரந்தர மாநிலத்தின் அடிப்படையிலான சேவைகள்.", GENERAL_RELEVANCE: "பயனுள்ள அரசு சேவை", PERMANENT_STATE_MATCH: "உங்கள் நிரந்தர மாநிலத்துடன் பொருந்துகிறது", EDUCATION_STAGE_MATCH: "உங்கள் கல்வி நிலைக்கு பொருத்தமானது", AGE_RELEVANCE: "உங்கள் வாழ்க்கை நிலைக்கு பொருத்தமானது", EMPLOYMENT_STATUS_MATCH: "உங்கள் பணிநிலைக்கு பொருத்தமானது", OCCUPATION_MATCH: "உங்கள் தொழிலுக்கு பொருத்தமானது", viewDetails: "விவரங்களைக் காண்க" },
@@ -86,6 +89,6 @@ export function serviceDiscoveryText(language: Language, key: keyof ServiceDisco
       ? presentationCopy[language][key as keyof ServiceResultsPresentationCopy]
       : key in relevanceCopy[language]
         ? relevanceCopy[language][key as keyof SearchRelevanceCopy]
-        : recommendationCopy[language][key as keyof RecommendationCopy];
+        : recommendationCopy[language][key as keyof RecommendationCopy] ?? recommendationCopy.en[key as keyof RecommendationCopy] ?? "";
   return Object.entries(values).reduce((result, [name, value]) => result.replaceAll(`{${name}}`, String(value)), message);
 }

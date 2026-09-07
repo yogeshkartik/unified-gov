@@ -86,7 +86,10 @@ def recommend_services(db: Session, limit: int = 6) -> list[RecommendedService]:
             reasons.append("OCCUPATION_MATCH")
         candidates.append(RecommendedService(service=service, score=score, reasons=reasons))
 
-    return sorted(candidates, key=lambda item: (-item.score, item.service.id))[:limit]
+    ranked = sorted(candidates, key=lambda item: (-item.score, item.service.id))
+    central = [item for item in ranked if item.service.government_level == GovernmentLevel.CENTRAL][:3]
+    state = [item for item in ranked if item.service.government_level == GovernmentLevel.STATE][:3]
+    return (central + state)[:limit]
 
 
 def _age(date_of_birth: date) -> int:

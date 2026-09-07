@@ -26,6 +26,7 @@ export function ServicesCatalog() {
   const [profileJurisdiction, setProfileJurisdiction] = useState<ServiceJurisdictionCode>();
   const [scope, setScope] = useState<"RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode>("RECOMMENDED");
   const [recommendations, setRecommendations] = useState<RecommendedService[]>();
+  const [centralSearchFallback, setCentralSearchFallback] = useState<GovernmentService[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -53,8 +54,13 @@ export function ServicesCatalog() {
     request
       .then((result) => { if (active) setServices(result); })
       .catch(() => { if (active) setError(true); });
+    if (scope === "CENTRAL" && profileJurisdiction) {
+      api.getServices(profileJurisdiction).then((result) => {
+        if (active) setCentralSearchFallback(result.filter((service) => service.government_level === "STATE"));
+      }).catch(() => { if (active) setCentralSearchFallback([]); });
+    }
     return () => { active = false; };
-  }, [jurisdiction, scope]);
+  }, [jurisdiction, profileJurisdiction, scope]);
 
   const localizedServices = useMemo(() => (services ?? []).map((service) => localizeService(service, language)), [language, services]);
   const categories = useMemo(() => Array.from(new Set((services ?? []).map((service) => service.category)))
@@ -68,6 +74,11 @@ export function ServicesCatalog() {
     const searchable = `${service.name} ${service.department} ${service.category} ${service.description} ${canonical?.name ?? ""} ${canonical?.description ?? ""} ${service.service_key ?? ""}`;
     return (category === null || canonical?.category === category) && searchable.toLocaleLowerCase(language).includes(query.toLocaleLowerCase(language));
   }), [category, language, localizedServices, query, services]);
+  const fallbackMatches = useMemo(() => centralSearchFallback.map((service) => localizeService(service, language)).filter((service) => {
+    const canonical = centralSearchFallback.find((item) => item.id === service.id);
+    const searchable = `${service.name} ${service.department} ${service.category} ${service.description} ${canonical?.name ?? ""} ${canonical?.description ?? ""} ${service.service_key ?? ""}`;
+    return (category === null || canonical?.category === category) && searchable.toLocaleLowerCase(language).includes(query.toLocaleLowerCase(language));
+  }), [category, centralSearchFallback, language, query]);
 
   if (error) return <ErrorState>{t("catalogUnavailable")}</ErrorState>;
   if (!jurisdiction || !services) return <LoadingState label={t("loadingServices")} />;
@@ -79,14 +90,7 @@ export function ServicesCatalog() {
   const categoryIsActive = category !== null;
 
   function changeQuery(nextQuery: string) {
-    if (jurisdiction === "IN" && (nextQuery.trim().length > 0) !== searchMode) setServices(undefined);
     setQuery(nextQuery);
-  }
-
-  function changeJurisdiction(nextJurisdiction: ServiceJurisdictionCode) {
-    setServices(undefined);
-    setError(false);
-    setJurisdiction(nextJurisdiction);
   }
 
   function changeScope(nextScope: "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode) {
@@ -114,10 +118,10 @@ export function ServicesCatalog() {
             </div>
           </div>
           <div>
-            <Label htmlFor="service-jurisdiction">{t("servicesFor")}</Label>
-            <Select selectedKey={scope} onSelectionChange={(key) => changeScope(String(key) as "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode)} aria-label={t("servicesFor")}>
-              <SelectTrigger id="service-jurisdiction" className="mt-2 min-h-11"><SelectValue>{scope === "RECOMMENDED" ? serviceDiscoveryText(language, "recommendedForYou") : scope === "CENTRAL" ? t("centralGovernment") : jurisdictionName(scope, language)}</SelectValue></SelectTrigger>
-              <SelectContent><SelectItem id="RECOMMENDED" textValue={serviceDiscoveryText(language, "recommendedForYou")}>{serviceDiscoveryText(language, "recommendedForYou")}</SelectItem><SelectItem id="CENTRAL" textValue={t("centralGovernment")}>{t("centralGovernment")}</SelectItem>{serviceJurisdictions.filter((item) => item.code !== "IN").map((item) => <SelectItem id={item.code} key={item.code} textValue={jurisdictionName(item.code, language)}>{jurisdictionName(item.code, language)}</SelectItem>)}</SelectContent>
+            <Label htmlFor="service-jurisdiction">{serviceDiscoveryText(language, "browseServices")}</Label>
+            <Select selectedKey={scope} onSelectionChange={(key) => changeScope(String(key) as "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode)} aria-label={serviceDiscoveryText(language, "browseServices")}>
+              <SelectTrigger id="service-jurisdiction" className="mt-2 min-h-11"><SelectValue>{scope === "RECOMMENDED" ? serviceDiscoveryText(language, "recommended") : scope === "CENTRAL" ? t("centralGovernment") : jurisdictionName(scope, language)}</SelectValue></SelectTrigger>
+              <SelectContent><SelectItem id="RECOMMENDED" textValue={serviceDiscoveryText(language, "recommended")}>{serviceDiscoveryText(language, "recommended")}</SelectItem><SelectItem id="CENTRAL" textValue={t("centralGovernment")}>{t("centralGovernment")}</SelectItem>{serviceJurisdictions.filter((item) => item.code !== "IN").map((item) => <SelectItem id={item.code} key={item.code} textValue={jurisdictionName(item.code, language)}>{jurisdictionName(item.code, language)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
@@ -137,9 +141,9 @@ export function ServicesCatalog() {
       </div>
 
       <section aria-live="polite">
-        {visibleServices.length === 0 ? <EmptyResults state={selectedJurisdictionName} /> : (
-          scope === "RECOMMENDED" ? <RecommendedResults recommendations={recommendations ?? []} language={language} /> :
-          scope === "CENTRAL" ? <ServiceGroup title={serviceDiscoveryText(language, "centralServices")} services={centralServices} /> :
+        {visibleServices.length === 0 && !(scope === "CENTRAL" && searchMode && fallbackMatches.length > 0) ? <EmptyResults state={selectedJurisdictionName} /> : (
+          scope === "RECOMMENDED" ? <RecommendedResults recommendations={recommendations ?? []} language={language} permanentState={profileJurisdiction} onBrowse={changeScope} /> :
+          scope === "CENTRAL" ? (centralServices.length > 0 ? <ServiceGroup title={serviceDiscoveryText(language, "centralServices")} services={centralServices} /> : <CentralFallback services={fallbackMatches} language={language} />) :
           <ServiceGroup title={t("stateGovernmentServices", { state: selectedJurisdictionName })} services={stateServices} />
         )}
       </section>
@@ -151,8 +155,19 @@ function permanentAddressState(profile: CitizenProfile): string | undefined {
   return profile.addresses.find((address) => address.type === "PERMANENT")?.state;
 }
 
-function RecommendedResults({ recommendations, language }: { recommendations: RecommendedService[]; language: Language }) {
-  return <div className="space-y-4"><div><h2 className="text-lg font-semibold">{serviceDiscoveryText(language, "recommendedForYou")}</h2><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "recommendationsDescription")}</p></div>{recommendations.map((item) => <Card key={item.service.id}><CardHeader className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle>{item.service.name}</CardTitle><Badge>{serviceDiscoveryText(language, "recommended")}</Badge></div></CardHeader><CardContent className="pb-3"><p className="text-sm text-muted-foreground">{item.reasons.map((reason) => serviceDiscoveryText(language, reason as "GENERAL_RELEVANCE")).join(" · ")}</p><LinkButton href={`/services/${item.service.id}`} variant="link" size="sm" className="mt-2 h-auto px-0">{serviceDiscoveryText(language, "viewDetails")}</LinkButton></CardContent></Card>)}</div>;
+function RecommendedResults({ recommendations, language, permanentState, onBrowse }: { recommendations: RecommendedService[]; language: Language; permanentState?: ServiceJurisdictionCode; onBrowse: (scope: "RECOMMENDED" | "CENTRAL" | ServiceJurisdictionCode) => void }) {
+  const central = recommendations.filter((item) => item.service.government_level === "CENTRAL").slice(0, 3);
+  const state = recommendations.filter((item) => item.service.government_level === "STATE").slice(0, 3);
+  const cards = (items: RecommendedService[]) => items.map((item) => <Card key={item.service.id}><CardHeader className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle>{item.service.name}</CardTitle><Badge>{serviceDiscoveryText(language, "recommended")}</Badge></div></CardHeader><CardContent className="pb-3"><p className="text-sm text-muted-foreground">{item.reasons.slice(0, 2).map((reason) => serviceDiscoveryText(language, reason as "GENERAL_RELEVANCE")).join(" · ")}</p><LinkButton href={`/services/${item.service.id}`} variant="link" size="sm" className="mt-2 h-auto px-0">{serviceDiscoveryText(language, "viewDetails")}</LinkButton></CardContent></Card>);
+  return <div className="space-y-8"><RecommendationSection title={`${serviceDiscoveryText(language, "recommended")} ${serviceDiscoveryText(language, "centralServices")}`} services={cards(central)} onViewAll={() => onBrowse("CENTRAL")} language={language} />{permanentState ? <RecommendationSection title={`${serviceDiscoveryText(language, "recommended")} ${jurisdictionName(permanentState, language)} ${serviceDiscoveryText(language, "stateServices")}`} services={cards(state)} onViewAll={() => onBrowse(permanentState)} language={language} /> : null}</div>;
+}
+
+function CentralFallback({ services, language }: { services: GovernmentService[]; language: Language }) {
+  return <section className="space-y-3"><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "centralSearchStateFallback")}</p>{services.map((service) => <ServiceCard key={service.id} service={service} />)}</section>;
+}
+
+function RecommendationSection({ title, services, onViewAll, language }: { title: string; services: React.ReactNode; onViewAll: () => void; language: Language }) {
+  return <section className="space-y-3"><div className="flex items-center justify-between gap-3 border-b pb-2"><h3 className="text-base font-semibold">{title}</h3><Button variant="link" size="sm" onPress={onViewAll}>{serviceDiscoveryText(language, "viewAll")} <span aria-hidden="true">→</span></Button></div>{services}</section>;
 }
 
 function EmptyResults({ state }: { state: string }) {
