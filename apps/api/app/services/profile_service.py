@@ -114,7 +114,14 @@ def document_for_user(db: Session, document_id: str) -> Document:
     return document
 
 
-async def save_upload(db: Session, upload: UploadFile, document_type: DocumentType, display_name: str | None = None) -> Document:
+async def save_upload(
+    db: Session,
+    upload: UploadFile,
+    document_type: DocumentType,
+    display_name: str | None = None,
+    *,
+    commit: bool = True,
+) -> Document:
     document_type = canonical_document_type(document_type)
     filename = upload.filename or "upload"; extension = Path(filename).suffix.lower(); expected_mime = ALLOWED_FILES.get(extension)
     if expected_mime is None or upload.content_type != expected_mime:
@@ -139,9 +146,20 @@ async def save_upload(db: Session, upload: UploadFile, document_type: DocumentTy
             old.original_filename = filename
             old.mime_type = upload.content_type
             old.size_bytes = len(content)
-            db.commit(); db.refresh(old); return old
+            if commit:
+                db.commit()
+                db.refresh(old)
+            else:
+                db.flush()
+            return old
     document = Document(user_id=user.id, name=safe_name, display_name=safe_name, document_type=document_type, source=DocumentSource.PROFILE_UPLOAD, storage_key=stored_filename, stored_filename=stored_filename, original_filename=filename, mime_type=upload.content_type, size_bytes=len(content), is_imported=True)
-    db.add(document); db.commit(); db.refresh(document); return document
+    db.add(document)
+    if commit:
+        db.commit()
+        db.refresh(document)
+    else:
+        db.flush()
+    return document
 
 
 async def replace_upload(db: Session, document_id: str, upload: UploadFile) -> Document:

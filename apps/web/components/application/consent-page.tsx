@@ -43,7 +43,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
   const [myDocuments, setMyDocuments] = useState<CitizenDocument[]>([]);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [selectedMyDocumentIds, setSelectedMyDocumentIds] = useState<string[]>([]);
-  const [uploadRequirement, setUploadRequirement] = useState<{ document_type: string; label: string }>();
+  const [uploadRequirement, setUploadRequirement] = useState<{ id: string; document_type: string; label: string }>();
   const [uploadFile, setUploadFile] = useState<File>();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(false);
@@ -115,10 +115,9 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("document_type", uploadRequirement.document_type);
+      formData.append("requirement_id", uploadRequirement.id);
       formData.append("file", uploadFile);
-      const document = await api.uploadDocument(formData);
-      await api.selectMyDocuments(applicationId, [document.id]);
+      const document = await api.uploadApplicationDocument(applicationId, formData);
       setMyDocuments((current) => [...current, document]);
       setSelectedMyDocumentIds((current) => [...current, document.id]);
       if (document.document_type === "PHOTOGRAPH") notifyProfilePhotoChanged();
@@ -214,7 +213,7 @@ export function ConsentPage({ applicationId }: { applicationId: string }) {
                     {profileDocument ? <p className="mt-1 flex items-center gap-1.5 text-xs text-emerald-700"><CheckCircle2 className="size-4" />{t("myProfileSource")}</p> : null}
                     {personal.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedMyDocumentIds.includes(document.id)} onChange={(selected) => setSelectedMyDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />{t("myDocumentsSource")} — {document.display_name || document.name}</label>)}
                     {provider.map((document) => <label key={document.id} className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><Checkbox isSelected={selectedDocumentIds.includes(document.id)} onChange={(selected) => setSelectedDocumentIds((current) => selected ? [...current, document.id] : current.filter((id) => id !== document.id))} />DigiLocker — {document.name}</label>)}
-                    {!hasSource ? <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-destructive">{t("missing")}</span><Button type="button" size="sm" variant="outline" onPress={() => setUploadRequirement({ document_type: requirement.document_type, label: requirement.label })}><Upload aria-hidden="true" />{t("uploadDocument")}</Button></div> : null}
+                    {!hasSource ? <div className="mt-2 flex items-center justify-between gap-3"><span className="text-xs text-destructive">{t("missing")}</span><Button type="button" size="sm" variant="outline" onPress={() => setUploadRequirement({ id: requirement.id, document_type: requirement.document_type, label: requirement.label })}><Upload aria-hidden="true" />{t("uploadDocument")}</Button></div> : null}
                   </li>;
                 })}
               </ul>
