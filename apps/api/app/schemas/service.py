@@ -50,6 +50,12 @@ class ServiceResponse(BaseModel):
     updated_at: datetime
 
 
+class RecommendedServiceResponse(BaseModel):
+    service: ServiceResponse
+    recommendation_status: str
+    reasons: list[str]
+
+
 class ServiceDetailResponse(ServiceResponse):
     required_profile_fields: list[str]
     fields: list[ServiceFieldResponse]

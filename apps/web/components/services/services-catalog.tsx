@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, ListFilter, Search, X } from "lucide-react";
 import { api } from "@/src/lib/api";
-import type { CitizenProfile, GovernmentService } from "@/src/types";
+import type { CitizenProfile, GovernmentService, RecommendedService } from "@/src/types";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ServiceCard } from "@/components/services/service-card";
 import { useCitizenPreferences, type Language } from "@/components/providers/citizen-preferences";
 import { localizeService } from "@/src/i18n/service-localization";
@@ -23,19 +25,19 @@ export function ServicesCatalog() {
   const [services, setServices] = useState<GovernmentService[]>();
   const [jurisdiction, setJurisdiction] = useState<ServiceJurisdictionCode>();
   const [profileJurisdiction, setProfileJurisdiction] = useState<ServiceJurisdictionCode>();
+  const [mode, setMode] = useState<"RECOMMENDED" | "CENTRAL" | "STATE">("RECOMMENDED");
+  const [recommendations, setRecommendations] = useState<RecommendedService[]>();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
-  const [centralExpanded, setCentralExpanded] = useState(false);
   const [error, setError] = useState(false);
   const searchMode = query.trim().length > 0;
-  const globalSearch = jurisdiction === "IN" && searchMode;
 
   useEffect(() => {
     let active = true;
     api.getProfile()
       .then((profile) => {
         if (!active) return;
-        const profileState = profileStateToJurisdiction(currentAddressState(profile));
+        const profileState = profileStateToJurisdiction(permanentAddressState(profile));
         setProfileJurisdiction(profileState === "IN" ? undefined : profileState);
         setJurisdiction("IN");
       })
@@ -46,11 +48,14 @@ export function ServicesCatalog() {
   useEffect(() => {
     if (!jurisdiction) return;
     let active = true;
-    api.getServices(jurisdiction, jurisdiction === "IN" && searchMode)
+    const request = mode === "RECOMMENDED"
+      ? api.getRecommendedServices().then((result) => { if (active) { setRecommendations(result); return result.map((item) => item.service); } return []; })
+      : api.getServices(mode === "CENTRAL" ? "IN" : jurisdiction);
+    request
       .then((result) => { if (active) setServices(result); })
       .catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [jurisdiction, searchMode]);
+  }, [jurisdiction, mode]);
 
   const localizedServices = useMemo(() => (services ?? []).map((service) => localizeService(service, language)), [language, services]);
   const categories = useMemo(() => Array.from(new Set((services ?? []).map((service) => service.category)))
@@ -82,8 +87,14 @@ export function ServicesCatalog() {
   function changeJurisdiction(nextJurisdiction: ServiceJurisdictionCode) {
     setServices(undefined);
     setError(false);
-    setCentralExpanded(false);
     setJurisdiction(nextJurisdiction);
+  }
+
+  function changeMode(nextMode: "RECOMMENDED" | "CENTRAL" | "STATE") {
+    setMode(nextMode);
+    setError(false);
+    setServices(undefined);
+    if (nextMode === "STATE" && profileJurisdiction) setJurisdiction(profileJurisdiction);
   }
 
   function clearQuery() {
@@ -93,16 +104,23 @@ export function ServicesCatalog() {
 
   return (
     <div className="space-y-6">
+      <Tabs selectedKey={mode} onSelectionChange={(key) => changeMode(String(key) as "RECOMMENDED" | "CENTRAL" | "STATE")}>
+        <TabsList className="w-full sm:w-fit">
+          <TabsTrigger id="RECOMMENDED">{serviceDiscoveryText(language, "recommended")}</TabsTrigger>
+          <TabsTrigger id="CENTRAL">{serviceDiscoveryText(language, "centralServices")}</TabsTrigger>
+          <TabsTrigger id="STATE">{serviceDiscoveryText(language, "stateServices")}</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <div className="rounded-xl border border-border/80 bg-card/60 p-4 sm:p-5">
-        <div className="grid gap-4 md:grid-cols-3 md:items-end">
-          <div>
+        <div className={mode === "STATE" ? "grid gap-4 md:grid-cols-3 md:items-end" : "grid gap-4 md:grid-cols-2 md:items-end"}>
+          {mode === "STATE" ? <div>
             <Label htmlFor="service-search" className="text-foreground">{t("searchServices")}</Label>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input id="service-search" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={t("searchServices")} className="min-h-11 border-border bg-background/80 py-2 pr-11 pl-9 hover:border-foreground/25" />
               {query ? <Button variant="ghost" size="icon-sm" onPress={clearQuery} aria-label={serviceDiscoveryText(language, "clearSearch")} className="absolute right-1 top-1/2 -translate-y-1/2"><X aria-hidden="true" /></Button> : null}
             </div>
-          </div>
+          </div> : null}
           <div>
             <Label htmlFor="service-jurisdiction">{t("servicesFor")}</Label>
             <Select selectedKey={jurisdiction} onSelectionChange={(key) => changeJurisdiction(String(key) as ServiceJurisdictionCode)} aria-label={t("selectState")}>
@@ -128,20 +146,21 @@ export function ServicesCatalog() {
 
       <section aria-live="polite">
         {visibleServices.length === 0 ? <EmptyResults state={selectedJurisdictionName} /> : (
-          globalSearch ? <GlobalSearchResults centralServices={centralServices} stateServices={stateServices} language={language} query={query} recommendedJurisdiction={profileJurisdiction} /> :
-          searchMode ? <StateSearchResults centralServices={centralServices} stateServices={stateServices} language={language} query={query} /> :
-          jurisdiction === "IN" ? <ServiceGroup title={t("centralGovernmentServices")} services={centralServices} /> :
-          <StateBrowseResults stateName={selectedJurisdictionName} stateServices={stateServices} centralServices={centralServices} centralExpanded={centralExpanded} onCentralExpandedChange={setCentralExpanded} />
+          mode === "RECOMMENDED" ? <RecommendedResults recommendations={recommendations ?? []} language={language} /> :
+          mode === "CENTRAL" ? <ServiceGroup title={serviceDiscoveryText(language, "centralServices")} services={centralServices} /> :
+          <ServiceGroup title={t("stateGovernmentServices", { state: selectedJurisdictionName })} services={stateServices} />
         )}
       </section>
     </div>
   );
 }
 
-function currentAddressState(profile: CitizenProfile): string | undefined {
-  const current = profile.addresses.find((address) => address.type === "CORRESPONDENCE");
-  const permanent = profile.addresses.find((address) => address.type === "PERMANENT");
-  return (profile.current_address_same_as_permanent ? permanent : current)?.state;
+function permanentAddressState(profile: CitizenProfile): string | undefined {
+  return profile.addresses.find((address) => address.type === "PERMANENT")?.state;
+}
+
+function RecommendedResults({ recommendations, language }: { recommendations: RecommendedService[]; language: Language }) {
+  return <div className="space-y-4"><div><h2 className="text-lg font-semibold">{serviceDiscoveryText(language, "recommendedForYou")}</h2><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "recommendationsDescription")}</p></div>{recommendations.map((item) => <Card key={item.service.id}><CardHeader className="py-3"><div className="flex flex-wrap items-center justify-between gap-2"><CardTitle>{item.service.name}</CardTitle><Badge>{serviceDiscoveryText(language, "recommended")}</Badge></div></CardHeader><CardContent className="pb-3"><p className="text-sm text-muted-foreground">{item.reasons.map((reason) => serviceDiscoveryText(language, reason as "GENERAL_RELEVANCE")).join(" · ")}</p><LinkButton href={`/services/${item.service.id}`} variant="link" size="sm" className="mt-2 h-auto px-0">{serviceDiscoveryText(language, "viewDetails")}</LinkButton></CardContent></Card>)}</div>;
 }
 
 function EmptyResults({ state }: { state: string }) {
@@ -149,7 +168,7 @@ function EmptyResults({ state }: { state: string }) {
   return <div className="rounded-xl border border-dashed border-border bg-card px-6 py-10 text-center"><p className="font-medium">{t("noServicesForState", { state })}</p><p className="mt-1 text-sm text-muted-foreground">{t("changeSearch")}</p></div>;
 }
 
-function StateBrowseResults({ stateName, stateServices, centralServices, centralExpanded, onCentralExpandedChange }: { stateName: string; stateServices: GovernmentService[]; centralServices: GovernmentService[]; centralExpanded: boolean; onCentralExpandedChange: (expanded: boolean) => void }) {
+export function StateBrowseResults({ stateName, stateServices, centralServices, centralExpanded, onCentralExpandedChange }: { stateName: string; stateServices: GovernmentService[]; centralServices: GovernmentService[]; centralExpanded: boolean; onCentralExpandedChange: (expanded: boolean) => void }) {
   const { t, language } = useCitizenPreferences();
   return <div className="space-y-8">
     <ServiceGroup title={t("stateGovernmentServices", { state: stateName })} services={stateServices} />
@@ -163,11 +182,11 @@ function StateBrowseResults({ stateName, stateServices, centralServices, central
   </div>;
 }
 
-function StateSearchResults({ centralServices, stateServices, language, query }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string }) {
+export function StateSearchResults({ centralServices, stateServices, language, query }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string }) {
   return <div className="space-y-8"><SearchHeading language={language} query={query} count={centralServices.length + stateServices.length} /><ServiceGroup title={serviceDiscoveryText(language, "stateSearchMatches")} services={stateServices} /><ServiceGroup title={serviceDiscoveryText(language, "centralSearchMatches")} services={centralServices} /></div>;
 }
 
-function GlobalSearchResults({ centralServices, stateServices, language, query, recommendedJurisdiction }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string; recommendedJurisdiction?: ServiceJurisdictionCode }) {
+export function GlobalSearchResults({ centralServices, stateServices, language, query, recommendedJurisdiction }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string; recommendedJurisdiction?: ServiceJurisdictionCode }) {
   const groupedServices = new Map<string, GovernmentService[]>();
   for (const service of stateServices) {
     const key = service.service_key ?? service.id;

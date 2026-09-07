@@ -124,6 +124,7 @@ export const api = {
     const query = params.toString();
     return request<GovernmentService[]>(`/api/services${query ? `?${query}` : ""}`);
   },
+  getRecommendedServices: () => request<import("@/src/types").RecommendedService[]>("/api/services/recommended"),
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>
     request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),

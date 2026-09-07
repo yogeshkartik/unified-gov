@@ -111,6 +111,12 @@ export interface GovernmentService {
   updated_at: string;
 }
 
+export interface RecommendedService {
+  service: GovernmentService;
+  recommendation_status: "RECOMMENDED";
+  reasons: string[];
+}
+
 export type ServiceFieldType =
   | "TEXT"
   | "NUMBER"

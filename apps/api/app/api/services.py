@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.service import ServiceDetailResponse, ServiceRequirementsResponse, ServiceResponse
-from app.services import service_catalog
+from app.schemas.service import RecommendedServiceResponse, ServiceDetailResponse, ServiceRequirementsResponse, ServiceResponse
+from app.services import recommendations, service_catalog
 
 router = APIRouter(tags=["services"])
 
@@ -13,6 +13,20 @@ def service_not_found(service_id: str) -> HTTPException:
         status_code=status.HTTP_404_NOT_FOUND,
         detail={"code": "SERVICE_NOT_FOUND", "message": f"Service '{service_id}' was not found."},
     )
+
+
+@router.get("/services/recommended", response_model=list[RecommendedServiceResponse])
+def read_recommended_services(db: Session = Depends(get_db)) -> list[RecommendedServiceResponse]:
+    try:
+        return [
+            RecommendedServiceResponse(service=ServiceResponse.model_validate(item.service), recommendation_status="RECOMMENDED", reasons=item.reasons)
+            for item in recommendations.recommend_services(db)
+        ]
+    except Exception as error:
+        from app.services.profile_service import ProfileNotFoundError
+        if isinstance(error, ProfileNotFoundError):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "PROFILE_NOT_FOUND"}) from error
+        raise
 
 
 @router.get("/services", response_model=list[ServiceResponse])
