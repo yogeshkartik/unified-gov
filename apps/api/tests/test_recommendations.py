@@ -44,6 +44,8 @@ def test_incomplete_profile_has_generic_recommendations(db: Session) -> None:
     profile = db.scalar(select(Profile))
     assert profile is not None
     profile.user.addresses.clear()
+    profile.user.education_records.clear()
+    profile.current_education_status = None
     profile.date_of_birth = date(1990, 1, 1)
     db.commit()
 
