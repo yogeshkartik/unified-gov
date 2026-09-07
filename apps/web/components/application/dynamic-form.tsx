@@ -9,9 +9,9 @@ import type { ServiceField } from "@/src/types";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 
 function fieldSchema(field: ServiceField, validationMessage: string) {
-  if (field.field_type === "CHECKBOX")
-    return z.boolean().refine((value) => !field.required || value, validationMessage);
-  if (field.field_type === "NUMBER")
+  if (field.field_type === "checkbox")
+    return z.boolean().optional().refine((value) => !field.required || value !== undefined, validationMessage);
+  if (field.field_type === "number")
     return z
       .string()
       .trim()
@@ -71,7 +71,7 @@ export function DynamicForm({
           .map((field) => (
             <div
               key={field.id}
-              className={field.field_type === "CHECKBOX" ? "sm:col-span-2" : undefined}
+              className={field.field_type === "checkbox" ? "sm:col-span-2" : undefined}
             >
               <DynamicField
                 field={field}

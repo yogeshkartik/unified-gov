@@ -12,6 +12,15 @@ import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeService } from "@/src/i18n/service-localization";
 
+function booleanDefault(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "yes") return true;
+  if (normalized === "false" || normalized === "no") return false;
+  return undefined;
+}
+
 export function AdditionalInformation({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const { language, t } = useCitizenPreferences();
@@ -65,10 +74,11 @@ export function AdditionalInformation({ applicationId }: { applicationId: string
     (values, field) => ({
       ...values,
       [field.key]:
-        (field.field_type === "NUMBER" && data.application.answers[field.key] != null
+        field.field_type === "checkbox"
+          ? booleanDefault(data.application.answers[field.key])
+          : (field.field_type === "number" && data.application.answers[field.key] != null
           ? String(data.application.answers[field.key])
-          : (data.application.answers[field.key] as DynamicFormValues[string])) ??
-        (field.field_type === "CHECKBOX" ? false : ""),
+          : (data.application.answers[field.key] as DynamicFormValues[string])) ?? "",
     }),
     {}
   );

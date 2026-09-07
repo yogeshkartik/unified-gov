@@ -118,14 +118,14 @@ export interface RecommendedService {
 }
 
 export type ServiceFieldType =
-  | "TEXT"
-  | "NUMBER"
-  | "DATE"
-  | "SELECT"
-  | "RADIO"
-  | "CHECKBOX"
-  | "TEXTAREA"
-  | "FILE";
+  | "text"
+  | "number"
+  | "date"
+  | "select"
+  | "radio"
+  | "checkbox"
+  | "textarea"
+  | "file";
 
 export interface ServiceField {
   id: string;
