@@ -13,6 +13,7 @@ import { applicationFlowPath } from "@/components/application/application-flow-n
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localizeProfileField, localizeService } from "@/src/i18n/service-localization";
 import { localeFor } from "@/src/i18n/locale-format";
+import { jurisdictionName } from "@/src/i18n/jurisdictions";
 
 function formatFieldName(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -61,6 +62,7 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
         <p className="text-sm font-medium text-primary">{localizedService.category}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">{localizedService.name}</h1>
         <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Landmark className="size-4" aria-hidden="true" />{localizedService.department}</p>
+        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground"><div className="flex gap-1"><dt>{t("governmentLevel")}:</dt><dd>{service.government_level === "CENTRAL" ? t("centralGovernment") : t("stateGovernment")}</dd></div><div className="flex gap-1"><dt>{t("jurisdiction")}:</dt><dd>{jurisdictionName(service.jurisdiction_code, language)}</dd></div></dl>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">{localizedService.description}</p>
         <p className="mt-5 text-sm font-medium text-muted-foreground"><span>{fee}</span><span className="mx-2" aria-hidden="true">•</span><span>{deadline}</span></p>
         <div className="mt-6">

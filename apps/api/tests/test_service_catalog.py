@@ -3,13 +3,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
-from app.models.service import ServiceFieldType
+from app.models.service import ServiceFieldType, ServiceStatus
 from app.services.seed import (
     DRIVING_LICENCE_APPLICATION_OPTIONS,
     INDIAN_VEHICLE_CLASS_OPTIONS,
     seed_demo_services,
 )
-from app.services.service_catalog import ServiceNotFoundError, get_service, list_services
+from app.services.service_catalog import SUPPORTED_STATE_CODES, ServiceNotFoundError, get_service, list_services
 
 
 @pytest.fixture
@@ -25,26 +25,24 @@ def db(tmp_path) -> Session:
         engine.dispose()
 
 
-def test_list_services_returns_the_expanded_demo_catalog(db: Session) -> None:
+def test_list_services_returns_only_the_curated_public_catalog(db: Session) -> None:
     services = list_services(db)
 
     service_ids = {service.id for service in services}
-    assert len(service_ids) == 23
+    assert len(service_ids) == 47
     assert {
         "JEE_MAIN_001",
         "NEET_UG_001",
-        "CUET_UG_001",
-        "WBJEE_001",
-        "SSC_CGL_001",
         "UPSC_CSE_001",
-        "IBPS_PO_001",
         "PAN_CARD_001",
         "VOTER_ID_001",
         "PASSPORT_001",
         "NATIONAL_SCHOLARSHIP_001",
         "PM_KISAN_001",
-        "INCOME_CERTIFICATE_001",
     }.issubset(service_ids)
+    assert "CUET_UG_001" not in service_ids
+    assert "INCOME_CERTIFICATE_001" not in service_ids
+    assert get_service(db, "CUET_UG_001").status == ServiceStatus.CLOSED
 
 
 def test_jee_main_requirements_use_the_generic_service_schema(db: Session) -> None:
@@ -101,3 +99,30 @@ def test_seed_refreshes_options_in_an_existing_database(db: Session) -> None:
 
     assert service.fields[0].field_type == ServiceFieldType.SELECT
     assert service.fields[0].options == DRIVING_LICENCE_APPLICATION_OPTIONS
+
+
+@pytest.mark.parametrize("state_code", sorted(SUPPORTED_STATE_CODES))
+def test_state_filter_includes_central_and_only_selected_state(db: Session, state_code: str) -> None:
+    services = list_services(db, state_code)
+
+    assert "JEE_MAIN_001" in {service.id for service in services}
+    assert {f"{state_code}_{key}_001" for key in ["CASTE_CERTIFICATE", "INCOME_CERTIFICATE", "DOMICILE_CERTIFICATE", "DRIVING_LICENCE", "STATE_RECRUITMENT_EXAM", "STATE_MERIT_SCHOLARSHIP"]}.issubset({service.id for service in services})
+    assert len(services) == 17  # 11 concrete Central services (10 visible groups) + six state services.
+    assert all(service.government_level == "CENTRAL" or service.jurisdiction_code == state_code for service in services)
+
+
+def test_state_variants_keep_concrete_schema_and_canonical_group(db: Session) -> None:
+    bihar = get_service(db, "BR_INCOME_CERTIFICATE_001")
+    karnataka = get_service(db, "KA_INCOME_CERTIFICATE_001")
+
+    assert bihar.id != karnataka.id
+    assert bihar.service_key == karnataka.service_key == "INCOME_CERTIFICATE"
+    assert bihar.fields[0].key == karnataka.fields[0].key == "certificate_purpose"
+    assert bihar.jurisdiction_code == "BR"
+    assert karnataka.jurisdiction_code == "KA"
+
+
+def test_all_india_view_is_central_only(db: Session) -> None:
+    services = list_services(db, "IN")
+    assert len(services) == 11  # JEE Main and NEET UG are separate concrete services in one UI group.
+    assert all(service.government_level == "CENTRAL" for service in services)

@@ -28,6 +28,14 @@ class ServiceStatus(StrEnum):
     DRAFT = "DRAFT"
 
 
+class GovernmentLevel(StrEnum):
+    CENTRAL = "CENTRAL"
+    STATE = "STATE"
+    UNION_TERRITORY = "UNION_TERRITORY"
+    DISTRICT = "DISTRICT"
+    LOCAL = "LOCAL"
+
+
 class ServiceFieldType(StrEnum):
     TEXT = "text"
     NUMBER = "number"
@@ -47,7 +55,10 @@ class Service(TimestampMixin, Base):
     department: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
     service_type: Mapped[ServiceType] = mapped_column(String(50))
+    service_key: Mapped[str | None] = mapped_column(String(100))
     category: Mapped[str] = mapped_column(String(100))
+    government_level: Mapped[GovernmentLevel] = mapped_column(String(30), default=GovernmentLevel.CENTRAL)
+    jurisdiction_code: Mapped[str] = mapped_column(String(10), default="IN")
     status: Mapped[ServiceStatus] = mapped_column(String(20))
     fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     currency: Mapped[str] = mapped_column(String(3), default="INR")

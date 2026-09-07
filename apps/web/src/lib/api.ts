@@ -117,7 +117,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds }),
     }),
-  getServices: () => request<GovernmentService[]>("/api/services"),
+  getServices: (state?: string) => request<GovernmentService[]>(`/api/services${state ? `?state=${encodeURIComponent(state)}` : ""}`),
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>
     request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),

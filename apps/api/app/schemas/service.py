@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.service import ServiceFieldType, ServiceStatus, ServiceType
+from app.models.service import GovernmentLevel, ServiceFieldType, ServiceStatus, ServiceType
 
 
 class ServiceFieldResponse(BaseModel):
@@ -36,7 +36,10 @@ class ServiceResponse(BaseModel):
     department: str
     description: str
     service_type: ServiceType
+    service_key: str | None
     category: str
+    government_level: GovernmentLevel
+    jurisdiction_code: str
     status: ServiceStatus
     fee: float
     currency: str

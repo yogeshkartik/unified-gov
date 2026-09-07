@@ -5,6 +5,7 @@ import { LinkButton } from "@/components/ui/button";
 import type { GovernmentService } from "@/src/types";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localeFor } from "@/src/i18n/locale-format";
+import { jurisdictionName } from "@/src/i18n/jurisdictions";
 
 export function ServiceCard({ service }: { service: GovernmentService }) {
   const { language, t } = useCitizenPreferences();
@@ -15,7 +16,7 @@ export function ServiceCard({ service }: { service: GovernmentService }) {
     <Card className="transition-[transform,box-shadow,ring-color] duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/20">
       <CardHeader className="gap-1.5 py-3 sm:px-5">
         <div className="flex items-start justify-between gap-3"><CardTitle>{service.name}</CardTitle><Badge variant="secondary">{service.category}</Badge></div>
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Landmark className="size-3.5" aria-hidden="true" />{service.department}</p>
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Landmark className="size-3.5" aria-hidden="true" />{service.government_level === "CENTRAL" ? t("centralGovernment") : `${jurisdictionName(service.jurisdiction_code, language)} · ${t("stateGovernment")}`}</p>
       </CardHeader>
       <CardContent className="flex flex-col pb-3 sm:px-5">
         <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{service.description}</p>

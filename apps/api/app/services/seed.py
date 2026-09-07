@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal, ensure_document_metadata_columns
 from app.models.profile import Address, AddressType, Document, DocumentSource, DocumentType, Education, EducationLevel, Profile, User
 from app.models.service import (
+    GovernmentLevel,
     Service,
     ServiceDocumentRequirement,
     ServiceField,
@@ -316,7 +317,97 @@ def seed_extended_demo_services(db: Session) -> None:
     for service_id, name, department, description, service_type, category, fee, profile_fields, service_fields, service_documents in catalog:
         if service_id not in existing_ids:
             db.add(Service(id=service_id, name=name, department=department, description=description, service_type=service_type, category=category, status=ServiceStatus.OPEN, fee=fee, currency="INR", instructions=None, required_profile_fields=profile_fields, fields=make_fields(*service_fields), document_requirements=make_documents(*service_documents)))
+    db.flush()
+    seed_state_services(db)
     db.commit()
+
+
+DEMO_STATES = {
+    "BR": "Bihar", "KA": "Karnataka", "MH": "Maharashtra", "TN": "Tamil Nadu", "UP": "Uttar Pradesh", "WB": "West Bengal",
+}
+
+CURATED_CENTRAL_SERVICE_IDS = frozenset({
+    "PAN_CARD_001", "PASSPORT_001", "VOTER_ID_001", "AYUSHMAN_BHARAT_001", "PM_KISAN_001",
+    "PMAY_001", "E_SHRAM_001", "NATIONAL_SCHOLARSHIP_001", "UPSC_CSE_001", "JEE_MAIN_001", "NEET_UG_001",
+})
+CURATED_STATE_SERVICE_KEYS = frozenset({
+    "CASTE_CERTIFICATE", "INCOME_CERTIFICATE", "DOMICILE_CERTIFICATE", "DRIVING_LICENCE",
+    "STATE_RECRUITMENT_EXAM", "STATE_MERIT_SCHOLARSHIP",
+})
+
+
+def seed_state_services(db: Session) -> None:
+    """Seed distinct synthetic state implementations without changing canonical application references."""
+    existing = {service.id: service for service in db.scalars(select(Service)).all()}
+    state_exam_names = {
+        "BR": "Bihar State Recruitment Examination", "KA": "Karnataka State Recruitment Examination",
+        "MH": "Maharashtra State Recruitment Examination", "TN": "Tamil Nadu State Recruitment Examination",
+        "UP": "Uttar Pradesh State Recruitment Examination", "WB": "West Bengal State Recruitment Examination",
+    }
+    for code, state_name in DEMO_STATES.items():
+        definitions = [
+            ("INCOME_CERTIFICATE", f"{state_name} Income Certificate", ServiceType.CERTIFICATE, "Certificates", 20 + len(code), ["full_name", "address"], [("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None)], [("IDENTITY_DOCUMENT", "Identity Document"), ("OTHER", "State supporting document")]),
+            ("CASTE_CERTIFICATE", f"{state_name} Caste Certificate", ServiceType.CERTIFICATE, "Certificates", 25 + len(code), ["full_name", "address", "category"], [("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None)], [("IDENTITY_DOCUMENT", "Identity Document"), ("OTHER", "State supporting document")]),
+            ("DOMICILE_CERTIFICATE", f"{state_name} Domicile Certificate", ServiceType.CERTIFICATE, "Certificates", 20, ["full_name", "address"], [("certificate_purpose", "Certificate Purpose", ServiceFieldType.TEXT, None)], [("IDENTITY_DOCUMENT", "Identity Document"), ("OTHER", "State residence supporting document")]),
+            ("DRIVING_LICENCE", f"{state_name} Driving Licence Application", ServiceType.LICENCE, "Identity & Licences", 200, ["full_name", "date_of_birth", "address"], [("licence_type", "Application Type", ServiceFieldType.SELECT, DRIVING_LICENCE_APPLICATION_OPTIONS)], [("PHOTOGRAPH", "Photograph"), ("IDENTITY_DOCUMENT", "Identity Document")]),
+            ("STATE_RECRUITMENT_EXAM", state_exam_names[code], ServiceType.RECRUITMENT, "Examinations", 100, ["full_name", "date_of_birth", "address", "education"], [("exam_city", "Preferred Exam City", ServiceFieldType.TEXT, None)], [("PHOTOGRAPH", "Photograph"), ("SIGNATURE", "Signature"), ("DEGREE_CERTIFICATE", "Degree Certificate")]),
+            ("STATE_MERIT_SCHOLARSHIP", f"{state_name} State Merit Scholarship", ServiceType.SCHOLARSHIP, "Education & Scholarships", 0, ["full_name", "date_of_birth", "address", "education"], [("course", "Current Course", ServiceFieldType.TEXT, None), ("institution", "Institution", ServiceFieldType.TEXT, None)], [("MARKSHEET", "Marksheet")]),
+        ]
+        for service_key, name, service_type, category, fee, profile_fields, fields, documents in definitions:
+            service_id = f"{code}_{service_key}_001"
+            service = existing.get(service_id)
+            if service is None:
+                service = Service(
+                    id=service_id, name=name, department=f"Synthetic {state_name} Government Authority",
+                    description=f"Synthetic demo service for citizens whose relevant jurisdiction is {state_name}.",
+                    service_type=service_type, service_key=service_key, category=category, status=ServiceStatus.OPEN,
+                    government_level=GovernmentLevel.STATE, jurisdiction_code=code, fee=fee, currency="INR", instructions=None,
+                    required_profile_fields=profile_fields,
+                    fields=[ServiceField(key=key, label=label, field_type=field_type, required=True, options=options, position=index) for index, (key, label, field_type, options) in enumerate(fields, 1)],
+                    document_requirements=[ServiceDocumentRequirement(document_type=document_type, label=label, required=True, position=index) for index, (document_type, label) in enumerate(documents, 1)],
+                )
+                db.add(service)
+            else:
+                service.government_level = GovernmentLevel.STATE
+                service.jurisdiction_code = code
+                service.service_key = service_key
+                service.status = ServiceStatus.OPEN
+
+    for service in existing.values():
+        if service.id == "WBJEE_001":
+            service.government_level = GovernmentLevel.STATE
+            service.jurisdiction_code = "WB"
+        elif not service.id.startswith(tuple(f"{code}_" for code in DEMO_STATES)):
+            service.government_level = GovernmentLevel.CENTRAL
+            service.jurisdiction_code = "IN"
+        if service.service_key is None:
+            service.service_key = service.id.removesuffix("_001")
+
+    curate_public_catalog(db)
+
+
+def curate_public_catalog(db: Session) -> None:
+    """Keep the citizen catalog small while retaining legacy records for applications/history."""
+    service_copy = {
+        "PAN_CARD_001": ("PAN Card", "Income Tax Department / CBDT", "National tax identity and financial KYC service.", "PAN_CARD"),
+        "PASSPORT_001": ("Passport Services", "Ministry of External Affairs", "Citizenship travel document and consular verification service.", "PASSPORT"),
+        "VOTER_ID_001": ("Voter ID (EPIC)", "Election Commission of India", "Electoral registration and electoral roll services.", "VOTER_ID"),
+        "AYUSHMAN_BHARAT_001": ("Ayushman Bharat (PM-JAY)", "National Health Authority / Ministry of Health and Family Welfare", "Government health coverage and health assurance service.", "AYUSHMAN_BHARAT"),
+        "PM_KISAN_001": ("PM-KISAN", "Ministry of Agriculture & Farmers Welfare", "Income support for eligible agricultural households.", "PM_KISAN"),
+        "PMAY_001": ("PMAY (Housing Scheme)", "Central Housing and Rural Development Authority", "Housing welfare and housing assistance service.", "PMAY"),
+        "E_SHRAM_001": ("e-Shram Registration", "Ministry of Labour & Employment", "Registration and social-security support for unorganised workers.", "E_SHRAM"),
+        "NATIONAL_SCHOLARSHIP_001": ("National Scholarship", "National Scholarship Portal / Line Ministries", "Central scholarship discovery and application support.", "NATIONAL_SCHOLARSHIP"),
+        "UPSC_CSE_001": ("UPSC Civil Services Examination", "Union Public Service Commission", "Civil Services Examination workflow demo application.", "UPSC_CSE"),
+        "JEE_MAIN_001": ("JEE Main", "National Testing Agency", "National Entrance Exams — engineering entrance examination.", "NATIONAL_ENTRANCE_EXAMS"),
+        "NEET_UG_001": ("NEET UG", "National Testing Agency", "National Entrance Exams — medical entrance examination.", "NATIONAL_ENTRANCE_EXAMS"),
+    }
+    for service in db.scalars(select(Service)).all():
+        is_curated_central = service.id in CURATED_CENTRAL_SERVICE_IDS
+        is_curated_state = service.government_level == GovernmentLevel.STATE and service.service_key in CURATED_STATE_SERVICE_KEYS
+        service.status = ServiceStatus.OPEN if is_curated_central or is_curated_state else ServiceStatus.CLOSED
+        if is_curated_central:
+            name, department, description, service_key = service_copy[service.id]
+            service.name, service.department, service.description, service.service_key = name, department, description, service_key
 
 
 def sync_demo_service_options(db: Session) -> None:

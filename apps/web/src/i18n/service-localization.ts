@@ -1,7 +1,27 @@
 import type { Language } from "@/components/providers/citizen-preferences";
 import type { GovernmentService, GovernmentServiceDetail } from "@/src/types";
+import { jurisdictionName } from "@/src/i18n/jurisdictions";
 
 type ServiceCopy = { name: string; department: string; description: string };
+
+const stateServiceCopy: Partial<Record<Language, Record<string, { name: string; description: string; authority: string }>>> = {
+  hi: {
+    INCOME_CERTIFICATE: { name: "आय प्रमाण पत्र", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+    CASTE_CERTIFICATE: { name: "जाति प्रमाण पत्र", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+    DOMICILE_CERTIFICATE: { name: "निवास प्रमाण पत्र", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+    DRIVING_LICENCE: { name: "ड्राइविंग लाइसेंस आवेदन", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+    STATE_RECRUITMENT_EXAM: { name: "राज्य भर्ती परीक्षा", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+    STATE_MERIT_SCHOLARSHIP: { name: "राज्य मेधा छात्रवृत्ति", description: "चयनित राज्य के नागरिकों के लिए कृत्रिम डेमो सेवा।", authority: "सरकारी प्राधिकरण" },
+  },
+  mr: {
+    INCOME_CERTIFICATE: { name: "उत्पन्न प्रमाणपत्र", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+    CASTE_CERTIFICATE: { name: "जात प्रमाणपत्र", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+    DOMICILE_CERTIFICATE: { name: "अधिवास प्रमाणपत्र", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+    DRIVING_LICENCE: { name: "वाहनचालक परवाना अर्ज", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+    STATE_RECRUITMENT_EXAM: { name: "राज्य भरती परीक्षा", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+    STATE_MERIT_SCHOLARSHIP: { name: "राज्य गुणवत्ता शिष्यवृत्ती", description: "निवडलेल्या राज्यातील नागरिकांसाठी कृत्रिम नमुना सेवा.", authority: "सरकारी प्राधिकरण" },
+  },
+};
 
 const hindiServices: Record<string, ServiceCopy> = {
   RECRUITMENT_EXAM_001: { name: "सरकारी भर्ती परीक्षा", department: "सार्वजनिक भर्ती विभाग", description: "खुली सरकारी भर्ती परीक्षाओं के लिए आवेदन करें और अपना आवेदन ट्रैक करें।" },
@@ -170,14 +190,16 @@ const commonRegionalOptions: Partial<Record<Language, Record<string, string>>> =
 export function localizeService<T extends GovernmentService>(service: T, language: Language): T {
   if (language === "en") return service;
   const copy = ({ hi: hindiServices, mr: marathiServices } as Partial<Record<Language, Record<string, ServiceCopy>>>)[language]?.[service.id];
+  const stateCopy = service.service_key ? stateServiceCopy[language]?.[service.service_key] : undefined;
+  const stateName = jurisdictionName(service.jurisdiction_code, language);
   const regionalName = regionalServiceNames[language]?.[service.id];
   const categoryCopy = ({ hi: hindiCategories, mr: marathiCategories } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalCategories[language];
   const category = categoryCopy?.[service.category] ?? service.category;
   const localized = {
     ...service,
-    name: copy?.name ?? regionalName ?? service.name,
-    department: copy?.department ?? service.department,
-    description: copy?.description ?? regionalDescriptions[language]?.[service.category] ?? service.description,
+    name: copy?.name ?? regionalName ?? (stateCopy ? `${stateName} ${stateCopy.name}` : service.name),
+    department: copy?.department ?? (stateCopy ? `${stateName} ${stateCopy.authority}` : service.department),
+    description: copy?.description ?? stateCopy?.description ?? regionalDescriptions[language]?.[service.category] ?? service.description,
     category
   };
   if (!("fields" in service) || !("document_requirements" in service) || !("required_profile_fields" in service)) return localized;

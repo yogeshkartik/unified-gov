@@ -97,7 +97,10 @@ export interface GovernmentService {
   department: string;
   description: string;
   service_type: string;
+  service_key: string | null;
   category: string;
+  government_level: "CENTRAL" | "STATE" | "UNION_TERRITORY" | "DISTRICT" | "LOCAL";
+  jurisdiction_code: string;
   status: string;
   fee: number;
   currency: string;
