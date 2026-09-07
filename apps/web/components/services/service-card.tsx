@@ -6,11 +6,12 @@ import type { GovernmentService } from "@/src/types";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localeFor } from "@/src/i18n/locale-format";
 import { jurisdictionName } from "@/src/i18n/jurisdictions";
+import { displayDeadline } from "@/src/lib/service-deadline";
 
 export function ServiceCard({ service }: { service: GovernmentService }) {
   const { language, t } = useCitizenPreferences();
   const locale = localeFor(language);
-  const deadline = service.end_date ? t("applyBy", { date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(service.end_date)) }) : t("noDeadline");
+  const deadline = displayDeadline(service);
   const fee = service.fee > 0 ? new Intl.NumberFormat(locale, { style: "currency", currency: service.currency, maximumFractionDigits: 0 }).format(service.fee) : t("free");
   return (
     <Card className="transition-[transform,box-shadow,ring-color] duration-200 motion-reduce:transition-none hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/20">
@@ -20,7 +21,7 @@ export function ServiceCard({ service }: { service: GovernmentService }) {
       </CardHeader>
       <CardContent className="flex flex-col pb-3 sm:px-5">
         <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{service.description}</p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2"><p className="text-sm font-medium text-muted-foreground"><span>{fee}</span><span className="mx-2" aria-hidden="true">•</span><span>{deadline}</span></p><LinkButton href={`/services/${service.id}`} variant="link" size="sm" className="h-auto w-fit px-0">{t("viewDetails")} <span aria-hidden="true">→</span></LinkButton></div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium text-muted-foreground">{fee}</span>{deadline ? <Badge variant="secondary">{t("applyBy", { date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(deadline)) })}</Badge> : null}</div><LinkButton href={`/services/${service.id}`} variant="link" size="sm" className="h-auto w-fit px-0">{t("viewDetails")} <span aria-hidden="true">→</span></LinkButton></div>
       </CardContent>
     </Card>
   );

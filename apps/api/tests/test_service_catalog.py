@@ -1,9 +1,9 @@
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.database import Base
-from app.models.service import ServiceFieldType, ServiceStatus
+from app.models.service import Service, ServiceFieldType, ServiceStatus
 from app.services.seed import (
     DRIVING_LICENCE_APPLICATION_OPTIONS,
     INDIAN_VEHICLE_CLASS_OPTIONS,
@@ -52,6 +52,21 @@ def test_jee_main_requirements_use_the_generic_service_schema(db: Session) -> No
     assert service.required_profile_fields == ["full_name", "date_of_birth", "gender", "address", "category", "education"]
     assert [field.key for field in service.fields] == ["exam_city", "paper_preference"]
     assert [requirement.document_type for requirement in service.document_requirements] == ["PHOTOGRAPH", "SIGNATURE", "MARKSHEET"]
+
+
+def test_deadlines_are_deterministic_and_limited_to_examinations(db: Session) -> None:
+    services = list_services(db, "IN", include_all_supported_states=True)
+    examinations = [service for service in services if service.category == "Examinations"]
+
+    assert {service.id for service in examinations} == {
+        "JEE_MAIN_001", "NEET_UG_001", "UPSC_CSE_001",
+        *{f"{state}_STATE_RECRUITMENT_EXAM_001" for state in SUPPORTED_STATE_CODES},
+    }
+    assert all(service.end_date is not None for service in examinations)
+    assert all(service.end_date is None for service in services if service.category != "Examinations")
+
+    all_examinations = [service for service in db.scalars(select(Service)).all() if service.category == "Examinations"]
+    assert all(service.end_date is not None for service in all_examinations)
 
 
 def test_scholarship_requirements_are_data_driven(db: Session) -> None:

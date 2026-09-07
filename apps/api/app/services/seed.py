@@ -326,6 +326,24 @@ DEMO_STATES = {
     "BR": "Bihar", "KA": "Karnataka", "MH": "Maharashtra", "TN": "Tamil Nadu", "UP": "Uttar Pradesh", "WB": "West Bengal",
 }
 
+# Fixed synthetic dates keep the demo deterministic and are not official deadlines.
+EXAMINATION_DEADLINES = {
+    "RECRUITMENT_EXAM_001": date(2026, 10, 12),
+    "JEE_MAIN_001": date(2026, 10, 15),
+    "NEET_UG_001": date(2026, 10, 22),
+    "CUET_UG_001": date(2026, 10, 17),
+    "WBJEE_001": date(2026, 10, 24),
+    "SSC_CGL_001": date(2026, 10, 27),
+    "UPSC_CSE_001": date(2026, 10, 30),
+    "IBPS_PO_001": date(2026, 11, 2),
+    "BR_STATE_RECRUITMENT_EXAM_001": date(2026, 10, 10),
+    "KA_STATE_RECRUITMENT_EXAM_001": date(2026, 10, 20),
+    "MH_STATE_RECRUITMENT_EXAM_001": date(2026, 10, 25),
+    "TN_STATE_RECRUITMENT_EXAM_001": date(2026, 11, 5),
+    "UP_STATE_RECRUITMENT_EXAM_001": date(2026, 10, 18),
+    "WB_STATE_RECRUITMENT_EXAM_001": date(2026, 10, 28),
+}
+
 CURATED_CENTRAL_SERVICE_IDS = frozenset({
     "PAN_CARD_001", "PASSPORT_001", "VOTER_ID_001", "AYUSHMAN_BHARAT_001", "PM_KISAN_001",
     "PMAY_001", "E_SHRAM_001", "NATIONAL_SCHOLARSHIP_001", "UPSC_CSE_001", "JEE_MAIN_001", "NEET_UG_001",
@@ -384,6 +402,17 @@ def seed_state_services(db: Session) -> None:
             service.service_key = service.id.removesuffix("_001")
 
     curate_public_catalog(db)
+    sync_exam_deadlines(db)
+
+
+def sync_exam_deadlines(db: Session) -> None:
+    """Enforce the examination-only deadline rule for current and existing seed data."""
+    for service in db.scalars(select(Service)).all():
+        service.end_date = (
+            EXAMINATION_DEADLINES.get(service.id)
+            if service.category == "Examinations"
+            else None
+        )
 
 
 def curate_public_catalog(db: Session) -> None:

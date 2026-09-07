@@ -5,13 +5,13 @@ import en from "@/src/i18n/en.json";
 import hi from "@/src/i18n/hi.json";
 import mr from "@/src/i18n/mr.json";
 import { isSupportedLanguage, type Language } from "@/src/i18n/languages";
-import { applicationUi, jurisdictionUi, regionalDictionaries, statusUi } from "@/src/i18n/regional";
+import { applicationUi, deadlineUi, jurisdictionUi, regionalDictionaries, statusUi } from "@/src/i18n/regional";
 
 export type { Language } from "@/src/i18n/languages";
 type TextSize = "small" | "default" | "large";
 export type TranslationKey = keyof typeof en;
 type TranslationValues = Record<string, string | number>;
-const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en, hi, mr, kn: { ...regionalDictionaries.kn, ...applicationUi.kn, ...statusUi.kn, ...jurisdictionUi.kn }, ta: { ...regionalDictionaries.ta, ...applicationUi.ta, ...statusUi.ta, ...jurisdictionUi.ta }, te: { ...regionalDictionaries.te, ...applicationUi.te, ...statusUi.te, ...jurisdictionUi.te }, bn: { ...regionalDictionaries.bn, ...applicationUi.bn, ...statusUi.bn, ...jurisdictionUi.bn } };
+const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en, hi: { ...hi, ...deadlineUi.hi }, mr: { ...mr, ...deadlineUi.mr }, kn: { ...regionalDictionaries.kn, ...applicationUi.kn, ...deadlineUi.kn, ...statusUi.kn, ...jurisdictionUi.kn }, ta: { ...regionalDictionaries.ta, ...applicationUi.ta, ...deadlineUi.ta, ...statusUi.ta, ...jurisdictionUi.ta }, te: { ...regionalDictionaries.te, ...applicationUi.te, ...deadlineUi.te, ...statusUi.te, ...jurisdictionUi.te }, bn: { ...regionalDictionaries.bn, ...applicationUi.bn, ...deadlineUi.bn, ...statusUi.bn, ...jurisdictionUi.bn } };
 const storageKey = "unified-gov-preferences";
 
 interface Preferences {

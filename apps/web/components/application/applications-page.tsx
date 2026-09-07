@@ -45,12 +45,14 @@ function formatDate(value: string, language: string) {
 function ApplicationRow({
   application,
   showUpdated = true,
+  showSubmissionDate = true,
   onOpen,
   onViewDetails,
   onDelete,
 }: {
   application: ApplicationListItem;
   showUpdated?: boolean;
+  showSubmissionDate?: boolean;
   onOpen: (application: ApplicationListItem) => void;
   onViewDetails: (application: ApplicationListItem) => void;
   onDelete: (application: ApplicationListItem) => void;
@@ -64,7 +66,11 @@ function ApplicationRow({
   return (
     <article
       className={`grid gap-3 px-5 py-5 transition-colors hover:bg-muted/40 ${
-        showUpdated ? "sm:grid-cols-[minmax(0,1fr)_130px_110px_140px]" : "sm:grid-cols-[minmax(0,1fr)_110px_140px]"
+        showUpdated && showSubmissionDate
+          ? "sm:grid-cols-[minmax(220px,1fr)_130px_150px_minmax(230px,auto)_120px]"
+          : showUpdated
+            ? "sm:grid-cols-[minmax(220px,1fr)_130px_minmax(230px,auto)_120px]"
+            : "sm:grid-cols-[minmax(220px,1fr)_150px_minmax(230px,auto)_120px]"
       } sm:items-center sm:gap-6 ${draft ? "bg-amber-50/30" : ""}`}
     >
       <div className="min-w-0">
@@ -80,6 +86,10 @@ function ApplicationRow({
           <p className="text-sm text-muted-foreground">{formatDate(application.updated_at, language)}</p>
         </div>
       ) : null}
+      {showSubmissionDate ? <div className="flex items-baseline justify-between gap-3 sm:block">
+        <p className="text-xs text-muted-foreground sm:hidden">{t("submissionDate")}</p>
+        <p className="text-sm text-muted-foreground">{application.submitted_at ? formatDate(application.submitted_at, language) : "—"}</p>
+      </div> : null}
       <div className="flex items-center gap-2">{badge}</div>
       <div className="flex items-center justify-between gap-2 sm:justify-end">
         <Button
@@ -123,12 +133,14 @@ function ApplicationRow({
 function ApplicationList({
   applications,
   showUpdated = true,
+  showSubmissionDate = true,
   onOpen,
   onViewDetails,
   onDelete,
 }: {
   applications: ApplicationListItem[];
   showUpdated?: boolean;
+  showSubmissionDate?: boolean;
   onOpen: (application: ApplicationListItem) => void;
   onViewDetails: (application: ApplicationListItem) => void;
   onDelete: (application: ApplicationListItem) => void;
@@ -138,11 +150,16 @@ function ApplicationList({
     <section className="overflow-hidden rounded-xl border bg-card shadow-sm" aria-label={t("applications")}>
       <div
         className={`hidden ${
-          showUpdated ? "grid-cols-[minmax(0,1fr)_130px_110px_140px]" : "grid-cols-[minmax(0,1fr)_110px_140px]"
+          showUpdated && showSubmissionDate
+            ? "grid-cols-[minmax(220px,1fr)_130px_150px_minmax(230px,auto)_120px]"
+            : showUpdated
+              ? "grid-cols-[minmax(220px,1fr)_130px_minmax(230px,auto)_120px]"
+              : "grid-cols-[minmax(220px,1fr)_150px_minmax(230px,auto)_120px]"
         } gap-6 border-b px-5 py-3 text-xs font-medium text-muted-foreground sm:grid`}
       >
         <span>{t("applicationColumn")}</span>
         {showUpdated ? <span>{t("updated")}</span> : null}
+        {showSubmissionDate ? <span>{t("submissionDate")}</span> : null}
         <span>{t("status")}</span>
         <span className="sr-only">{t("action")}</span>
       </div>
@@ -151,6 +168,7 @@ function ApplicationList({
           <ApplicationRow
             application={application}
             showUpdated={showUpdated}
+            showSubmissionDate={showSubmissionDate}
             onOpen={onOpen}
             onViewDetails={onViewDetails}
             onDelete={onDelete}
@@ -336,6 +354,7 @@ export function ApplicationsPage() {
             <ApplicationList
               applications={draftApplications}
               showUpdated={true}
+              showSubmissionDate={false}
               onOpen={openApplication}
               onViewDetails={viewDetails}
               onDelete={setPendingDelete}
@@ -358,6 +377,7 @@ export function ApplicationsPage() {
         <ApplicationList
           applications={sortedApplications}
           showUpdated={filter === "Draft"}
+          showSubmissionDate={filter !== "Draft"}
           onOpen={openApplication}
           onViewDetails={viewDetails}
           onDelete={setPendingDelete}
