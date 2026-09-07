@@ -97,7 +97,10 @@ export interface GovernmentService {
   department: string;
   description: string;
   service_type: string;
+  service_key: string | null;
   category: string;
+  government_level: "CENTRAL" | "STATE" | "UNION_TERRITORY" | "DISTRICT" | "LOCAL";
+  jurisdiction_code: string;
   status: string;
   fee: number;
   currency: string;
@@ -108,15 +111,21 @@ export interface GovernmentService {
   updated_at: string;
 }
 
+export interface RecommendedService {
+  service: GovernmentService;
+  recommendation_status: "RECOMMENDED";
+  reasons: string[];
+}
+
 export type ServiceFieldType =
-  | "TEXT"
-  | "NUMBER"
-  | "DATE"
-  | "SELECT"
-  | "RADIO"
-  | "CHECKBOX"
-  | "TEXTAREA"
-  | "FILE";
+  | "text"
+  | "number"
+  | "date"
+  | "select"
+  | "radio"
+  | "checkbox"
+  | "textarea"
+  | "file";
 
 export interface ServiceField {
   id: string;

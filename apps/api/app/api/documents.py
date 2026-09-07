@@ -68,20 +68,58 @@ async def upload_document(
 )
 async def upload_application_document(
     application_id: str,
-    document_type: DocumentType = Form(...),
+    requirement_id: str = Form(...),
     file: UploadFile = File(...),
-    display_name: str | None = Form(None),
     db: Session = Depends(get_db),
 ) -> DocumentResponse:
+    document = None
     try:
-        application_engine.get_application(db, application_id)
-        document = await profile_service.save_upload(db, file, document_type, display_name)
-        application_document_service.attach_my_documents(db, application_id, [document.id])
+        application = application_engine.get_application(db, application_id)
+        requirement = next(
+            (item for item in application.service.document_requirements if item.id == requirement_id),
+            None,
+        )
+        if requirement is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={"code": "APPLICATION_REQUIREMENT_NOT_FOUND", "message": "Document requirement does not belong to this application."},
+            )
+        try:
+            document_type = DocumentType(requirement.document_type)
+        except ValueError as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={"code": "UNSUPPORTED_DOCUMENT_REQUIREMENT", "message": "This document requirement cannot be uploaded."},
+            ) from exc
+        # The application schema, rather than a filename or browser-provided type,
+        # is the source of the document's canonical identity.  OTHER needs its
+        # requirement label as a reusable My Documents display name.
+        document = await profile_service.save_upload(
+            db,
+            file,
+            document_type,
+            requirement.label if document_type == DocumentType.OTHER else None,
+            commit=False,
+        )
+        application_document_service.attach_my_documents(db, application_id, [document.id], commit=False)
+        db.commit()
+        db.refresh(document)
         return document
     except application_engine.ApplicationNotFoundError as exc:
         raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from exc
     except profile_service.InvalidDocumentError as exc:
+        db.rollback()
+        if document is not None:
+            profile_service._delete_file(document.stored_filename)
         raise error(exc) from exc
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        if document is not None:
+            profile_service._delete_file(document.stored_filename)
+        raise
 
 
 @router.put("/profile/documents/{document_id}/file", response_model=DocumentResponse)

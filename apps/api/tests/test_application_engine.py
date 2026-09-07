@@ -115,6 +115,44 @@ def test_numeric_form_text_is_normalized_before_storage(db: Session) -> None:
     assert updated.missing_fields == []
 
 
+@pytest.mark.parametrize("value", [True, False])
+def test_checkbox_answers_are_boolean_and_false_satisfies_a_required_field(
+    db: Session, value: bool
+) -> None:
+    response = create_application(db, "PM_KISAN_001")
+
+    updated = save_additional_data(
+        db, response.id, AdditionalDataUpdate(answers={"farmer_declaration": value})
+    )
+
+    assert updated.answers == {"farmer_declaration": value}
+    assert updated.missing_fields == []
+
+
+@pytest.mark.parametrize(("legacy", "expected"), [("yes", True), ("no", False), ("true", True), ("false", False)])
+def test_checkbox_legacy_values_are_normalized_only_for_known_draft_values(
+    db: Session, legacy: str, expected: bool
+) -> None:
+    response = create_application(db, "PM_KISAN_001")
+
+    updated = save_additional_data(
+        db, response.id, AdditionalDataUpdate(answers={"farmer_declaration": legacy})
+    )
+
+    assert updated.answers == {"farmer_declaration": expected}
+
+
+def test_checkbox_rejects_arbitrary_text(db: Session) -> None:
+    response = create_application(db, "PM_KISAN_001")
+
+    with pytest.raises(InvalidApplicationFieldsError) as error:
+        save_additional_data(
+            db, response.id, AdditionalDataUpdate(answers={"farmer_declaration": "maybe"})
+        )
+
+    assert error.value.fields == {"farmer_declaration": "Expected a boolean value."}
+
+
 @pytest.mark.parametrize("value", ["five", "5..", "NaN", float("inf")])
 def test_numeric_fields_reject_invalid_or_non_finite_values(db: Session, value: object) -> None:
     response = create_application(db, "AYUSHMAN_BHARAT_001")

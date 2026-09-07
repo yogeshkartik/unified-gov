@@ -310,10 +310,10 @@ def required_field_keys(fields: list[ServiceField], answers: dict[str, Any]) -> 
 def has_value(value: Any) -> bool:
     if value is None:
         return False
+    if isinstance(value, bool):
+        return True
     if isinstance(value, str):
         return bool(value.strip())
-    if isinstance(value, bool):
-        return value
     return True
 
 
@@ -331,11 +331,17 @@ def validate_answers(answers: dict[str, Any], fields_by_key: dict[str, ServiceFi
 
 
 def normalize_answers(answers: dict[str, Any], fields_by_key: dict[str, ServiceField]) -> dict[str, Any]:
-    """Convert valid numeric form text to JSON numbers before validation and storage."""
+    """Normalize the limited legacy representations accepted at the application boundary."""
     normalized = answers.copy()
     for key, value in answers.items():
         field = fields_by_key.get(key)
         if field is None or field.field_type != ServiceFieldType.NUMBER or not isinstance(value, str):
+            if field is not None and field.field_type == ServiceFieldType.CHECKBOX and isinstance(value, str):
+                legacy_boolean = value.strip().lower()
+                if legacy_boolean in {"true", "yes"}:
+                    normalized[key] = True
+                elif legacy_boolean in {"false", "no"}:
+                    normalized[key] = False
             continue
         numeric_text = value.strip()
         if not numeric_text:

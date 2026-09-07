@@ -117,7 +117,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ document_ids: documentIds }),
     }),
-  getServices: () => request<GovernmentService[]>("/api/services"),
+  getServices: (state?: string, includeAllSupportedStates = false) => {
+    const params = new URLSearchParams();
+    if (state) params.set("state", state);
+    if (includeAllSupportedStates) params.set("include_all_supported_states", "true");
+    const query = params.toString();
+    return request<GovernmentService[]>(`/api/services${query ? `?${query}` : ""}`);
+  },
+  getRecommendedServices: () => request<import("@/src/types").RecommendedService[]>("/api/services/recommended"),
   getService: (serviceId: string) => request<GovernmentServiceDetail>(`/api/services/${serviceId}`),
   createApplication: (serviceId: string) =>
     request<ApplicationEngineResponse>(`/api/services/${serviceId}/applications`, { method: "POST" }),

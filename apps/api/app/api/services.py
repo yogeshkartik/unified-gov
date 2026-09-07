@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.service import ServiceDetailResponse, ServiceRequirementsResponse, ServiceResponse
-from app.services import service_catalog
+from app.schemas.service import RecommendedServiceResponse, ServiceDetailResponse, ServiceRequirementsResponse, ServiceResponse
+from app.services import recommendations, service_catalog
 
 router = APIRouter(tags=["services"])
 
@@ -15,9 +15,30 @@ def service_not_found(service_id: str) -> HTTPException:
     )
 
 
+@router.get("/services/recommended", response_model=list[RecommendedServiceResponse])
+def read_recommended_services(db: Session = Depends(get_db)) -> list[RecommendedServiceResponse]:
+    try:
+        return [
+            RecommendedServiceResponse(service=ServiceResponse.model_validate(item.service), recommendation_status="RECOMMENDED", reasons=item.reasons)
+            for item in recommendations.recommend_services(db)
+        ]
+    except Exception as error:
+        from app.services.profile_service import ProfileNotFoundError
+        if isinstance(error, ProfileNotFoundError):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "PROFILE_NOT_FOUND"}) from error
+        raise
+
+
 @router.get("/services", response_model=list[ServiceResponse])
-def read_services(db: Session = Depends(get_db)) -> list[ServiceResponse]:
-    return service_catalog.list_services(db)
+def read_services(
+    state: str | None = Query(default=None, min_length=2, max_length=2),
+    include_all_supported_states: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> list[ServiceResponse]:
+    try:
+        return service_catalog.list_services(db, state, include_all_supported_states=include_all_supported_states)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail={"code": "INVALID_STATE", "message": str(error)}) from error
 
 
 @router.get("/services/{service_id}", response_model=ServiceDetailResponse)

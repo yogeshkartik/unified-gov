@@ -40,6 +40,11 @@ function formatAddress(address: unknown) {
   return `${parts.join(", ")} ${pincode}`.trim();
 }
 
+function formatAnswer(value: unknown, fieldType: string | undefined, yes: string, no: string) {
+  if (fieldType === "checkbox" && typeof value === "boolean") return value ? yes : no;
+  return String(value ?? "—");
+}
+
 export function PreviewPage({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [preview, setPreview] = useState<ApplicationPreview>();
@@ -158,7 +163,7 @@ export function PreviewPage({ applicationId }: { applicationId: string }) {
                 {Object.entries(preview.answers).map(([key, value]) => (
                   <div key={key} className="space-y-0.5">
                     <dt className="text-xs text-muted-foreground">{service?.fields.find((field) => field.key === key)?.label ?? formatKey(key)}</dt>
-                    <dd className="font-medium text-foreground">{service?.fields.find((field) => field.key === key)?.option_labels?.[String(value)] ?? String(value ?? "—")}</dd>
+                    <dd className="font-medium text-foreground">{(() => { const field = service?.fields.find((item) => item.key === key); return field?.option_labels?.[String(value)] ?? formatAnswer(value, field?.field_type, t("yes"), t("no")); })()}</dd>
                   </div>
                 ))}
               </dl>

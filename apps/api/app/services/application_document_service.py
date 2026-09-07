@@ -10,7 +10,9 @@ class ApplicationDocumentNotFoundError(Exception):
     pass
 
 
-def attach_my_documents(db: Session, application_id: str, document_ids: list[str]) -> list[Document]:
+def attach_my_documents(
+    db: Session, application_id: str, document_ids: list[str], *, commit: bool = True
+) -> list[Document]:
     """Attach existing reusable uploads to an application without copying them."""
     application = application_engine.get_application(db, application_id)
     documents = list(
@@ -29,5 +31,8 @@ def attach_my_documents(db: Session, application_id: str, document_ids: list[str
     for document in documents:
         if document.id not in attached_ids:
             db.add(ApplicationDocument(application_id=application.id, document_id=document.id))
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return documents
