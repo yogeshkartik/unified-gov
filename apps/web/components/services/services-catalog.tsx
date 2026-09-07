@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, ListFilter, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, ListFilter, Search, X } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { CitizenProfile, GovernmentService } from "@/src/types";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
@@ -22,6 +22,7 @@ export function ServicesCatalog() {
   const { language, t } = useCitizenPreferences();
   const [services, setServices] = useState<GovernmentService[]>();
   const [jurisdiction, setJurisdiction] = useState<ServiceJurisdictionCode>();
+  const [profileJurisdiction, setProfileJurisdiction] = useState<ServiceJurisdictionCode>();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [centralExpanded, setCentralExpanded] = useState(false);
@@ -32,7 +33,12 @@ export function ServicesCatalog() {
   useEffect(() => {
     let active = true;
     api.getProfile()
-      .then((profile) => { if (active) setJurisdiction(profileStateToJurisdiction(currentAddressState(profile)) ?? "IN"); })
+      .then((profile) => {
+        if (!active) return;
+        const profileState = profileStateToJurisdiction(currentAddressState(profile));
+        setProfileJurisdiction(profileState === "IN" ? undefined : profileState);
+        setJurisdiction("IN");
+      })
       .catch(() => { if (active) setJurisdiction("IN"); });
     return () => { active = false; };
   }, []);
@@ -80,6 +86,11 @@ export function ServicesCatalog() {
     setJurisdiction(nextJurisdiction);
   }
 
+  function clearQuery() {
+    changeQuery("");
+    document.getElementById("service-search")?.focus();
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border/80 bg-card/60 p-4 sm:p-5">
@@ -88,7 +99,8 @@ export function ServicesCatalog() {
             <Label htmlFor="service-search" className="text-foreground">{t("searchServices")}</Label>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input id="service-search" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={t("searchServices")} className="min-h-11 border-border bg-background/80 pl-9 hover:border-foreground/25" />
+              <Input id="service-search" value={query} onChange={(event) => changeQuery(event.target.value)} placeholder={t("searchServices")} className="min-h-11 border-border bg-background/80 py-2 pr-11 pl-9 hover:border-foreground/25" />
+              {query ? <Button variant="ghost" size="icon-sm" onPress={clearQuery} aria-label={serviceDiscoveryText(language, "clearSearch")} className="absolute right-1 top-1/2 -translate-y-1/2"><X aria-hidden="true" /></Button> : null}
             </div>
           </div>
           <div>
@@ -116,7 +128,7 @@ export function ServicesCatalog() {
 
       <section aria-live="polite">
         {visibleServices.length === 0 ? <EmptyResults state={selectedJurisdictionName} /> : (
-          globalSearch ? <GlobalSearchResults centralServices={centralServices} stateServices={stateServices} language={language} query={query} /> :
+          globalSearch ? <GlobalSearchResults centralServices={centralServices} stateServices={stateServices} language={language} query={query} recommendedJurisdiction={profileJurisdiction} /> :
           searchMode ? <StateSearchResults centralServices={centralServices} stateServices={stateServices} language={language} query={query} /> :
           jurisdiction === "IN" ? <ServiceGroup title={t("centralGovernmentServices")} services={centralServices} /> :
           <StateBrowseResults stateName={selectedJurisdictionName} stateServices={stateServices} centralServices={centralServices} centralExpanded={centralExpanded} onCentralExpandedChange={setCentralExpanded} />
@@ -155,13 +167,17 @@ function StateSearchResults({ centralServices, stateServices, language, query }:
   return <div className="space-y-8"><SearchHeading language={language} query={query} count={centralServices.length + stateServices.length} /><ServiceGroup title={serviceDiscoveryText(language, "stateSearchMatches")} services={stateServices} /><ServiceGroup title={serviceDiscoveryText(language, "centralSearchMatches")} services={centralServices} /></div>;
 }
 
-function GlobalSearchResults({ centralServices, stateServices, language, query }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string }) {
+function GlobalSearchResults({ centralServices, stateServices, language, query, recommendedJurisdiction }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; language: Language; query: string; recommendedJurisdiction?: ServiceJurisdictionCode }) {
   const groupedServices = new Map<string, GovernmentService[]>();
   for (const service of stateServices) {
     const key = service.service_key ?? service.id;
     groupedServices.set(key, [...(groupedServices.get(key) ?? []), service]);
   }
-  return <div className="space-y-8"><SearchHeading language={language} query={query} count={centralServices.length + groupedServices.size} /><ServiceGroup title={serviceDiscoveryText(language, "centralSearchMatches")} services={centralServices} />{[...groupedServices.entries()].map(([serviceKey, variants]) => <StateServiceSearchGroup key={serviceKey} variants={variants} language={language} />)}</div>;
+  const groups = [...groupedServices.entries()];
+  const recommendedGroups = groups.filter(([, variants]) => variants.some((service) => service.jurisdiction_code === recommendedJurisdiction));
+  const otherGroups = groups.filter(([, variants]) => !variants.some((service) => service.jurisdiction_code === recommendedJurisdiction));
+  const renderGroup = ([serviceKey, variants]: [string, GovernmentService[]]) => <StateServiceSearchGroup key={serviceKey} variants={variants} language={language} recommendedJurisdiction={recommendedJurisdiction} />;
+  return <div className="space-y-8"><SearchHeading language={language} query={query} count={centralServices.length + groupedServices.size} />{recommendedGroups.map(renderGroup)}<ServiceGroup title={serviceDiscoveryText(language, "centralSearchMatches")} services={centralServices} />{otherGroups.map(renderGroup)}</div>;
 }
 
 function SearchHeading({ language, query, count }: { language: Language; query: string; count: number }) {
@@ -173,9 +189,12 @@ function ServiceGroup({ title, services }: { title: string; services: Government
   return <section className="space-y-3"><div className="flex items-baseline justify-between gap-3 border-b pb-2"><h3 className="text-base font-semibold">{title}</h3><p className="text-sm text-muted-foreground">{services.length}</p></div>{services.map((service) => <ServiceCard key={service.id} service={service} />)}</section>;
 }
 
-function StateServiceSearchGroup({ variants, language }: { variants: GovernmentService[]; language: Language }) {
+function StateServiceSearchGroup({ variants, language, recommendedJurisdiction }: { variants: GovernmentService[]; language: Language; recommendedJurisdiction?: ServiceJurisdictionCode }) {
   const title = groupedServiceTitle(variants[0], language);
-  return <Card><CardHeader className="gap-1 pb-2"><CardTitle>{title}</CardTitle><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "stateSpecificService")}</p></CardHeader><CardContent><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "availableIn", { count: variants.length })}</p><div className="mt-3 flex flex-wrap gap-2">{variants.map((service) => { const state = jurisdictionName(service.jurisdiction_code, language); return <LinkButton key={service.id} href={`/services/${service.id}`} variant="outline" size="sm" aria-label={serviceDiscoveryText(language, "chooseStateFor", { state, service: title })}>{state}</LinkButton>; })}</div></CardContent></Card>;
+  const recommended = variants.find((service) => service.jurisdiction_code === recommendedJurisdiction);
+  const orderedVariants = recommended ? [recommended, ...variants.filter((service) => service.id !== recommended.id)] : variants;
+  const recommendedState = recommended ? jurisdictionName(recommended.jurisdiction_code, language) : undefined;
+  return <Card><CardHeader className="gap-1 pb-2"><CardTitle>{title}</CardTitle><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "stateSpecificService")}</p>{recommendedState ? <p className="text-sm font-medium text-primary">{serviceDiscoveryText(language, "recommendedForCurrentAddress", { state: recommendedState })}</p> : null}</CardHeader><CardContent><p className="text-sm text-muted-foreground">{serviceDiscoveryText(language, "availableIn", { count: variants.length })}</p><div className="mt-3 flex flex-wrap gap-2">{orderedVariants.map((service) => { const state = jurisdictionName(service.jurisdiction_code, language); return <LinkButton key={service.id} href={`/services/${service.id}`} variant={service.id === recommended?.id ? "default" : "outline"} size="sm" aria-label={serviceDiscoveryText(language, "chooseStateFor", { state, service: title })}>{state}</LinkButton>; })}</div></CardContent></Card>;
 }
 
 function groupedServiceTitle(service: GovernmentService, language: Language): string {

@@ -19,6 +19,11 @@ type ServiceResultsPresentationCopy = {
   matchingServices: string;
 };
 
+type SearchRelevanceCopy = {
+  clearSearch: string;
+  recommendedForCurrentAddress: string;
+};
+
 const copy: Record<Language, ServiceDiscoveryCopy> = {
   en: { basedOnCurrentAddress: "Based on your current address", searchResultsAcrossIndia: "Search results across India", showingMatchesAcrossSupportedStates: "Showing matches across supported states", stateSpecificService: "State-specific service", availableIn: "Available in {count} supported states", chooseStateFor: "Choose {state} for {service}" },
   hi: { basedOnCurrentAddress: "आपके वर्तमान पते के आधार पर", searchResultsAcrossIndia: "भारत भर में खोज परिणाम", showingMatchesAcrossSupportedStates: "समर्थित राज्यों में मिलान दिखाए जा रहे हैं", stateSpecificService: "राज्य-विशिष्ट सेवा", availableIn: "{count} समर्थित राज्यों में उपलब्ध", chooseStateFor: "{service} के लिए {state} चुनें" },
@@ -39,9 +44,21 @@ const presentationCopy: Record<Language, ServiceResultsPresentationCopy> = {
   bn: { servicesAvailableAcrossIndia: "সারা ভারতে {count}টি পরিষেবা উপলব্ধ", showCentralServices: "কেন্দ্রীয় সরকারের পরিষেবা দেখান", hideCentralServices: "কেন্দ্রীয় সরকারের পরিষেবা লুকান", stateSearchMatches: "নির্বাচিত রাজ্যের মিল", centralSearchMatches: "কেন্দ্রীয় সরকারের মিল", searchResultsFor: '"{query}"-এর জন্য অনুসন্ধানের ফলাফল', matchingServices: "{count}টি মিলে যাওয়া পরিষেবা" },
 };
 
-export function serviceDiscoveryText(language: Language, key: keyof ServiceDiscoveryCopy | keyof ServiceResultsPresentationCopy, values: Record<string, string | number> = {}): string {
+const relevanceCopy: Record<Language, SearchRelevanceCopy> = {
+  en: { clearSearch: "Clear search", recommendedForCurrentAddress: "Recommended for your current address: {state}" },
+  hi: { clearSearch: "खोज साफ़ करें", recommendedForCurrentAddress: "आपके वर्तमान पते के लिए अनुशंसित: {state}" },
+  mr: { clearSearch: "शोध साफ करा", recommendedForCurrentAddress: "तुमच्या सध्याच्या पत्त्यासाठी शिफारस केलेले: {state}" },
+  kn: { clearSearch: "ಹುಡುಕಾಟವನ್ನು ತೆರವುಗೊಳಿಸಿ", recommendedForCurrentAddress: "ನಿಮ್ಮ ಪ್ರಸ್ತುತ ವಿಳಾಸಕ್ಕಾಗಿ ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ: {state}" },
+  ta: { clearSearch: "தேடலை அழிக்கவும்", recommendedForCurrentAddress: "உங்கள் தற்போதைய முகவருக்கு பரிந்துரைக்கப்பட்டது: {state}" },
+  te: { clearSearch: "శోధనను క్లియర్ చేయండి", recommendedForCurrentAddress: "మీ ప్రస్తుత చిరునామాకు సిఫార్సు చేయబడింది: {state}" },
+  bn: { clearSearch: "অনুসন্ধান সাফ করুন", recommendedForCurrentAddress: "আপনার বর্তমান ঠিকানার জন্য সুপারিশকৃত: {state}" },
+};
+
+export function serviceDiscoveryText(language: Language, key: keyof ServiceDiscoveryCopy | keyof ServiceResultsPresentationCopy | keyof SearchRelevanceCopy, values: Record<string, string | number> = {}): string {
   const message = key in copy[language]
     ? copy[language][key as keyof ServiceDiscoveryCopy]
-    : presentationCopy[language][key as keyof ServiceResultsPresentationCopy];
+    : key in presentationCopy[language]
+      ? presentationCopy[language][key as keyof ServiceResultsPresentationCopy]
+      : relevanceCopy[language][key as keyof SearchRelevanceCopy];
   return Object.entries(values).reduce((result, [name, value]) => result.replaceAll(`{${name}}`, String(value)), message);
 }
