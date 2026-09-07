@@ -9,6 +9,16 @@ type ServiceDiscoveryCopy = {
   chooseStateFor: string;
 };
 
+type ServiceResultsPresentationCopy = {
+  servicesAvailableAcrossIndia: string;
+  showCentralServices: string;
+  hideCentralServices: string;
+  stateSearchMatches: string;
+  centralSearchMatches: string;
+  searchResultsFor: string;
+  matchingServices: string;
+};
+
 const copy: Record<Language, ServiceDiscoveryCopy> = {
   en: { basedOnCurrentAddress: "Based on your current address", searchResultsAcrossIndia: "Search results across India", showingMatchesAcrossSupportedStates: "Showing matches across supported states", stateSpecificService: "State-specific service", availableIn: "Available in {count} supported states", chooseStateFor: "Choose {state} for {service}" },
   hi: { basedOnCurrentAddress: "आपके वर्तमान पते के आधार पर", searchResultsAcrossIndia: "भारत भर में खोज परिणाम", showingMatchesAcrossSupportedStates: "समर्थित राज्यों में मिलान दिखाए जा रहे हैं", stateSpecificService: "राज्य-विशिष्ट सेवा", availableIn: "{count} समर्थित राज्यों में उपलब्ध", chooseStateFor: "{service} के लिए {state} चुनें" },
@@ -19,6 +29,19 @@ const copy: Record<Language, ServiceDiscoveryCopy> = {
   bn: { basedOnCurrentAddress: "আপনার বর্তমান ঠিকানার ভিত্তিতে", searchResultsAcrossIndia: "সারা ভারত জুড়ে অনুসন্ধানের ফলাফল", showingMatchesAcrossSupportedStates: "সমর্থিত রাজ্যগুলিতে মিল দেখানো হচ্ছে", stateSpecificService: "রাজ্য-নির্দিষ্ট পরিষেবা", availableIn: "{count} সমর্থিত রাজ্যে উপলব্ধ", chooseStateFor: "{service}-এর জন্য {state} বেছে নিন" },
 };
 
-export function serviceDiscoveryText(language: Language, key: keyof ServiceDiscoveryCopy, values: Record<string, string | number> = {}): string {
-  return Object.entries(values).reduce((message, [name, value]) => message.replaceAll(`{${name}}`, String(value)), copy[language][key]);
+const presentationCopy: Record<Language, ServiceResultsPresentationCopy> = {
+  en: { servicesAvailableAcrossIndia: "{count} services available across India", showCentralServices: "Show Central Services", hideCentralServices: "Hide Central Services", stateSearchMatches: "Selected state matches", centralSearchMatches: "Central Government matches", searchResultsFor: 'Search results for "{query}"', matchingServices: "{count} matching services" },
+  hi: { servicesAvailableAcrossIndia: "भारत भर में {count} सेवाएँ उपलब्ध हैं", showCentralServices: "केंद्र सरकार की सेवाएँ दिखाएँ", hideCentralServices: "केंद्र सरकार की सेवाएँ छिपाएँ", stateSearchMatches: "चयनित राज्य के मिलान", centralSearchMatches: "केंद्र सरकार के मिलान", searchResultsFor: '"{query}" के लिए खोज परिणाम', matchingServices: "{count} मिलती-जुलती सेवाएँ" },
+  mr: { servicesAvailableAcrossIndia: "संपूर्ण भारतात {count} सेवा उपलब्ध आहेत", showCentralServices: "केंद्र सरकारच्या सेवा दाखवा", hideCentralServices: "केंद्र सरकारच्या सेवा लपवा", stateSearchMatches: "निवडलेल्या राज्यातील जुळणाऱ्या सेवा", centralSearchMatches: "केंद्र सरकारच्या जुळणाऱ्या सेवा", searchResultsFor: '"{query}" साठी शोध निकाल', matchingServices: "{count} जुळणाऱ्या सेवा" },
+  kn: { servicesAvailableAcrossIndia: "ಭಾರತದಾದ್ಯಂತ {count} ಸೇವೆಗಳು ಲಭ್ಯವಿವೆ", showCentralServices: "ಕೇಂದ್ರ ಸರ್ಕಾರದ ಸೇವೆಗಳನ್ನು ತೋರಿಸಿ", hideCentralServices: "ಕೇಂದ್ರ ಸರ್ಕಾರದ ಸೇವೆಗಳನ್ನು ಮರೆಮಾಡಿ", stateSearchMatches: "ಆಯ್ಕೆಮಾಡಿದ ರಾಜ್ಯದ ಹೊಂದಾಣಿಕೆಗಳು", centralSearchMatches: "ಕೇಂದ್ರ ಸರ್ಕಾರದ ಹೊಂದಾಣಿಕೆಗಳು", searchResultsFor: '"{query}" ಗಾಗಿ ಹುಡುಕಾಟ ಫಲಿತಾಂಶಗಳು', matchingServices: "{count} ಹೊಂದಾಣಿಕೆಯ ಸೇವೆಗಳು" },
+  ta: { servicesAvailableAcrossIndia: "இந்தியா முழுவதும் {count} சேவைகள் கிடைக்கின்றன", showCentralServices: "மத்திய அரசு சேவைகளைக் காட்டு", hideCentralServices: "மத்திய அரசு சேவைகளை மறை", stateSearchMatches: "தேர்ந்தெடுக்கப்பட்ட மாநிலப் பொருத்தங்கள்", centralSearchMatches: "மத்திய அரசு பொருத்தங்கள்", searchResultsFor: '"{query}" க்கான தேடல் முடிவுகள்', matchingServices: "{count} பொருந்தும் சேவைகள்" },
+  te: { servicesAvailableAcrossIndia: "భారతదేశవ్యాప్తంగా {count} సేవలు అందుబాటులో ఉన్నాయి", showCentralServices: "కేంద్ర ప్రభుత్వ సేవలను చూపండి", hideCentralServices: "కేంద్ర ప్రభుత్వ సేవలను దాచండి", stateSearchMatches: "ఎంచుకున్న రాష్ట్రంలోని సరిపోలికలు", centralSearchMatches: "కేంద్ర ప్రభుత్వ సరిపోలికలు", searchResultsFor: '"{query}" కోసం శోధన ఫలితాలు', matchingServices: "{count} సరిపోలే సేవలు" },
+  bn: { servicesAvailableAcrossIndia: "সারা ভারতে {count}টি পরিষেবা উপলব্ধ", showCentralServices: "কেন্দ্রীয় সরকারের পরিষেবা দেখান", hideCentralServices: "কেন্দ্রীয় সরকারের পরিষেবা লুকান", stateSearchMatches: "নির্বাচিত রাজ্যের মিল", centralSearchMatches: "কেন্দ্রীয় সরকারের মিল", searchResultsFor: '"{query}"-এর জন্য অনুসন্ধানের ফলাফল', matchingServices: "{count}টি মিলে যাওয়া পরিষেবা" },
+};
+
+export function serviceDiscoveryText(language: Language, key: keyof ServiceDiscoveryCopy | keyof ServiceResultsPresentationCopy, values: Record<string, string | number> = {}): string {
+  const message = key in copy[language]
+    ? copy[language][key as keyof ServiceDiscoveryCopy]
+    : presentationCopy[language][key as keyof ServiceResultsPresentationCopy];
+  return Object.entries(values).reduce((result, [name, value]) => result.replaceAll(`{${name}}`, String(value)), message);
 }
