@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
@@ -37,6 +38,11 @@ TOOLS = [
 
 class ChatProviderError(Exception): pass
 
+
+class ChatProvider(Protocol):
+    def respond(self, input_items: list[Any]) -> Any: ...
+
+
 class OpenAIChatProvider:
     def respond(self, input_items: list[Any]) -> Any:
         if not settings.openai_api_key:
@@ -47,6 +53,99 @@ class OpenAIChatProvider:
         except Exception as error:
             logger.warning("Citizen assistant provider request failed: %s", type(error).__name__)
             raise ChatProviderError("Provider request failed") from error
+
+
+class GeminiChatProvider:
+    """Google AI Studio Interactions API adapter for the narrow tool contract."""
+
+    def __init__(self, client: Any | None = None) -> None:
+        self._client = client
+        self._initial_input: str | None = None
+        self._previous_interaction_id: str | None = None
+        self._pending_tool_results: list[dict[str, Any]] | None = None
+
+    def _ensure_client(self) -> None:
+        if not settings.gemini_api_key:
+            raise ChatProviderError("Gemini provider is not configured")
+        if self._client is not None:
+            return
+        try:
+            from google import genai
+
+            self._client = genai.Client(api_key=settings.gemini_api_key)
+        except ImportError as error:
+            logger.warning("Gemini SDK is unavailable: %s", type(error).__name__)
+            raise ChatProviderError("Gemini SDK is unavailable") from error
+
+    @staticmethod
+    def _history_input(input_items: list[Any]) -> str:
+        """Keep the existing bounded, caller-supplied history in one text input."""
+        lines: list[str] = []
+        for item in input_items:
+            if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+                continue
+            role = "Assistant" if item["role"] == "assistant" else "Citizen"
+            lines.append(f"{role}: {item.get('content', '')}")
+        return "\n".join(lines)
+
+    def respond(self, input_items: list[Any]) -> Any:
+        self._ensure_client()
+        assert self._client is not None
+        if self._initial_input is None:
+            self._initial_input = self._history_input(input_items)
+        input_data: str | list[dict[str, Any]]
+        input_data = self._pending_tool_results if self._pending_tool_results is not None else self._initial_input
+        request: dict[str, Any] = {
+            "model": settings.gemini_model,
+            "input": input_data,
+            "tools": TOOLS,
+            "system_instruction": SYSTEM_INSTRUCTIONS,
+        }
+        if self._previous_interaction_id:
+            request["previous_interaction_id"] = self._previous_interaction_id
+        try:
+            raw_response = self._client.interactions.create(**request)
+        except Exception as error:
+            logger.warning("Gemini provider request failed: %s", type(error).__name__)
+            raise ChatProviderError("Gemini provider request failed") from error
+
+        calls = [
+            SimpleNamespace(
+                type="function_call",
+                name=step.name,
+                arguments=json.dumps(getattr(step, "arguments", {}) or {}),
+                call_id=getattr(step, "id", f"gemini-{index}"),
+            )
+            for index, step in enumerate(getattr(raw_response, "steps", None) or [])
+            if getattr(step, "type", None) == "function_call"
+        ]
+        return SimpleNamespace(output=calls, output_text=getattr(raw_response, "output_text", ""), raw_response=raw_response)
+
+    def submit_tool_results(self, response: Any, results: list[tuple[Any, dict[str, Any]]]) -> None:
+        """Continue the interaction with safely serialized local tool results."""
+        interaction_id = getattr(response.raw_response, "id", None)
+        if not interaction_id:
+            raise ChatProviderError("Gemini interaction did not include an ID")
+        self._previous_interaction_id = interaction_id
+        self._pending_tool_results = [
+            {
+                "type": "function_result",
+                "name": call.name,
+                "call_id": call.call_id,
+                "result": [{"type": "text", "text": json.dumps(result)}],
+            }
+            for call, result in results
+        ]
+
+
+def create_chat_provider() -> ChatProvider:
+    provider = settings.llm_provider.strip().lower()
+    if provider == "openai":
+        return OpenAIChatProvider()
+    if provider == "gemini":
+        return GeminiChatProvider()
+    logger.warning("Unsupported LLM provider configured: %s", provider or "<empty>")
+    raise ChatProviderError("Unsupported LLM provider")
 
 def _service_card(service: Service) -> ChatServiceCard:
     return ChatServiceCard(service_id=service.id, name=service.name, description=service.description, department=service.department, category=service.category, government_level=str(service.government_level), jurisdiction_code=service.jurisdiction_code, fee=float(service.fee), currency=service.currency)
@@ -219,8 +318,8 @@ def _tool_result(
 def _output_text(response: Any) -> str:
     return str(getattr(response, "output_text", "")).strip()
 
-def chat(db: Session, request: ChatRequest, provider: OpenAIChatProvider | None = None) -> ChatResponse:
-    provider = provider or OpenAIChatProvider()
+def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None) -> ChatResponse:
+    provider = provider or create_chat_provider()
     items: list[Any] = [{"role": message.role, "content": message.content} for message in request.history[-12:]]
     active_context = f" [Active application ID: {request.active_application_id}]" if request.active_application_id else ""
     items.append({"role": "user", "content": f"[UI locale: {request.locale}]{active_context} {request.message}"})
@@ -252,13 +351,24 @@ def chat(db: Session, request: ChatRequest, provider: OpenAIChatProvider | None 
                     ]
                 components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:], *review_components, *transaction_components]
                 return ChatResponse(message=text, components=components)
-            # Preserve the model's call items with the matching call outputs for the next Responses API turn.
-            items.extend(getattr(response, "output", []))
+            # The Responses API expects its original call item plus call outputs.
+            # Gemini instead retains its own typed conversation and receives
+            # function-response parts below.
+            if not hasattr(provider, "submit_tool_results"):
+                items.extend(getattr(response, "output", []))
+            tool_results: list[tuple[Any, dict[str, Any]]] = []
             for call in calls:
                 try: arguments = json.loads(getattr(call, "arguments", "{}"))
                 except json.JSONDecodeError: arguments = {}
+                if not isinstance(arguments, dict):
+                    arguments = {}
                 result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses, questions, document_requests, reviews)
-                items.append({"type": "function_call_output", "call_id": getattr(call, "call_id", ""), "output": json.dumps(result)})
+                tool_results.append((call, result))
+                if not hasattr(provider, "submit_tool_results"):
+                    items.append({"type": "function_call_output", "call_id": getattr(call, "call_id", ""), "output": json.dumps(result)})
+            submit_tool_results = getattr(provider, "submit_tool_results", None)
+            if submit_tool_results:
+                submit_tool_results(response, tool_results)
         raise ChatProviderError("Tool loop limit")
     except ChatProviderError:
         raise

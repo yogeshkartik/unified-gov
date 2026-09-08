@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./unified_gov.db"
     frontend_url: str = "http://localhost:3000"
     upload_dir: str = str(Path(__file__).resolve().parents[2] / "storage" / "uploads")
+    llm_provider: str = "openai"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.8-flash"
     openai_api_key: str | None = None
     openai_chat_model: str = "gpt-5-mini"
 
