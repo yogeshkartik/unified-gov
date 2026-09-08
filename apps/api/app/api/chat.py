@@ -43,7 +43,7 @@ from app.services import (
     profile_service,
 )
 from app.services.service_catalog import ServiceNotFoundError
-from app.services.chat_service import ChatProviderError, chat
+from app.services.chat_service import ChatProviderError, ChatRateLimitError, chat
 
 router = APIRouter(tags=["chat"])
 
@@ -51,6 +51,11 @@ router = APIRouter(tags=["chat"])
 def send_chat_message(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatResponse:
     try:
         return chat(db, payload)
+    except ChatRateLimitError as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={"code": "CHAT_RATE_LIMITED", "message": "The assistant is temporarily busy. Please try again shortly."},
+        ) from error
     except ChatProviderError as error:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "CHAT_UNAVAILABLE"}) from error
 

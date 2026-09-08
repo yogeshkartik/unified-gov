@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import json
 import logging
+from time import perf_counter
 from types import SimpleNamespace
 from typing import Any, Protocol
+from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTIONS = """You are the concise citizen assistant for this government-service portal. Use backend tools for every portal fact: services, jurisdiction, fees, requirements, profile availability, and application progress. Backend results are authoritative; never infer or invent them.
 
-For state-specific services such as income, caste, domicile, or state certificates, call get_my_profile before search_services when the citizen has not explicitly supplied a state. Use the returned permanent_state_code to prioritize that jurisdiction. Do not list every state's variant; ask one concise clarification only when the profile has no usable jurisdiction.
+For state-specific services such as income, caste, domicile, or state certificates, call search_services directly. It automatically applies the authenticated citizen's permanent-state jurisdiction when the citizen did not name a state. Do not list every state's variant; ask one concise clarification only when the returned results do not identify a relevant service.
 
 Use text for a brief explanation and next action. The UI cards already show fees, requirements, documents, progress, review, payment, and success, so do not repeat them unless the citizen asks. Use plain text, not Markdown headings, tables, or decorative formatting. Respond in the selected UI language when practical; do not translate IDs, reference numbers, filenames, canonical values, or citizen-entered values.
 
@@ -32,7 +34,7 @@ Create or resume an application only when the citizen explicitly asks to apply. 
 Ordinary messages such as yes, continue, pay, or submit never grant consent, process payment, or submit an application. Those actions are available only through explicit structured UI controls and are not tools. Do not claim profile data changed, consent, payment, or submission succeeded unless an authoritative backend result says so."""
 
 TOOLS = [
-    {"type": "function", "name": "search_services", "description": "Find active canonical portal services. For state-specific requests, use a state_code returned by get_my_profile when available; do not guess jurisdiction.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
+    {"type": "function", "name": "search_services", "description": "Find active canonical portal services. When state_code is omitted, the backend automatically applies the authenticated citizen's permanent-state jurisdiction for state services; do not guess or request profile data just for routine service discovery.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
     {"type": "function", "name": "get_service_details", "description": "Get canonical details for a service ID returned by search_services.", "parameters": {"type": "object", "properties": {"service_id": {"type": "string"}}, "required": ["service_id"], "additionalProperties": False}},
     {"type": "function", "name": "get_my_profile", "description": "Get minimized profile availability and permanent-state jurisdiction. Call before searching state-specific services when the citizen did not state a jurisdiction.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"type": "function", "name": "create_or_resume_application", "description": "Create or resume the authenticated citizen's normal application for an active canonical service.", "parameters": {"type": "object", "properties": {"service_id": {"type": "string"}}, "required": ["service_id"], "additionalProperties": False}},
@@ -45,6 +47,17 @@ TOOLS = [
 ]
 
 class ChatProviderError(Exception): pass
+
+
+class ChatRateLimitError(ChatProviderError): pass
+
+
+def _is_rate_limit_error(error: Exception) -> bool:
+    return (
+        type(error).__name__ in {"RateLimitError", "ResourceExhausted"}
+        or getattr(error, "status_code", None) == 429
+        or getattr(error, "code", None) == 429
+    )
 
 
 class ChatProvider(Protocol):
@@ -60,6 +73,8 @@ class OpenAIChatProvider:
             return OpenAI(api_key=settings.openai_api_key).responses.create(model=settings.openai_chat_model, instructions=SYSTEM_INSTRUCTIONS, input=input_items, tools=TOOLS)
         except Exception as error:
             logger.warning("Citizen assistant provider request failed: %s", type(error).__name__)
+            if _is_rate_limit_error(error):
+                raise ChatRateLimitError("Provider rate limit") from error
             raise ChatProviderError("Provider request failed") from error
 
 
@@ -116,6 +131,8 @@ class GeminiChatProvider:
             raw_response = self._client.interactions.create(**request)
         except Exception as error:
             logger.warning("Gemini provider request failed: %s", type(error).__name__)
+            if _is_rate_limit_error(error):
+                raise ChatRateLimitError("Gemini rate limit") from error
             raise ChatProviderError("Gemini provider request failed") from error
 
         calls = [
@@ -233,7 +250,16 @@ def _tool_result(
     document_requests = document_requests if document_requests is not None else {}
     reviews = reviews if reviews is not None else {}
     if name == "search_services":
-        services = service_catalog.search_services(db, str(arguments.get("query", "")), arguments.get("state_code"), arguments.get("category"))
+        state_code = arguments.get("state_code")
+        if not state_code:
+            # The authenticated profile is available to the backend without a
+            # separate model tool turn. It is only used to constrain canonical
+            # catalog results and is never returned from this tool.
+            try:
+                state_code = get_my_profile(db).permanent_state_code
+            except profile_service.ProfileNotFoundError:
+                state_code = None
+        services = service_catalog.search_services(db, str(arguments.get("query", "")), state_code, arguments.get("category"))
         for service in services: selected[service.id] = service
         return {"services": [_service_card(service).model_dump() for service in services]}
     if name == "get_service_details":
@@ -344,8 +370,24 @@ def _tool_result(
 def _output_text(response: Any) -> str:
     return str(getattr(response, "output_text", "")).strip()
 
+
+READ_ONLY_TOOLS = frozenset({
+    "search_services",
+    "get_service_details",
+    "get_my_profile",
+    "get_application_progress",
+    "list_available_documents",
+    "get_application_review",
+})
+
+
 def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None) -> ChatResponse:
     provider = provider or create_chat_provider()
+    request_id = uuid4().hex[:8]
+    started_at = perf_counter()
+    interaction_count = 0
+    tool_count = 0
+    memoized_results: dict[tuple[str, str], dict[str, Any]] = {}
     items: list[Any] = [{"role": message.role, "content": message.content} for message in request.history[-12:]]
     active_context = f" [Active application ID: {request.active_application_id}]" if request.active_application_id else ""
     items.append({"role": "user", "content": f"[UI locale: {request.locale}]{active_context} {request.message}"})
@@ -356,7 +398,13 @@ def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None
     reviews: dict[str, tuple[ApplicationReview, ConsentCard | None]] = {}
     try:
         for _ in range(6):
+            interaction_started_at = perf_counter()
             response = provider.respond(items)
+            interaction_count += 1
+            logger.debug(
+                "[chat %s] interaction=%s duration_ms=%d",
+                request_id, interaction_count, (perf_counter() - interaction_started_at) * 1000,
+            )
             calls = [item for item in getattr(response, "output", []) if getattr(item, "type", None) == "function_call"]
             if not calls:
                 text = _output_text(response) or "I couldn't find that service in the services currently available in this portal."
@@ -376,7 +424,12 @@ def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None
                         *([transaction.submission_success] if transaction.submission_success else []),
                     ]
                 components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:], *review_components, *transaction_components]
-                return ChatResponse(message=text, components=components)
+                result = ChatResponse(message=text, components=components)
+                logger.debug(
+                    "[chat %s] total_ms=%d interactions=%s tool_calls=%s outcome=success",
+                    request_id, (perf_counter() - started_at) * 1000, interaction_count, tool_count,
+                )
+                return result
             # The Responses API expects its original call item plus call outputs.
             # Gemini instead retains its own typed conversation and receives
             # function-response parts below.
@@ -388,7 +441,22 @@ def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None
                 except json.JSONDecodeError: arguments = {}
                 if not isinstance(arguments, dict):
                     arguments = {}
-                result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses, questions, document_requests, reviews)
+                name = getattr(call, "name", "")
+                cache_key = (name, json.dumps(arguments, sort_keys=True, default=str))
+                tool_started_at = perf_counter()
+                if name in READ_ONLY_TOOLS and cache_key in memoized_results:
+                    result = memoized_results[cache_key]
+                    cache_status = "cached"
+                else:
+                    result = _tool_result(db, name, arguments, selected, progresses, questions, document_requests, reviews)
+                    if name in READ_ONLY_TOOLS:
+                        memoized_results[cache_key] = result
+                    cache_status = "executed"
+                tool_count += 1
+                logger.debug(
+                    "[chat %s] tool=%s duration_ms=%d %s",
+                    request_id, name, (perf_counter() - tool_started_at) * 1000, cache_status,
+                )
                 tool_results.append((call, result))
                 if not hasattr(provider, "submit_tool_results"):
                     items.append({"type": "function_call_output", "call_id": getattr(call, "call_id", ""), "output": json.dumps(result)})
@@ -396,9 +464,17 @@ def chat(db: Session, request: ChatRequest, provider: ChatProvider | None = None
             if submit_tool_results:
                 submit_tool_results(response, tool_results)
         raise ChatProviderError("Tool loop limit")
-    except ChatProviderError:
+    except ChatProviderError as error:
+        logger.debug(
+            "[chat %s] total_ms=%d interactions=%s tool_calls=%s outcome=error category=%s",
+            request_id, (perf_counter() - started_at) * 1000, interaction_count, tool_count, type(error).__name__,
+        )
         raise
     except Exception as error:
+        logger.debug(
+            "[chat %s] total_ms=%d interactions=%s tool_calls=%s outcome=error category=%s",
+            request_id, (perf_counter() - started_at) * 1000, interaction_count, tool_count, type(error).__name__,
+        )
         logger.warning("Citizen assistant request failed: %s", type(error).__name__)
         raise ChatProviderError("Chat failed") from error
 

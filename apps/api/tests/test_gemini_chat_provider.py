@@ -19,12 +19,14 @@ from app.schemas.application_progress import (
 )
 from app.services.chat_service import (
     ChatProviderError,
+    ChatRateLimitError,
     GeminiChatProvider,
     OpenAIChatProvider,
     _model_progress,
     create_chat_provider,
     chat,
 )
+import app.services.chat_service as chat_service
 from app.services.seed import seed_demo_services
 
 
@@ -163,6 +165,68 @@ def test_gemini_returns_safe_tool_failure_to_the_model(db, monkeypatch) -> None:
 
     assert response.message == "Please try another request."
     assert '"error": "UNKNOWN_TOOL"' in interactions.requests[1]["input"][0]["result"][0]["text"]
+
+
+def test_search_uses_backend_profile_jurisdiction_when_model_omits_state(monkeypatch) -> None:
+    captured = {}
+
+    monkeypatch.setattr(chat_service, "get_my_profile", lambda _db: SimpleNamespace(permanent_state_code="BR"))
+    monkeypatch.setattr(
+        chat_service.service_catalog,
+        "search_services",
+        lambda _db, query, state_code, category: captured.update(query=query, state_code=state_code, category=category) or [],
+    )
+
+    result = chat_service._tool_result(None, "search_services", {"query": "income certificate"}, {})
+
+    assert result == {"services": []}
+    assert captured == {"query": "income certificate", "state_code": "BR", "category": None}
+
+
+def test_request_scoped_cache_only_reuses_read_only_tools(monkeypatch) -> None:
+    calls = []
+
+    def fake_tool(_db, name, arguments, *_args):
+        calls.append((name, arguments))
+        return {"tool": name}
+
+    class Provider:
+        def __init__(self):
+            self.step = 0
+
+        def respond(self, _items):
+            self.step += 1
+            if self.step == 1:
+                return SimpleNamespace(output=[SimpleNamespace(type="function_call", name="search_services", arguments='{"query":"PM-KISAN"}', call_id="one")], output_text="")
+            if self.step == 2:
+                return SimpleNamespace(output=[SimpleNamespace(type="function_call", name="search_services", arguments='{"query":"PM-KISAN"}', call_id="two")], output_text="")
+            if self.step == 3:
+                return SimpleNamespace(output=[SimpleNamespace(type="function_call", name="create_or_resume_application", arguments='{"service_id":"PM_KISAN_001"}', call_id="three")], output_text="")
+            if self.step == 4:
+                return SimpleNamespace(output=[SimpleNamespace(type="function_call", name="create_or_resume_application", arguments='{"service_id":"PM_KISAN_001"}', call_id="four")], output_text="")
+            return SimpleNamespace(output=[], output_text="Done")
+
+    monkeypatch.setattr(chat_service, "_tool_result", fake_tool)
+    response = chat(None, ChatRequest(message="test"), Provider())
+
+    assert response.message == "Done"
+    assert [name for name, _arguments in calls] == [
+        "search_services",
+        "create_or_resume_application",
+        "create_or_resume_application",
+    ]
+
+
+def test_gemini_rate_limit_is_classified(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "gemini_api_key", "test-key")
+    RateLimitError = type("RateLimitError", (Exception,), {})
+
+    class FailingInteractions:
+        def create(self, **_kwargs):
+            raise RateLimitError("quota")
+
+    with pytest.raises(ChatRateLimitError):
+        GeminiChatProvider(client=SimpleNamespace(interactions=FailingInteractions())).respond([])
 
 
 def test_model_progress_excludes_saved_application_values() -> None:
