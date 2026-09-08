@@ -10,14 +10,14 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.service import Service, ServiceStatus
 from app.schemas.chat import ChatRequest, ChatResponse, ChatServiceCard
-from app.schemas.application_progress import ApplicationProgress, ProfileToolResult
+from app.schemas.application_progress import ApplicationProgress, ApplicationQuestion, ProfileToolResult
 from app.models.profile import AddressType
 from app.services import application_engine, application_progress, profile_service, service_catalog
 from app.services.recommendations import permanent_state_code
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, progress, ownership, and readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Do not claim fields or documents were changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable. Respond in the user's language when practical."""
+SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, progress, ownership, and readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field and success may be claimed only after its successful result. Do not claim profile or documents were changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable. Respond in the user's language when practical."""
 
 TOOLS = [
     {"type": "function", "name": "search_services", "description": "Find active citizen-facing portal services.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
@@ -25,6 +25,7 @@ TOOLS = [
     {"type": "function", "name": "get_my_profile", "description": "Get minimized application-relevant availability for the authenticated citizen profile.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"type": "function", "name": "create_or_resume_application", "description": "Create or resume the authenticated citizen's normal application for an active canonical service.", "parameters": {"type": "object", "properties": {"service_id": {"type": "string"}}, "required": ["service_id"], "additionalProperties": False}},
     {"type": "function", "name": "get_application_progress", "description": "Get authoritative progress for an application owned by the authenticated citizen.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}}, "required": ["application_id"], "additionalProperties": False}},
+    {"type": "function", "name": "set_application_field", "description": "Validate and save one canonical active service field for an editable application owned by the authenticated citizen.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}, "field_key": {"type": "string"}, "value": {}}, "required": ["application_id", "field_key", "value"], "additionalProperties": False}},
 ]
 
 class ChatProviderError(Exception): pass
@@ -63,8 +64,9 @@ def get_my_profile(db: Session) -> ProfileToolResult:
         missing_profile_fields=[field for field in PROFILE_FIELDS if field not in available],
     )
 
-def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: dict[str, Service], progresses: dict[str, ApplicationProgress] | None = None) -> dict[str, Any]:
+def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: dict[str, Service], progresses: dict[str, ApplicationProgress] | None = None, questions: dict[str, ApplicationQuestion] | None = None) -> dict[str, Any]:
     progresses = progresses if progresses is not None else {}
+    questions = questions if questions is not None else {}
     if name == "search_services":
         services = service_catalog.search_services(db, str(arguments.get("query", "")), arguments.get("state_code"), arguments.get("category"))
         for service in services: selected[service.id] = service
@@ -85,7 +87,10 @@ def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: di
             result, application = application_engine.create_or_resume_application(db, service_id)
             progress = application_progress.get_application_progress(db, application.id)
             progresses[application.id] = progress
-            return {"result": result, "application_id": application.id, "progress": progress.model_dump()}
+            question = application_progress.get_next_application_question(db, application.id)
+            if question: questions[application.id] = question
+            else: questions.pop(application.id, None)
+            return {"result": result, "application_id": application.id, "progress": progress.model_dump(), "next_question": question.model_dump() if question else None}
         except service_catalog.ServiceNotFoundError: return {"error": "SERVICE_NOT_FOUND"}
         except application_engine.ServiceNotAvailableError: return {"error": "SERVICE_NOT_AVAILABLE"}
         except application_engine.ServiceJurisdictionError: return {"error": "SERVICE_JURISDICTION_MISMATCH"}
@@ -93,8 +98,27 @@ def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: di
         try:
             progress = application_progress.get_application_progress(db, str(arguments.get("application_id", "")))
             progresses[progress.application_id] = progress
-            return progress.model_dump()
+            question = application_progress.get_next_application_question(db, progress.application_id)
+            if question: questions[progress.application_id] = question
+            else: questions.pop(progress.application_id, None)
+            return {"progress": progress.model_dump(), "next_question": question.model_dump() if question else None}
         except application_engine.ApplicationNotFoundError: return {"error": "APPLICATION_NOT_FOUND"}
+    if name == "set_application_field":
+        try:
+            value, application = application_engine.set_application_field(
+                db, str(arguments.get("application_id", "")), str(arguments.get("field_key", "")), arguments.get("value")
+            )
+            progress = application_progress.get_application_progress(db, application.id)
+            progresses[application.id] = progress
+            question = application_progress.get_next_application_question(db, application.id)
+            if question: questions[application.id] = question
+            else: questions.pop(application.id, None)
+            return {"saved_field_key": arguments.get("field_key"), "saved_value": value, "progress": progress.model_dump(), "next_question": question.model_dump() if question else None}
+        except application_engine.ApplicationNotFoundError: return {"error": "APPLICATION_NOT_FOUND"}
+        except application_engine.ApplicationFieldNotFoundError: return {"error": "FIELD_NOT_FOUND"}
+        except application_engine.ApplicationFieldNotApplicableError: return {"error": "FIELD_NOT_APPLICABLE"}
+        except application_engine.ApplicationNotEditableError: return {"error": "APPLICATION_NOT_EDITABLE"}
+        except application_engine.InvalidApplicationFieldsError: return {"error": "INVALID_APPLICATION_FIELD"}
     return {"error": "UNKNOWN_TOOL"}
 
 def _output_text(response: Any) -> str:
@@ -107,20 +131,21 @@ def chat(db: Session, request: ChatRequest, provider: OpenAIChatProvider | None 
     items.append({"role": "user", "content": f"[UI locale: {request.locale}]{active_context} {request.message}"})
     selected: dict[str, Service] = {}
     progresses: dict[str, ApplicationProgress] = {}
+    questions: dict[str, ApplicationQuestion] = {}
     try:
         for _ in range(6):
             response = provider.respond(items)
             calls = [item for item in getattr(response, "output", []) if getattr(item, "type", None) == "function_call"]
             if not calls:
                 text = _output_text(response) or "I couldn't find that service in the services currently available in this portal."
-                components = [*_service_card_list(selected), *list(progresses.values())[-1:]]
+                components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:]]
                 return ChatResponse(message=text, components=components)
             # Preserve the model's call items with the matching call outputs for the next Responses API turn.
             items.extend(getattr(response, "output", []))
             for call in calls:
                 try: arguments = json.loads(getattr(call, "arguments", "{}"))
                 except json.JSONDecodeError: arguments = {}
-                result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses)
+                result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses, questions)
                 items.append({"type": "function_call_output", "call_id": getattr(call, "call_id", ""), "output": json.dumps(result)})
         raise ChatProviderError("Tool loop limit")
     except ChatProviderError:

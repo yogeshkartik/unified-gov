@@ -6,13 +6,21 @@ from app.models.consent import Consent, ConsentStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.profile import DocumentSource, DocumentType
 from app.schemas.application_progress import (
-    ApplicationFieldProgress, ApplicationProgress, ConsentProgress, DocumentProgress,
-    PaymentProgress, ProfileProgress, ProgressDocument, ProgressField, ProgressService,
+    ApplicationFieldProgress, ApplicationProgress, ApplicationQuestion, ConsentProgress, DocumentProgress,
+    PaymentProgress, ProfileProgress, ProgressDocument, ProgressField, ProgressService, QuestionField,
 )
 from app.services import application_engine
 
 
 FINAL_STATUSES = {"SUBMITTED", "PROCESSING", "COMPLETED", "REJECTED", "CANCELLED"}
+QUESTION_TYPES = {
+    "text": "TEXT_QUESTION",
+    "textarea": "TEXTAREA_QUESTION",
+    "select": "SELECT_QUESTION",
+    "radio": "SELECT_QUESTION",
+    "checkbox": "BOOLEAN_QUESTION",
+    "number": "NUMBER_QUESTION",
+}
 
 
 def get_application_progress(db: Session, application_id: str) -> ApplicationProgress:
@@ -32,7 +40,7 @@ def get_application_progress(db: Session, application_id: str) -> ApplicationPro
             required=field.required, options=field.options,
             value=answers.get(field.key) if field.key in answers else None,
         )
-        for field in application.service.fields if field.required
+        for field in application_engine.active_service_fields(application.service.fields, answers) if field.required
     ]
     fields = ApplicationFieldProgress(
         satisfied=[field for field in field_items if field.key not in missing_field_keys],
@@ -104,4 +112,31 @@ def get_application_progress(db: Session, application_id: str) -> ApplicationPro
         ready_for_review=ready_for_review, ready_for_consent=ready_for_consent,
         ready_for_payment=ready_for_payment, ready_for_submission=ready_for_submission,
         next_stage=next_stage,
+    )
+
+
+def get_next_application_question(db: Session, application_id: str) -> ApplicationQuestion | None:
+    """Return only the first backend-ordered active missing service field."""
+    application = application_engine.get_application(db, application_id)
+    if application.status not in application_engine.EDITABLE_STATUSES:
+        return None
+    progress = get_application_progress(db, application_id)
+    if not progress.application_fields.missing:
+        return None
+    missing = progress.application_fields.missing[0]
+    source = next(field for field in application.service.fields if field.key == missing.key)
+    question_type = QUESTION_TYPES.get(missing.field_type)
+    if question_type is None:
+        return None
+    return ApplicationQuestion(
+        type=question_type,
+        application_id=application.id,
+        field=QuestionField(
+            key=source.key,
+            label=source.label,
+            field_type=str(source.field_type),
+            required=source.required,
+            options=source.options,
+            help_text=source.help_text,
+        ),
     )

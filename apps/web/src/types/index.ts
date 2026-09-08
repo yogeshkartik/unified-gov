@@ -276,9 +276,16 @@ export interface ApplicationProgress {
   ready_for_submission: boolean;
   next_stage: string;
 }
-export type ChatComponent = ChatServiceCard | ApplicationProgress;
+export type ApplicationQuestionType = "TEXT_QUESTION" | "TEXTAREA_QUESTION" | "SELECT_QUESTION" | "BOOLEAN_QUESTION" | "NUMBER_QUESTION";
+export interface ApplicationQuestion {
+  type: ApplicationQuestionType;
+  application_id: string;
+  field: { key: string; label: string; field_type: string; required: boolean; options: string[] | null; help_text: string | null };
+}
+export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion;
 export interface ChatResponse { message: string; components: ChatComponent[]; }
-export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; }
+export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; }
+export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; }
 
 export interface CitizenApplicationSummary {
   id: string;

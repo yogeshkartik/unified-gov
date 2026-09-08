@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.application_progress import ApplicationProgress
+from app.schemas.application_progress import ApplicationProgress, ApplicationQuestion
 
 
 class ChatHistoryMessage(BaseModel):
@@ -32,4 +32,4 @@ class ChatServiceCard(BaseModel):
 
 class ChatResponse(BaseModel):
     message: str
-    components: list[ChatServiceCard | ApplicationProgress] = Field(default_factory=list)
+    components: list[ChatServiceCard | ApplicationProgress | ApplicationQuestion] = Field(default_factory=list)

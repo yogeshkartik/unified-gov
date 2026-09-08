@@ -52,6 +52,7 @@ def test_start_creates_normal_application_then_resumes_without_duplicate(db: Ses
     assert first.result == "CREATED"
     assert second.result == "RESUMED"
     assert second.application_id == first.application_id
+    assert first.next_question is not None and first.next_question.type == "BOOLEAN_QUESTION"
     assert [application.id for application in persisted] == [first.application_id]
 
 
@@ -157,4 +158,5 @@ def test_free_form_apply_orchestration_uses_tools_and_returns_progress(db: Sessi
     response = chat(db, ChatRequest(message="I want to apply for PM-KISAN"), provider)
     assert provider.step == 5
     assert any(component.type == "APPLICATION_PROGRESS" for component in response.components)
+    assert any(component.type == "BOOLEAN_QUESTION" for component in response.components)
     assert db.get(Application, provider.application_id) is not None

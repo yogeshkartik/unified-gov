@@ -44,6 +44,9 @@ class ApplicationDeletionNotAllowedError(Exception):
 
 class ServiceNotAvailableError(Exception): pass
 class ServiceJurisdictionError(Exception): pass
+class ApplicationNotEditableError(Exception): pass
+class ApplicationFieldNotFoundError(Exception): pass
+class ApplicationFieldNotApplicableError(Exception): pass
 
 
 ACTIONABLE_STATUSES = {
@@ -52,6 +55,11 @@ ACTIONABLE_STATUSES = {
     ApplicationStatus.CONSENT_REQUIRED,
     ApplicationStatus.READY_FOR_REVIEW,
     ApplicationStatus.PAYMENT_REQUIRED,
+}
+EDITABLE_STATUSES = {
+    ApplicationStatus.DRAFT,
+    ApplicationStatus.ADDITIONAL_INFO_REQUIRED,
+    ApplicationStatus.CONSENT_REQUIRED,
 }
 
 
@@ -111,9 +119,15 @@ def save_additional_data(
     db: Session, application_id: str, payload: AdditionalDataUpdate
 ) -> ApplicationEngineResponse:
     application = get_application(db, application_id)
+    if application.status not in EDITABLE_STATUSES:
+        raise ApplicationNotEditableError
     fields_by_key = {field.key: field for field in application.service.fields}
     answers = normalize_answers(payload.answers, fields_by_key)
     errors = validate_answers(answers, fields_by_key)
+    for key, value in answers.items():
+        field = fields_by_key.get(key)
+        if field is not None and field.required and not has_value(value):
+            errors[key] = "This field is required."
     if errors:
         raise InvalidApplicationFieldsError(errors)
 
@@ -134,6 +148,21 @@ def save_additional_data(
     )
     db.commit()
     return build_engine_response(db, application.id)
+
+
+def set_application_field(db: Session, application_id: str, field_key: str, value: Any) -> tuple[Any, ApplicationEngineResponse]:
+    """Validate and upsert one canonical service answer in the normal answer store."""
+    application = get_application(db, application_id)
+    if application.status not in EDITABLE_STATUSES:
+        raise ApplicationNotEditableError
+    fields_by_key = {field.key: field for field in application.service.fields}
+    field = fields_by_key.get(field_key)
+    if field is None:
+        raise ApplicationFieldNotFoundError
+    if field not in active_service_fields(application.service.fields, application.answers_by_key):
+        raise ApplicationFieldNotApplicableError
+    response = save_additional_data(db, application.id, AdditionalDataUpdate(answers={field_key: value}))
+    return response.answers[field_key], response
 
 
 def get_application(db: Session, application_id: str) -> Application:
@@ -336,7 +365,12 @@ def has_profile_data(user: User, field: str) -> bool:
 
 
 def required_field_keys(fields: list[ServiceField], answers: dict[str, Any]) -> list[str]:
-    return [field.key for field in fields if field.required and not has_value(answers.get(field.key))]
+    return [field.key for field in active_service_fields(fields, answers) if field.required and not has_value(answers.get(field.key))]
+
+
+def active_service_fields(fields: list[ServiceField], answers: dict[str, Any]) -> list[ServiceField]:
+    """Single applicability seam; the current ServiceField schema has no conditions."""
+    return fields
 
 
 def has_value(value: Any) -> bool:

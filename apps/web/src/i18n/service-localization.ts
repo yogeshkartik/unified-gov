@@ -235,3 +235,11 @@ export function localizeProfileField(field: string, language: Language) {
 export function localizeDocumentType(type: string, fallback: string, language: Language) {
   return ({ hi: hindiDocuments, mr: marathiDocuments } as Partial<Record<Language, Record<string, string>>>)[language]?.[type] ?? regionalDocuments[language]?.[type] ?? fallback;
 }
+
+export function localizeServiceFieldLabel(fieldKey: string, fallback: string, language: Language) {
+  return (({ hi: hindiFields, mr: marathiFields } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalFields[language])?.[fieldKey] ?? fallback;
+}
+
+export function localizeServiceOption(option: string, language: Language) {
+  return (({ hi: hindiOptions, mr: marathiOptions } as Partial<Record<Language, Record<string, string>>>)[language] ?? commonRegionalOptions[language])?.[option] ?? option;
+}

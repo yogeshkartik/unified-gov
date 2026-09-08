@@ -51,6 +51,11 @@ def update_additional_data(
         return application_engine.save_additional_data(db, application_id, payload)
     except application_engine.ApplicationNotFoundError as error:
         raise application_not_found(application_id) from error
+    except application_engine.ApplicationNotEditableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_NOT_EDITABLE", "message": "This application can no longer be edited."},
+        ) from error
     except application_engine.InvalidApplicationFieldsError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

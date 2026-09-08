@@ -83,7 +83,36 @@ class StartApplicationRequest(BaseModel):
     service_id: str = Field(min_length=1, max_length=100)
 
 
+class QuestionField(BaseModel):
+    key: str
+    label: str
+    field_type: str
+    required: bool
+    options: list[str] | None = None
+    help_text: str | None = None
+
+
+class ApplicationQuestion(BaseModel):
+    type: Literal["TEXT_QUESTION", "TEXTAREA_QUESTION", "SELECT_QUESTION", "BOOLEAN_QUESTION", "NUMBER_QUESTION"]
+    application_id: str
+    field: QuestionField
+
+
 class StartApplicationResponse(BaseModel):
     result: Literal["CREATED", "RESUMED"]
     application_id: str
     progress: ApplicationProgress
+    next_question: ApplicationQuestion | None = None
+
+
+class SetApplicationFieldRequest(BaseModel):
+    application_id: str = Field(min_length=1, max_length=36)
+    field_key: str = Field(min_length=1, max_length=100)
+    value: Any
+
+
+class SetApplicationFieldResponse(BaseModel):
+    saved_field_key: str
+    saved_value: Any
+    progress: ApplicationProgress
+    next_question: ApplicationQuestion | None = None

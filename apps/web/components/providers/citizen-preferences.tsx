@@ -5,13 +5,13 @@ import en from "@/src/i18n/en.json";
 import hi from "@/src/i18n/hi.json";
 import mr from "@/src/i18n/mr.json";
 import { isSupportedLanguage, type Language } from "@/src/i18n/languages";
-import { applicationUi, chatbotUi, deadlineUi, jurisdictionUi, phase2ChatbotUi, regionalDictionaries, statusUi } from "@/src/i18n/regional";
+import { applicationUi, chatbotUi, deadlineUi, jurisdictionUi, phase2ChatbotUi, phase3ChatbotUi, regionalDictionaries, statusUi } from "@/src/i18n/regional";
 
 export type { Language } from "@/src/i18n/languages";
 type TextSize = "small" | "default" | "large";
-export type TranslationKey = keyof typeof en | keyof typeof chatbotUi.en | keyof typeof phase2ChatbotUi.en;
+export type TranslationKey = keyof typeof en | keyof typeof chatbotUi.en | keyof typeof phase2ChatbotUi.en | keyof typeof phase3ChatbotUi.en;
 type TranslationValues = Record<string, string | number>;
-const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en: { ...en, ...chatbotUi.en, ...phase2ChatbotUi.en }, hi: { ...hi, ...chatbotUi.hi, ...phase2ChatbotUi.hi, ...deadlineUi.hi }, mr: { ...mr, ...chatbotUi.mr, ...phase2ChatbotUi.mr, ...deadlineUi.mr }, kn: { ...regionalDictionaries.kn, ...applicationUi.kn, ...chatbotUi.kn, ...phase2ChatbotUi.kn, ...deadlineUi.kn, ...statusUi.kn, ...jurisdictionUi.kn }, ta: { ...regionalDictionaries.ta, ...applicationUi.ta, ...chatbotUi.ta, ...phase2ChatbotUi.ta, ...deadlineUi.ta, ...statusUi.ta, ...jurisdictionUi.ta }, te: { ...regionalDictionaries.te, ...applicationUi.te, ...chatbotUi.te, ...phase2ChatbotUi.te, ...deadlineUi.te, ...statusUi.te, ...jurisdictionUi.te }, bn: { ...regionalDictionaries.bn, ...applicationUi.bn, ...chatbotUi.bn, ...phase2ChatbotUi.bn, ...deadlineUi.bn, ...statusUi.bn, ...jurisdictionUi.bn } };
+const dictionaries: Partial<Record<Language, Partial<Record<TranslationKey, string>>>> = { en: { ...en, ...chatbotUi.en, ...phase2ChatbotUi.en, ...phase3ChatbotUi.en }, hi: { ...hi, ...chatbotUi.hi, ...phase2ChatbotUi.hi, ...phase3ChatbotUi.hi, ...deadlineUi.hi }, mr: { ...mr, ...chatbotUi.mr, ...phase2ChatbotUi.mr, ...phase3ChatbotUi.mr, ...deadlineUi.mr }, kn: { ...regionalDictionaries.kn, ...applicationUi.kn, ...chatbotUi.kn, ...phase2ChatbotUi.kn, ...phase3ChatbotUi.kn, ...deadlineUi.kn, ...statusUi.kn, ...jurisdictionUi.kn }, ta: { ...regionalDictionaries.ta, ...applicationUi.ta, ...chatbotUi.ta, ...phase2ChatbotUi.ta, ...phase3ChatbotUi.ta, ...deadlineUi.ta, ...statusUi.ta, ...jurisdictionUi.ta }, te: { ...regionalDictionaries.te, ...applicationUi.te, ...chatbotUi.te, ...phase2ChatbotUi.te, ...phase3ChatbotUi.te, ...deadlineUi.te, ...statusUi.te, ...jurisdictionUi.te }, bn: { ...regionalDictionaries.bn, ...applicationUi.bn, ...chatbotUi.bn, ...phase2ChatbotUi.bn, ...phase3ChatbotUi.bn, ...deadlineUi.bn, ...statusUi.bn, ...jurisdictionUi.bn } };
 const storageKey = "unified-gov-preferences";
 
 interface Preferences {
