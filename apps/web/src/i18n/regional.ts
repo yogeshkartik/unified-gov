@@ -5,6 +5,15 @@ export const applicationUi = {
   bn: { applicationsDescription: "আপনার আবেদনগুলি অনুসরণ ও পরিচালনা করুন।", searchApplications: "আবেদন খুঁজুন", filterApplications: "আবেদন ফিল্টার করুন", all: "সব", draft: "খসড়া", submitted: "জমা দেওয়া হয়েছে", applicationColumn: "আবেদন", updated: "হালনাগাদ", status: "অবস্থা", action: "কাজ", view: "দেখুন", deleteDraft: "খসড়া মুছুন", deleting: "মোছা হচ্ছে…", noApplications: "কোনো আবেদন পাওয়া যায়নি।", noDraftApplications: "কোনো খসড়া আবেদন নেই", noDraftApplicationsDescription: "সম্পূর্ণ করার অপেক্ষায় কোনো আবেদন নেই।", noSubmittedApplications: "জমা দেওয়া আবেদন নেই", noSubmittedApplicationsDescription: "জমা দেওয়া আবেদন এখানে দেখা যাবে।", noApplicationsYet: "এখনও কোনো আবেদন নেই", noApplicationsYetDescription: "প্রথম আবেদন শুরু করতে সরকারি পরিষেবা দেখুন।", changeApplicationSearch: "অনুসন্ধান বা ফিল্টার পরিবর্তন করুন।", loadingApplications: "আপনার আবেদন লোড হচ্ছে…", needsAttention: "আপনার মনোযোগ প্রয়োজন", applicationHistory: "আবেদনের ইতিহাস", deleteDraftTitle: "খসড়া মুছবেন?", deleteDraftDescription: "এই খসড়া ও সংরক্ষিত উত্তর স্থায়ীভাবে মুছে যাবে।", deleteDraftError: "এই খসড়া মোছা যায়নি। আবার চেষ্টা করুন।", moreActions: "{name}-এর জন্য আরও কাজ" }
 } as const;
 
+export const deadlineUi = {
+  hi: { submissionDate: "जमा करने की तारीख", applicationDeadline: "आवेदन की अंतिम तिथि" },
+  mr: { submissionDate: "सादर करण्याची तारीख", applicationDeadline: "अर्जाची अंतिम तारीख" },
+  kn: { submissionDate: "ಸಲ್ಲಿಕೆ ದಿನಾಂಕ", applicationDeadline: "ಅರ್ಜಿ ಸಲ್ಲಿಸುವ ಅಂತಿಮ ದಿನಾಂಕ" },
+  ta: { submissionDate: "சமர்ப்பித்த தேதி", applicationDeadline: "விண்ணப்பத்தின் கடைசி தேதி" },
+  te: { submissionDate: "సమర్పణ తేదీ", applicationDeadline: "దరఖాస్తు చివరి తేదీ" },
+  bn: { submissionDate: "জমা দেওয়ার তারিখ", applicationDeadline: "আবেদনের শেষ তারিখ" },
+} as const;
+
 export const statusUi = {
   kn: { statusDRAFT: "ಕರಡು", statusADDITIONAL_INFO_REQUIRED: "ಹೆಚ್ಚುವರಿ ಮಾಹಿತಿ ಅಗತ್ಯ", statusCONSENT_REQUIRED: "ಒಪ್ಪಿಗೆ ಅಗತ್ಯ", statusREADY_FOR_REVIEW: "ಪರಿಶೀಲನೆಗೆ ಸಿದ್ಧ", statusPAYMENT_REQUIRED: "ಪಾವತಿ ಅಗತ್ಯ", statusSUBMITTED: "ಸಲ್ಲಿಸಲಾಗಿದೆ", statusPROCESSING: "ಪ್ರಕ್ರಿಯೆಯಲ್ಲಿದೆ", statusCOMPLETED: "ಪೂರ್ಣಗೊಂಡಿದೆ", statusREJECTED: "ತಿರಸ್ಕರಿಸಲಾಗಿದೆ", statusCANCELLED: "ರದ್ದುಪಡಿಸಲಾಗಿದೆ" },
   ta: { statusDRAFT: "வரைவு", statusADDITIONAL_INFO_REQUIRED: "கூடுதல் தகவல் தேவை", statusCONSENT_REQUIRED: "ஒப்புதல் தேவை", statusREADY_FOR_REVIEW: "மதிப்பாய்வுக்குத் தயார்", statusPAYMENT_REQUIRED: "கட்டணம் தேவை", statusSUBMITTED: "சமர்ப்பிக்கப்பட்டது", statusPROCESSING: "செயலாக்கத்தில்", statusCOMPLETED: "முடிந்தது", statusREJECTED: "நிராகரிக்கப்பட்டது", statusCANCELLED: "ரத்துசெய்யப்பட்டது" },

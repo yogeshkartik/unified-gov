@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, FileText, Landmark, LoaderCircle } from "lucide-react";
 import { api } from "@/src/lib/api";
-import type { GovernmentServiceDetail } from "@/src/types";
+import type { ApplicationDetail, ApplicationSummary, GovernmentServiceDetail } from "@/src/types";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { useCitizenAuth } from "@/components/providers/citizen-auth";
 import { applicationFlowPath } from "@/components/application/application-flow-navigation";
@@ -14,9 +15,21 @@ import { useCitizenPreferences } from "@/components/providers/citizen-preference
 import { localizeProfileField, localizeService } from "@/src/i18n/service-localization";
 import { localeFor } from "@/src/i18n/locale-format";
 import { jurisdictionName } from "@/src/i18n/jurisdictions";
+import { displayDeadline } from "@/src/lib/service-deadline";
 
 function formatFieldName(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function draftStep(application: ApplicationDetail) {
+  if (application.status === "ADDITIONAL_INFO_REQUIRED") return "additional" as const;
+  if (application.status === "DRAFT" || application.status === "CONSENT_REQUIRED") return "consent" as const;
+  if (application.status === "PAYMENT_REQUIRED") return "payment" as const;
+  return "preview" as const;
+}
+
+function isDraft(application: ApplicationSummary) {
+  return ["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"].includes(application.status);
 }
 
 export function ServiceDetail({ serviceId }: { serviceId: string }) {
@@ -25,12 +38,23 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
   const [error, setError] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string>();
+  const [draftApplication, setDraftApplication] = useState<ApplicationSummary>();
+  const [continuingDraft, setContinuingDraft] = useState(false);
   const { session } = useCitizenAuth();
   const { language, t } = useCitizenPreferences();
 
   useEffect(() => {
     api.getService(serviceId).then(setService).catch(() => setError(true));
   }, [serviceId]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+    api.getApplications()
+      .then((applications) => setDraftApplication(applications.find((application) => application.service_id === serviceId && isDraft(application))))
+      .catch(() => setDraftApplication(undefined));
+  }, [serviceId, session]);
 
   async function apply() {
     setApplying(true);
@@ -44,12 +68,25 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
     }
   }
 
+  async function continueDraft() {
+    if (!draftApplication) return;
+    setContinuingDraft(true);
+    setApplyError(undefined);
+    try {
+      const application = await api.getApplication(draftApplication.id);
+      router.push(applicationFlowPath(application.id, draftStep(application)));
+    } catch {
+      setApplyError(t("applicationLoadError"));
+      setContinuingDraft(false);
+    }
+  }
+
   if (error) return <ErrorState>{t("serviceLoadError")}</ErrorState>;
   if (!service) return <LoadingState label={t("loadingServiceDetails")} />;
 
   const localizedService = localizeService(service, language);
   const locale = localeFor(language);
-  const deadline = service.end_date ? new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(service.end_date)) : t("noDeadline");
+  const deadline = displayDeadline(service);
   const fee = service.fee > 0 ? t("fee", { amount: new Intl.NumberFormat(locale, { style: "currency", currency: service.currency, maximumFractionDigits: 0 }).format(service.fee) }) : t("noApplicationFee");
   const requiredDocuments = [...localizedService.document_requirements]
     .filter((document) => document.required)
@@ -64,9 +101,9 @@ export function ServiceDetail({ serviceId }: { serviceId: string }) {
         <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Landmark className="size-4" aria-hidden="true" />{localizedService.department}</p>
         <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground"><div className="flex gap-1"><dt>{t("governmentLevel")}:</dt><dd>{service.government_level === "CENTRAL" ? t("centralGovernment") : t("stateGovernment")}</dd></div><div className="flex gap-1"><dt>{t("jurisdiction")}:</dt><dd>{jurisdictionName(service.jurisdiction_code, language)}</dd></div></dl>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">{localizedService.description}</p>
-        <p className="mt-5 text-sm font-medium text-muted-foreground"><span>{fee}</span><span className="mx-2" aria-hidden="true">•</span><span>{deadline}</span></p>
-        <div className="mt-6">
-          {session ? <Button size="lg" onPress={apply} isDisabled={applying}>{applying ? <><LoaderCircle className="animate-spin" aria-hidden="true" />{t("creatingApplication")}</> : t("applyNow")}</Button> : <LinkButton href={`/login?returnTo=${encodeURIComponent(`/services/${serviceId}`)}`} size="lg">{t("signInToApply")}</LinkButton>}
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-medium text-muted-foreground"><span>{fee}</span>{deadline ? <Badge variant="secondary">{t("applicationDeadline")}: {new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(deadline))}</Badge> : null}</div>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {session ? <>{draftApplication ? <Button size="lg" variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onPress={continueDraft} isDisabled={continuingDraft}>{continuingDraft ? <><LoaderCircle className="animate-spin" aria-hidden="true" />{t("loading")}</> : "Continue with draft application"}</Button> : null}<Button size="lg" onPress={apply} isDisabled={applying}>{applying ? <><LoaderCircle className="animate-spin" aria-hidden="true" />{t("creatingApplication")}</> : draftApplication ? "Apply new" : t("applyNow")}</Button></> : <LinkButton href={`/login?returnTo=${encodeURIComponent(`/services/${serviceId}`)}`} size="lg">{t("signInToApply")}</LinkButton>}
         </div>
         {applyError ? <p role="alert" className="mt-3 text-sm text-destructive">{applyError}</p> : null}
       </section>
