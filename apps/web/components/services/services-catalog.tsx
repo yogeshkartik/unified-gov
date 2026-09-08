@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListFilter, Search, X } from "lucide-react";
 import { api } from "@/src/lib/api";
-import type { CitizenProfile, GovernmentService } from "@/src/types";
+import type { GovernmentService } from "@/src/types";
 import { ErrorState, LoadingState } from "@/components/ui/data-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { ServiceCard } from "@/components/services/service-card";
 import { useCitizenPreferences, type Language } from "@/components/providers/citizen-preferences";
 import { localizeService } from "@/src/i18n/service-localization";
 import { serviceDiscoveryText } from "@/src/i18n/service-discovery-localization";
-import { jurisdictionName, profileStateToJurisdiction, serviceJurisdictions, type ServiceJurisdictionCode } from "@/src/i18n/jurisdictions";
+import { jurisdictionName, permanentAddressJurisdiction, serviceJurisdictions, type ServiceJurisdictionCode } from "@/src/i18n/jurisdictions";
 
 const ALL_CATEGORIES = "__all_services__";
 const CENTRAL_AND_HOME_STATE = "CENTRAL_AND_HOME_STATE";
@@ -39,7 +39,7 @@ export function ServicesCatalog() {
     api.getProfile()
       .then((profile) => {
         if (!active) return;
-        const state = profileStateToJurisdiction(permanentAddressState(profile));
+        const state = permanentAddressJurisdiction(profile);
         setHomeState(state && state !== "IN" ? state : undefined);
         setProfileLoaded(true);
       })
@@ -126,10 +126,6 @@ export function ServicesCatalog() {
       {visibleServices.length === 0 ? <EmptyResults /> : searchMode ? <SearchResults language={language} query={query.trim()} services={visibleServices} /> : isDefaultScope ? <DefaultBrowseResults centralServices={centralServices} stateServices={stateServices} state={homeState} language={language} /> : isCentralOnlyScope ? <ServiceGroup title={t("centralGovernmentServices")} services={centralServices} /> : <ServiceGroup title={t("stateGovernmentServices", { state: jurisdictionName(scope, language) })} services={stateServices} />}
     </section>
   </div>;
-}
-
-function permanentAddressState(profile: CitizenProfile): string | undefined {
-  return profile.addresses.find((address) => address.type === "PERMANENT")?.state;
 }
 
 function DefaultBrowseResults({ centralServices, stateServices, state, language }: { centralServices: GovernmentService[]; stateServices: GovernmentService[]; state?: HomeState; language: Language }) {
