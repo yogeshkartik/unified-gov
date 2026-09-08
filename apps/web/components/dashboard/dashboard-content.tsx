@@ -14,7 +14,6 @@ import { localizeService, localizeServiceName } from "@/src/i18n/service-localiz
 import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import type { Language } from "@/src/i18n/languages";
 import { localeFor } from "@/src/i18n/locale-format";
-import { CitizenAssistant } from "@/components/chat/citizen-assistant";
 import { categoryAccent, categoryHoverAccent } from "@/components/services/category-accent";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
@@ -113,7 +112,7 @@ export function DashboardContent() {
         <div className="overflow-hidden rounded-xl border bg-card shadow-[0_8px_24px_oklch(0.22_0.035_255_/_3%)]">{popularServices.map((service, index) => { const Icon = serviceIcon(service.category); return <Link key={service.id} href={`/services/${service.id}`} className={`group grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors duration-200 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${categoryHoverAccent(service.category)} ${index > 0 ? "border-t" : ""}`}><span className={`grid size-8 shrink-0 place-items-center rounded-lg ${categoryAccent(service.category)}`}><Icon className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold leading-5">{service.name}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{service.category}</p></div><span className="flex items-center gap-1 text-xs font-medium text-primary">{t("view")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></span></Link>; })}</div>
       </section>
     </Reveal>
-  </div><CitizenAssistant /></>;
+  </div></>;
 }
 
 function DashboardAssistantEntry({ t }: { t: ReturnType<typeof useCitizenPreferences>["t"] }) {
