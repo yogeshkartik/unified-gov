@@ -93,8 +93,10 @@ def test_gemini_reads_interaction_output_text(monkeypatch) -> None:
 
 
 def test_shared_instruction_sets_helpful_service_response_style() -> None:
-    assert "two short plain-text paragraphs" in SYSTEM_INSTRUCTIONS
-    assert "directly answer the citizen's actual question" in SYSTEM_INSTRUCTIONS
+    assert "roughly 4–8 short plain-text lines" in SYSTEM_INSTRUCTIONS
+    assert "Start with the direct answer" in SYSTEM_INSTRUCTIONS
+    assert "You may need:" in SYSTEM_INSTRUCTIONS
+    assert "use the authoritative service card and details tools" in SYSTEM_INSTRUCTIONS
     assert "Do not invent eligibility" in SYSTEM_INSTRUCTIONS
     assert "During an active application, keep responses fast and conversational" in SYSTEM_INSTRUCTIONS
 
