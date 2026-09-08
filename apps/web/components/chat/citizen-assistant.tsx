@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Bot, LoaderCircle, Send, Sparkles, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { LoaderCircle, Send, Sparkles, X } from "lucide-react";
 import { api } from "@/src/lib/api";
 import type { ApplicationDocumentActionResponse, ApplicationProgress, ApplicationQuestion, ChatComponent, ChatServiceCard, GrantChatConsentResponse, PayChatApplicationResponse, SubmitChatApplicationResponse } from "@/src/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { localeFor } from "@/src/i18n/locale-format";
 import { ApplicationQuestionCard } from "@/components/chat/application-question";
@@ -18,8 +20,25 @@ import { PaymentCard } from "@/components/chat/payment-card";
 import { SubmissionConfirmation } from "@/components/chat/submission-confirmation";
 import { SubmissionSuccess } from "@/components/chat/submission-success";
 import { localizeServiceFieldLabel } from "@/src/i18n/service-localization";
+import { useReducedMotion } from "motion/react";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; components?: ChatComponent[] };
+
+function currentProgressMessages(messages: Message[]) {
+  const latestProgress = new Map<string, string>();
+  const terminalApplications = new Set<string>();
+  messages.forEach((message, messageIndex) => message.components?.forEach((component, componentIndex) => {
+    if (component.type === "APPLICATION_PROGRESS") latestProgress.set(component.application_id, `${messageIndex}:${componentIndex}`);
+    if (component.type === "SUBMISSION_SUCCESS") terminalApplications.add(component.application_id);
+  }));
+  return messages.map((message, messageIndex) => ({
+    ...message,
+    components: message.components?.filter((component, componentIndex) => component.type !== "APPLICATION_PROGRESS" || (
+      !terminalApplications.has(component.application_id)
+      && latestProgress.get(component.application_id) === `${messageIndex}:${componentIndex}`
+    )),
+  }));
+}
 
 function ServiceCard({ service, applying, onApply }: { service: ChatServiceCard; applying: boolean; onApply: (service: ChatServiceCard) => void }) {
   const { language, t } = useCitizenPreferences();
@@ -43,7 +62,9 @@ function MessageComponents({ components, applyingServiceId, reviewedApplications
 
 export function CitizenAssistant() {
   const { language, t } = useCitizenPreferences();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [launcherDismissed, setLauncherDismissed] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [applyingServiceId, setApplyingServiceId] = useState<string>();
@@ -52,8 +73,22 @@ export function CitizenAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [reviewedApplications, setReviewedApplications] = useState<Set<string>>(() => new Set());
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [messages, busy]);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const shouldFollowConversation = useRef(true);
+  const reduceMotion = useReducedMotion();
+  const visibleMessages = useMemo(() => currentProgressMessages(messages), [messages]);
+  const conversationVersion = useMemo(() => visibleMessages.map((message) => `${message.id}:${message.components?.map((component) => component.type === "APPLICATION_PROGRESS" ? `${component.type}-${component.application_id}-${component.next_stage}` : component.type).join(",") ?? ""}`).join("|"), [visibleMessages]);
+  useEffect(() => {
+    const container = conversationRef.current;
+    if (!open || !container || !shouldFollowConversation.current) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
+  }, [busy, conversationVersion, open, reduceMotion, reviewedApplications]);
+  function followNextConversationUpdate() { shouldFollowConversation.current = true; }
+  function handleConversationScroll() {
+    const container = conversationRef.current;
+    if (!container) return;
+    shouldFollowConversation.current = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+  }
   const isEmpty = messages.length <= 1;
   async function reviewComponents(progress: ApplicationProgress): Promise<ChatComponent[]> {
     if (!progress.ready_for_consent) return [];
@@ -81,6 +116,7 @@ export function CitizenAssistant() {
   }
   async function send(value = draft) {
     const text = value.trim(); if (!text || busy) return;
+    followNextConversationUpdate();
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text };
     const history = messages.filter((message) => message.id !== "welcome").slice(-12).map(({ role, content }) => ({ role, content }));
     setMessages((current) => [...current, userMessage]); setDraft(""); setBusy(true); setError(false);
@@ -92,6 +128,7 @@ export function CitizenAssistant() {
     const openFromDashboard = (event: Event) => {
       const prompt = (event as CustomEvent<{ prompt?: string }>).detail?.prompt;
       if (messages.length === 0) setMessages([{ id: "welcome", role: "assistant", content: t("chatWelcome") }]);
+      followNextConversationUpdate();
       setOpen(true);
       if (prompt) void send(prompt);
       else window.setTimeout(() => inputRef.current?.focus(), 0);
@@ -101,6 +138,7 @@ export function CitizenAssistant() {
   }, [messages.length, t]);
   async function apply(service: ChatServiceCard) {
     if (applyingServiceId) return;
+    followNextConversationUpdate();
     setApplyingServiceId(service.service_id); setError(false);
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content: t("applyForService", { name: service.name }) }]);
     try { const result = await api.startChatApplication(service.service_id); const stage = await stageComponents(result.progress); setActiveApplicationId(result.application_id); setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: stage.some((component) => component.type === "REVIEW_CARD") ? t("reviewReadyMessage") : t(result.result === "CREATED" ? "applicationStartedMessage" : "applicationResumedMessage"), components: [result.progress, ...(result.next_question ? [result.next_question] : []), ...(result.next_document ? [result.next_document] : []), ...stage] }]); }
@@ -108,6 +146,7 @@ export function CitizenAssistant() {
     finally { setApplyingServiceId(undefined); inputRef.current?.focus(); }
   }
   async function saveQuestion(question: ApplicationQuestion, value: unknown, displayValue: string) {
+    followNextConversationUpdate();
     const result = await api.setChatApplicationField(question.application_id, question.field.key, value);
     setActiveApplicationId(question.application_id);
     const fieldLabel = localizeServiceFieldLabel(question.field.key, question.field.label, language);
@@ -118,6 +157,7 @@ export function CitizenAssistant() {
     ]);
   }
   async function documentAttached(result: ApplicationDocumentActionResponse) {
+    followNextConversationUpdate();
     const stage = await stageComponents(result.progress);
     setActiveApplicationId(result.progress.application_id);
     setMessages((current) => [...current, {
@@ -132,28 +172,38 @@ export function CitizenAssistant() {
     }]);
   }
   async function consentGranted(result: GrantChatConsentResponse) {
+    followNextConversationUpdate();
     const transaction = await transactionComponents(result.progress);
     setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => component.type !== "CONSENT_CARD" || component.application_id !== result.progress.application_id) })), { id: crypto.randomUUID(), role: "assistant", content: t("consentRecordedMessage"), components: [result.review, result.progress, ...transaction] }]);
   }
   async function consentRejected(applicationId: string) {
+    followNextConversationUpdate();
     try {
       const progress = await api.getChatApplicationProgress(applicationId);
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: t("progressRefreshedMessage"), components: [progress] }]);
     } catch {}
   }
   function paymentCompleted(result: PayChatApplicationResponse) {
+    followNextConversationUpdate();
     setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => component.type !== "PAYMENT_CARD" || component.application_id !== result.progress.application_id) })), { id: crypto.randomUUID(), role: "assistant", content: t("demoPaymentCompleted"), components: [result.payment_card, result.progress, ...(result.submission_confirmation ? [result.submission_confirmation] : [])] }]);
   }
   function submissionCompleted(result: SubmitChatApplicationResponse) {
+    followNextConversationUpdate();
     const applicationId = result.progress.application_id;
     const actionable = new Set(["TEXT_QUESTION", "TEXTAREA_QUESTION", "SELECT_QUESTION", "BOOLEAN_QUESTION", "NUMBER_QUESTION", "DOCUMENT_REQUEST", "CONSENT_CARD", "PAYMENT_CARD", "SUBMISSION_CONFIRMATION"]);
     setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => !("application_id" in component && component.application_id === applicationId && actionable.has(component.type))) })), { id: crypto.randomUUID(), role: "assistant", content: t("applicationSubmittedMessage"), components: [result.progress, result.success] }]);
   }
   return <>
-    <Button className="fixed right-4 bottom-4 z-40 rounded-full shadow-lg sm:right-6 sm:bottom-6 sm:hidden" onPress={() => { if (messages.length === 0) setMessages([{ id: "welcome", role: "assistant", content: t("chatWelcome") }]); setOpen(true); }} aria-label={t("openAssistant")}><Bot aria-hidden="true" /></Button>
+    {pathname !== "/dashboard" && !launcherDismissed ? <div className="group fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 h-24 w-[88px] sm:right-6 sm:bottom-6">
+      <TooltipTrigger>
+        <Button className="absolute right-0 bottom-0 size-14 aspect-square rounded-full bg-gradient-to-br from-blue-600 via-cyan-500 to-violet-600 p-0 shadow-[0_10px_24px_oklch(0.47_0.17_257_/_24%)] ring-1 ring-white/20 transition-[transform,box-shadow,filter] duration-200 hover:-translate-y-px hover:scale-[1.03] hover:brightness-110 hover:shadow-[0_14px_28px_oklch(0.58_0.15_257_/_32%)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transform-none sm:size-[52px]" onPress={() => { if (messages.length === 0) setMessages([{ id: "welcome", role: "assistant", content: t("chatWelcome") }]); followNextConversationUpdate(); setOpen(true); }} aria-label={t("openAssistant")}><span className="grid size-9 place-items-center rounded-full bg-white/12 shadow-[inset_0_1px_1px_rgb(255_255_255_/_45%)] ring-1 ring-white/20 sm:size-8"><Sparkles className="size-5 text-white drop-shadow-sm" aria-hidden="true" /></span></Button>
+        <Tooltip>{t("assistant")}</Tooltip>
+      </TooltipTrigger>
+      <Button type="button" variant="outline" size="icon" className="absolute top-0 right-0 size-8 rounded-full border-border/80 bg-card/95 text-muted-foreground shadow-sm transition-[opacity,transform,background-color] duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:pointer-events-none sm:size-7 sm:scale-90 sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:scale-100 sm:group-hover:opacity-100 sm:group-focus-within:pointer-events-auto sm:group-focus-within:scale-100 sm:group-focus-within:opacity-100" onPress={() => setLauncherDismissed(true)} aria-label={t("hideAssistantShortcut")}><X className="size-3.5" aria-hidden="true" /></Button>
+    </div> : null}
     {open ? <Dialog isOpen={open} onOpenChange={setOpen} showCloseButton={false} className="h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[1280px] gap-0 overflow-hidden rounded-xl p-0 shadow-2xl sm:h-[88vh] sm:w-[90vw] sm:!max-w-[1280px] lg:w-[88vw] [&_[data-slot=dialog]]:grid [&_[data-slot=dialog]]:h-full [&_[data-slot=dialog]]:min-h-0 [&_[data-slot=dialog]]:grid-rows-[auto_minmax(0,1fr)] [&_[data-slot=dialog]]:gap-0" overlayClassName="z-50 bg-black/45 backdrop-blur-sm">
       <DialogHeader className="flex-row items-center justify-between border-b bg-muted/20 px-4 py-3 sm:px-6"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Sparkles className="size-4" aria-hidden="true" /></span><div><DialogTitle>{t("assistant")}</DialogTitle><p className="mt-0.5 text-xs text-muted-foreground">{t("askGovernmentService")}</p></div></div><Button variant="ghost" size="icon-sm" onPress={() => setOpen(false)} aria-label={t("closeAssistant")}><X aria-hidden="true" /></Button></DialogHeader>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden"><div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-live="polite"><div className="mx-auto w-full max-w-5xl space-y-7">{isEmpty ? <div className="flex min-h-[min(46vh,420px)] flex-col items-center justify-center px-4 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Sparkles className="size-6" aria-hidden="true" /></span><h3 className="mt-5 text-xl font-semibold">{t("governmentServicesAssistant")}</h3><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{t("assistantEntryDescription")}</p><div className="mt-6 flex flex-wrap justify-center gap-2">{[t("assistantPromptIncome"), t("assistantPromptEligibility"), t("assistantPromptKisan"), t("assistantPromptTrack")].map((prompt) => <Button key={prompt} size="sm" variant="outline" className="rounded-full" onPress={() => send(prompt)}>{prompt}</Button>)}</div></div> : messages.map((message) => message.role === "user" ? <div key={message.id} className="ml-auto w-fit max-w-[72%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground shadow-sm">{message.content}</div> : <article key={message.id} className="max-w-5xl"><div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Sparkles className="size-3.5 text-primary" aria-hidden="true" />{t("assistant")}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-foreground">{message.content}</p>{message.components ? <MessageComponents components={message.components} applyingServiceId={applyingServiceId} reviewedApplications={reviewedApplications} onApply={apply} onDocumentAttached={documentAttached} onReview={(applicationId) => setReviewedApplications((current) => new Set(current).add(applicationId))} onConsentGranted={consentGranted} onConsentRejected={consentRejected} onPaid={paymentCompleted} onSubmitted={submissionCompleted} onSave={saveQuestion} /> : null}</article>)}{busy || applyingServiceId ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><span className="assistant-thinking-dots" aria-hidden="true"><i /><i /><i /></span>{applyingServiceId ? t("startingApplication") : t("chatThinking")}</p> : null}{error ? <p role="alert" className="text-sm text-destructive">{t("chatError")}</p> : null}<div ref={bottomRef} /></div></div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden"><div ref={conversationRef} onScroll={handleConversationScroll} className="min-h-0 flex-1 overflow-y-auto scroll-pb-8 px-4 py-6 pb-10 sm:px-6" aria-live="polite"><div className="mx-auto w-full max-w-5xl space-y-7">{isEmpty ? <div className="flex min-h-[min(46vh,420px)] flex-col items-center justify-center px-4 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Sparkles className="size-6" aria-hidden="true" /></span><h3 className="mt-5 text-xl font-semibold">{t("governmentServicesAssistant")}</h3><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{t("assistantEntryDescription")}</p><div className="mt-6 flex flex-wrap justify-center gap-2">{[t("assistantPromptIncome"), t("assistantPromptEligibility"), t("assistantPromptKisan"), t("assistantPromptTrack")].map((prompt) => <Button key={prompt} size="sm" variant="outline" className="rounded-full" onPress={() => send(prompt)}>{prompt}</Button>)}</div></div> : visibleMessages.map((message) => message.role === "user" ? <div key={message.id} className="ml-auto w-fit max-w-[72%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-6 text-primary-foreground shadow-sm">{message.content}</div> : <article key={message.id} className="max-w-5xl"><div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><Sparkles className="size-3.5 text-primary" aria-hidden="true" />{t("assistant")}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-foreground">{message.content}</p>{message.components ? <MessageComponents components={message.components} applyingServiceId={applyingServiceId} reviewedApplications={reviewedApplications} onApply={apply} onDocumentAttached={documentAttached} onReview={(applicationId) => { followNextConversationUpdate(); setReviewedApplications((current) => new Set(current).add(applicationId)); }} onConsentGranted={consentGranted} onConsentRejected={consentRejected} onPaid={paymentCompleted} onSubmitted={submissionCompleted} onSave={saveQuestion} /> : null}</article>)}{busy || applyingServiceId ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><span className="assistant-thinking-dots" aria-hidden="true"><i /><i /><i /></span>{applyingServiceId ? t("startingApplication") : t("chatThinking")}</p> : null}{error ? <p role="alert" className="text-sm text-destructive">{t("chatError")}</p> : null}</div></div>
         <form className="border-t bg-background/95 px-4 py-3 supports-backdrop-filter:bg-background/80 sm:px-6" onSubmit={(event) => { event.preventDefault(); send(); }}><div className="assistant-modal-composer mx-auto flex w-full max-w-5xl items-end gap-2"><label className="sr-only" htmlFor="citizen-assistant-input">{t("askGovernmentService")}</label><Sparkles className="mb-3 ml-1 size-4 shrink-0 text-primary/80" aria-hidden="true" /><Textarea id="citizen-assistant-input" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder={t("askGovernmentService")} rows={2} className="min-h-11 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0" disabled={busy} /><Button type="submit" size="icon" className="mb-0.5 shrink-0 rounded-full" isDisabled={busy || !draft.trim()} aria-label={t("send")}><Send aria-hidden="true" /></Button></div></form>
       </div>
     </Dialog> : null}

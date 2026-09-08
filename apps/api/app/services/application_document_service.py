@@ -66,6 +66,59 @@ def document_choice(document: Document) -> AvailableDocument:
     )
 
 
+def auto_attach_compatible_my_documents(db: Session, application: Application) -> list[Document]:
+    """Persist the normal-form reuse choice for unambiguous saved documents.
+
+    A saved document belongs to the citizen's document library, not an individual
+    application.  The normal consent screen preselects a sole compatible saved
+    document; doing that resolution here makes progress, the form, and Assistant
+    all agree before a document request is rendered.
+    """
+    if application.status not in application_engine.EDITABLE_STATUSES:
+        return []
+
+    # Serialize repeated progress calculations on PostgreSQL. SQLite ignores the
+    # lock, while the application/document uniqueness constraint remains the
+    # final idempotency guard.
+    db.scalar(select(Application.id).where(Application.id == application.id).with_for_update())
+    attached_ids = {item.document_id for item in application.documents}
+    attached = [item.document for item in application.documents if item.document is not None]
+    saved_documents = list(
+        db.scalars(
+            select(Document)
+            .where(
+                Document.user_id == application.user_id,
+                Document.source == DocumentSource.PROFILE_UPLOAD,
+            )
+            .order_by(Document.created_at.desc(), Document.id)
+        ).all()
+    )
+    attached_now: list[Document] = []
+    for requirement in application.service.document_requirements:
+        if not requirement.required or any(
+            application_engine.document_type_matches(requirement.document_type, document.document_type)
+            for document in attached
+        ):
+            continue
+        candidates = [
+            document for document in saved_documents
+            if application_engine.document_type_matches(requirement.document_type, document.document_type)
+        ]
+        # This intentionally mirrors the normal form's automatic-selection
+        # policy: reuse only when its saved-document choice is unambiguous.
+        if len(candidates) != 1:
+            continue
+        document = candidates[0]
+        if document.id not in attached_ids:
+            db.add(ApplicationDocument(application_id=application.id, document_id=document.id))
+            attached_ids.add(document.id)
+            attached.append(document)
+            attached_now.append(document)
+    if attached_now:
+        db.commit()
+    return attached_now
+
+
 def get_next_document_request(db: Session, application_id: str) -> DocumentRequest | None:
     """Return candidates only for the first canonical missing requirement."""
     application = application_engine.get_application(db, application_id)
@@ -258,7 +311,10 @@ async def upload_and_attach_document(
             requirement.id,
             document.id,
             commit=False,
-            require_current=require_current,
+            # The current-requirement check above intentionally happens before
+            # the upload becomes a reusable My Documents record. Otherwise a
+            # progress refresh could auto-reuse that in-flight record first.
+            require_current=False,
         )
         db.commit()
         replaced_stored_filename = getattr(document, "_replaced_stored_filename", None)
@@ -281,6 +337,7 @@ __all__ = [
     "UnsupportedApplicationDocumentRequirementError",
     "attach_document",
     "attach_my_documents",
+    "auto_attach_compatible_my_documents",
     "document_choice",
     "get_next_document_request",
     "require_editable_application",

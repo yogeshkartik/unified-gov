@@ -7,20 +7,20 @@ import { Button } from "@/components/ui/button";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
 import { cn } from "@/lib/utils";
 
-const accept = ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp";
-const acceptedExtensions = new Set(["pdf", "jpg", "jpeg", "png", "webp"]);
+const defaultAccept = ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp";
+const defaultAcceptedExtensions = ["pdf", "jpg", "jpeg", "png", "webp"];
 const maxBytes = 5 * 1024 * 1024;
 
 function formatSize(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function isAccepted(file: File) {
+function isAccepted(file: File, acceptedExtensions: readonly string[]) {
   const extension = file.name.split(".").pop()?.toLowerCase();
-  return Boolean(extension && acceptedExtensions.has(extension));
+  return Boolean(extension && acceptedExtensions.includes(extension));
 }
 
-export function DocumentFilePicker({ file, onChange, id = "document-file" }: { file?: File; onChange: (file?: File) => void; id?: string }) {
+export function DocumentFilePicker({ file, onChange, id = "document-file", accept = defaultAccept, acceptedExtensions = defaultAcceptedExtensions, unsupportedMessage }: { file?: File; onChange: (file?: File) => void; id?: string; accept?: string; acceptedExtensions?: readonly string[]; unsupportedMessage?: string }) {
   const { t } = useCitizenPreferences();
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
@@ -42,8 +42,8 @@ export function DocumentFilePicker({ file, onChange, id = "document-file" }: { f
   function choose(nextFile?: File) {
     setDragActive(false);
     if (!nextFile) return;
-    if (!isAccepted(nextFile)) {
-      setError(t("unsupportedFile"));
+    if (!isAccepted(nextFile, acceptedExtensions)) {
+      setError(unsupportedMessage ?? t("unsupportedFile"));
       updatePreview();
       onChange(undefined);
       return;

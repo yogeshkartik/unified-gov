@@ -22,6 +22,7 @@ import { api } from "@/src/lib/api";
 import { profilePhotoChangedEvent } from "@/src/lib/profile-photo";
 import type { CitizenProfile, Document } from "@/src/types";
 import { useCitizenPreferences } from "@/components/providers/citizen-preferences";
+import { CitizenAssistant } from "@/components/chat/citizen-assistant";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -117,6 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <DemoDataNotice />
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">{children}</main>
+        <CitizenAssistant />
       </div>
     </div>
   );

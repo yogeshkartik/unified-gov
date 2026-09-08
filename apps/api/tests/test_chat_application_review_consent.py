@@ -264,6 +264,10 @@ def test_stale_review_cannot_bypass_document_revalidation(db: Session) -> None:
         for item in application.documents
         if item.document.document_type == "IDENTITY_DOCUMENT"
     )
+    # Removing only the application link is recoverable now: progress correctly
+    # reuses the citizen's still-saved document. Remove the source document too
+    # to verify a stale review cannot bypass a genuinely missing requirement.
+    db.delete(identity.document)
     db.delete(identity)
     db.commit()
     with pytest.raises(HTTPException) as error:
