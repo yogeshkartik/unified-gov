@@ -135,7 +135,7 @@ html[data-text-size="large"] { font-size: 18px; }
 html.high-contrast { --background: oklch(1 0 0); --foreground: oklch(0 0 0); --primary: oklch(0 0 0); --primary-foreground: oklch(1 0 0); --muted-foreground: oklch(0.2 0 0); --border: oklch(0.2 0 0); --ring: oklch(0 0 0); }
 html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 
-.assistant-entry { position: relative; overflow: hidden; border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border)); border-radius: var(--radius-2xl); background: color-mix(in oklab, var(--card) 94%, oklch(0.94 0.04 250)); padding: 1.25rem; box-shadow: 0 10px 30px oklch(0.47 0.17 257 / 7%); }
+.assistant-entry { position: relative; overflow: hidden; border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border)); border-radius: var(--radius-2xl); background: linear-gradient(135deg, oklch(0.95 0.035 215 / 72%), var(--card) 48%, oklch(0.96 0.03 300 / 64%)); padding: 1.25rem; box-shadow: 0 10px 30px oklch(0.47 0.17 257 / 7%); }
 .assistant-entry::before { content: ""; position: absolute; inset: -2px; z-index: 0; border-radius: inherit; background: linear-gradient(110deg, oklch(0.58 0.15 257 / 0%), oklch(0.72 0.13 215 / 42%), oklch(0.66 0.16 300 / 36%), oklch(0.58 0.15 257 / 0%)); background-size: 220% 100%; opacity: 0; filter: blur(8px); transition: opacity 200ms ease; pointer-events: none; }
 .assistant-entry > * { position: relative; z-index: 1; }
 .assistant-entry:hover::before, .assistant-entry:focus-within::before { opacity: .8; animation: assistant-glow 4s ease-in-out infinite; }
@@ -147,6 +147,12 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .assistant-entry-composer:hover .assistant-entry-send, .assistant-entry-composer:focus-visible .assistant-entry-send { transform: scale(1.06); filter: brightness(1.08); }
 .assistant-entry-chip { border: 1px solid var(--border); border-radius: 999px; background: color-mix(in oklab, var(--card) 88%, oklch(0.94 0.04 250)); padding: .4rem .75rem; font-size: .75rem; color: var(--muted-foreground); transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease; }
 .assistant-entry-chip:hover, .assistant-entry-chip:focus-visible { border-color: color-mix(in oklab, var(--primary) 32%, var(--border)); background: color-mix(in oklab, var(--primary) 8%, var(--card)); color: var(--foreground); outline: none; }
+.assistant-entry-chip--violet { border-color: oklch(0.88 0.05 300); background: oklch(0.97 0.02 300); color: oklch(0.42 0.12 300); }
+.assistant-entry-chip--amber { border-color: oklch(0.9 0.06 78); background: oklch(0.98 0.025 78); color: oklch(0.46 0.11 70); }
+.assistant-entry-chip--cyan { border-color: oklch(0.88 0.05 215); background: oklch(0.97 0.02 215); color: oklch(0.43 0.1 215); }
+.dark .assistant-entry-chip--violet { border-color: oklch(0.38 0.08 300); background: oklch(0.25 0.045 300); color: oklch(0.8 0.09 300); }
+.dark .assistant-entry-chip--amber { border-color: oklch(0.4 0.08 78); background: oklch(0.27 0.04 78); color: oklch(0.83 0.1 78); }
+.dark .assistant-entry-chip--cyan { border-color: oklch(0.38 0.07 215); background: oklch(0.24 0.04 215); color: oklch(0.8 0.08 215); }
 @keyframes assistant-glow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 .assistant-modal-composer { border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border)); border-radius: 1rem; background: color-mix(in oklab, var(--card) 92%, oklch(0.94 0.04 250)); padding: .5rem .625rem; box-shadow: 0 3px 12px oklch(0.47 0.17 257 / 7%); transition: border-color 180ms ease, box-shadow 180ms ease; }
 .assistant-modal-composer:focus-within { border-color: color-mix(in oklab, var(--primary) 42%, var(--border)); box-shadow: 0 0 0 3px oklch(0.72 0.13 215 / 14%), 0 5px 16px oklch(0.47 0.17 257 / 10%); }
