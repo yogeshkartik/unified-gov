@@ -295,7 +295,29 @@ export interface ApplicationDocumentActionResponse {
   progress: ApplicationProgress;
   next_document: DocumentRequest | null;
 }
-export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest;
+export interface ReviewValue { key: string; label: string; value: unknown; field_type: string; options: string[] | null; }
+export interface ReviewDocument { requirement_id: string; label: string; document_type: string; name: string; source: string; }
+export interface ApplicationReview {
+  type: "REVIEW_CARD";
+  application_id: string;
+  service: { id: string; name: string; department: string };
+  applicant_information: ReviewValue[];
+  application_details: ReviewValue[];
+  documents: ReviewDocument[];
+  payment: { required: boolean; amount: number; currency: string; status: string };
+  consent: { granted: boolean; status: string };
+}
+export interface ConsentCard {
+  type: "CONSENT_CARD";
+  application_id: string;
+  purpose: string;
+  data_categories: string[];
+  document_types: string[];
+  consent_text_key: "APPLICATION_PROCESSING_CONSENT";
+}
+export interface ApplicationReviewResponse { review: ApplicationReview; consent_card: ConsentCard | null; }
+export interface GrantChatConsentResponse { progress: ApplicationProgress; review: ApplicationReview; }
+export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest | ApplicationReview | ConsentCard;
 export interface ChatResponse { message: string; components: ChatComponent[]; }
 export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
 export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }

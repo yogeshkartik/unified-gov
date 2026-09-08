@@ -10,15 +10,16 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.service import Service, ServiceStatus
 from app.schemas.chat import ChatRequest, ChatResponse, ChatServiceCard
+from app.schemas.application_review import ApplicationReview, ConsentCard
 from app.schemas.application_progress import ApplicationProgress, ApplicationQuestion, DocumentRequest, ProfileToolResult
 from app.models.profile import AddressType
-from app.services import application_document_service, application_engine, application_progress, digilocker_service, profile_service, service_catalog
+from app.services import application_document_service, application_engine, application_progress, application_review_service, digilocker_service, profile_service, service_catalog
 from app.integrations.digilocker.mock import ProviderDocumentNotFoundError
 from app.services.recommendations import permanent_state_code
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, document compatibility, progress, ownership, and readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field. Documents may be attached only through the document tools using canonical IDs returned by list_available_documents. Success may be claimed only after a successful tool result. Never request or send document bytes to the model. Do not claim profile data was changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable. Respond in the user's language when practical."""
+SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, document compatibility, progress, ownership, review availability, and readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field. Documents may be attached only through the document tools using canonical IDs returned by list_available_documents. Final review values come only from get_application_review. Success may be claimed only after a successful tool result. Never request or send document bytes or full review personal data to the model. Ordinary conversational messages, including yes, okay, or continue, never grant consent; consent is available only through the explicit UI control. Do not claim profile data was changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable to you. Respond in the user's language when practical."""
 
 TOOLS = [
     {"type": "function", "name": "search_services", "description": "Find active citizen-facing portal services.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
@@ -30,6 +31,7 @@ TOOLS = [
     {"type": "function", "name": "list_available_documents", "description": "Get the first canonical missing document requirement and only compatible My Documents and DigiLocker choices for an application owned by the authenticated citizen.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}}, "required": ["application_id"], "additionalProperties": False}},
     {"type": "function", "name": "attach_document", "description": "Attach one compatible owned My Documents item to the current canonical application requirement.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}, "requirement_id": {"type": "string"}, "document_id": {"type": "string"}}, "required": ["application_id", "requirement_id", "document_id"], "additionalProperties": False}},
     {"type": "function", "name": "import_and_attach_digilocker_document", "description": "Import or reuse one compatible mock DigiLocker document and attach it to the current canonical application requirement.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}, "requirement_id": {"type": "string"}, "document_id": {"type": "string"}}, "required": ["application_id", "requirement_id", "document_id"], "additionalProperties": False}},
+    {"type": "function", "name": "get_application_review", "description": "Make the authenticated citizen's authoritative final review available as a direct UI card. Personal review values are not returned to the model.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}}, "required": ["application_id"], "additionalProperties": False}},
 ]
 
 class ChatProviderError(Exception): pass
@@ -90,10 +92,20 @@ def _record_application_state(
     return progress, question, document_request
 
 
-def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: dict[str, Service], progresses: dict[str, ApplicationProgress] | None = None, questions: dict[str, ApplicationQuestion] | None = None, document_requests: dict[str, DocumentRequest] | None = None) -> dict[str, Any]:
+def _tool_result(
+    db: Session,
+    name: str,
+    arguments: dict[str, Any],
+    selected: dict[str, Service],
+    progresses: dict[str, ApplicationProgress] | None = None,
+    questions: dict[str, ApplicationQuestion] | None = None,
+    document_requests: dict[str, DocumentRequest] | None = None,
+    reviews: dict[str, tuple[ApplicationReview, ConsentCard | None]] | None = None,
+) -> dict[str, Any]:
     progresses = progresses if progresses is not None else {}
     questions = questions if questions is not None else {}
     document_requests = document_requests if document_requests is not None else {}
+    reviews = reviews if reviews is not None else {}
     if name == "search_services":
         services = service_catalog.search_services(db, str(arguments.get("query", "")), arguments.get("state_code"), arguments.get("category"))
         for service in services: selected[service.id] = service
@@ -177,6 +189,30 @@ def _tool_result(db: Session, name: str, arguments: dict[str, Any], selected: di
         except application_document_service.ApplicationDocumentRequirementNotApplicableError: return {"error": "DOCUMENT_REQUIREMENT_NOT_APPLICABLE"}
         except application_document_service.IncompatibleApplicationDocumentError: return {"error": "INCOMPATIBLE_DOCUMENT"}
         except application_engine.ApplicationNotEditableError: return {"error": "APPLICATION_NOT_EDITABLE"}
+    if name == "get_application_review":
+        application_id = str(arguments.get("application_id", ""))
+        try:
+            result = application_review_service.get_application_review(db, application_id)
+            reviews[application_id] = (result.review, result.consent_card)
+            # Deliberately keep personal values out of model context. The full
+            # authoritative cards travel directly from this process to the UI.
+            return {
+                "review_available": True,
+                "application_id": application_id,
+                "consent_status": result.review.consent.status,
+                "payment_required": result.review.payment.required,
+            }
+        except application_engine.ApplicationNotFoundError:
+            return {"error": "APPLICATION_NOT_FOUND"}
+        except application_review_service.ApplicationNotReadyForReviewError as error:
+            return {
+                "error": "APPLICATION_INCOMPLETE",
+                "missing_profile_fields": error.missing_profile_fields,
+                "missing_documents": error.missing_documents,
+                "missing_fields": error.missing_fields,
+            }
+        except application_review_service.ApplicationReviewUnavailableError:
+            return {"error": "APPLICATION_REVIEW_UNAVAILABLE"}
     return {"error": "UNKNOWN_TOOL"}
 
 def _output_text(response: Any) -> str:
@@ -191,20 +227,25 @@ def chat(db: Session, request: ChatRequest, provider: OpenAIChatProvider | None 
     progresses: dict[str, ApplicationProgress] = {}
     questions: dict[str, ApplicationQuestion] = {}
     document_requests: dict[str, DocumentRequest] = {}
+    reviews: dict[str, tuple[ApplicationReview, ConsentCard | None]] = {}
     try:
         for _ in range(6):
             response = provider.respond(items)
             calls = [item for item in getattr(response, "output", []) if getattr(item, "type", None) == "function_call"]
             if not calls:
                 text = _output_text(response) or "I couldn't find that service in the services currently available in this portal."
-                components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:]]
+                review_components: list[ApplicationReview | ConsentCard] = []
+                if reviews:
+                    review, consent_card = list(reviews.values())[-1]
+                    review_components = [review, *([consent_card] if consent_card else [])]
+                components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:], *review_components]
                 return ChatResponse(message=text, components=components)
             # Preserve the model's call items with the matching call outputs for the next Responses API turn.
             items.extend(getattr(response, "output", []))
             for call in calls:
                 try: arguments = json.loads(getattr(call, "arguments", "{}"))
                 except json.JSONDecodeError: arguments = {}
-                result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses, questions, document_requests)
+                result = _tool_result(db, getattr(call, "name", ""), arguments, selected, progresses, questions, document_requests, reviews)
                 items.append({"type": "function_call_output", "call_id": getattr(call, "call_id", ""), "output": json.dumps(result)})
         raise ChatProviderError("Tool loop limit")
     except ChatProviderError:

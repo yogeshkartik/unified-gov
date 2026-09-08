@@ -240,6 +240,10 @@ export function localizeServiceFieldLabel(fieldKey: string, fallback: string, la
   return (({ hi: hindiFields, mr: marathiFields } as Partial<Record<Language, Record<string, string>>>)[language] ?? regionalFields[language])?.[fieldKey] ?? fallback;
 }
 
+export function localizeServiceFieldOption(value: string, language: Language) {
+  return (({ hi: hindiOptions, mr: marathiOptions } as Partial<Record<Language, Record<string, string>>>)[language] ?? commonRegionalOptions[language])?.[value] ?? value;
+}
+
 export function localizeServiceOption(option: string, language: Language) {
   return (({ hi: hindiOptions, mr: marathiOptions } as Partial<Record<Language, Record<string, string>>>)[language] ?? commonRegionalOptions[language])?.[option] ?? option;
 }

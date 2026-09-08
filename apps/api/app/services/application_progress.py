@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.application import ApplicationSnapshot
 from app.models.consent import Consent, ConsentStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.profile import DocumentSource, DocumentType
@@ -83,9 +82,10 @@ def get_application_progress(db: Session, application_id: str) -> ApplicationPro
     requirements_complete = not profile.missing and not fields.missing and not documents.missing
     ready_for_consent = requirements_complete
     ready_for_review = requirements_complete and consent_granted
-    has_snapshot = db.scalar(select(ApplicationSnapshot.id).where(ApplicationSnapshot.application_id == application.id)) is not None
-    ready_for_payment = ready_for_review and has_snapshot
-    ready_for_submission = ready_for_payment and (not payment_required or successful_payment is not None)
+    ready_for_payment = ready_for_review and payment_required
+    ready_for_submission = ready_for_review and (
+        not payment_required or successful_payment is not None
+    )
     status = str(application.status)
     if status in FINAL_STATUSES:
         next_stage = "COMPLETE"
@@ -97,8 +97,6 @@ def get_application_progress(db: Session, application_id: str) -> ApplicationPro
         next_stage = "DOCUMENTS"
     elif not consent_granted:
         next_stage = "CONSENT"
-    elif not has_snapshot:
-        next_stage = "REVIEW"
     elif payment_required and successful_payment is None:
         next_stage = "PAYMENT"
     else:

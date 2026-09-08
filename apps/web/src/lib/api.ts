@@ -19,6 +19,9 @@ import type {
   SetApplicationFieldResponse,
   ApplicationDocumentActionResponse,
   DocumentRequest,
+  ApplicationProgress,
+  ApplicationReviewResponse,
+  GrantChatConsentResponse,
 } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -106,6 +109,9 @@ export const api = {
   attachChatApplicationDocument: (applicationId: string, requirementId: string, documentId: string) => request<ApplicationDocumentActionResponse>("/api/chat/actions/attach-document", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, requirement_id: requirementId, document_id: documentId }) }),
   importChatDigiLockerDocument: (applicationId: string, requirementId: string, documentId: string) => request<ApplicationDocumentActionResponse>("/api/chat/actions/import-digilocker-document", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, requirement_id: requirementId, document_id: documentId }) }),
   uploadChatApplicationDocument: (data: FormData) => request<ApplicationDocumentActionResponse>("/api/chat/actions/upload-document", { method: "POST", body: data }),
+  getChatApplicationProgress: (applicationId: string) => request<ApplicationProgress>("/api/chat/actions/get-application-progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
+  getChatApplicationReview: (applicationId: string) => request<ApplicationReviewResponse>("/api/chat/actions/get-application-review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
+  grantChatApplicationConsent: (applicationId: string) => request<GrantChatConsentResponse>("/api/chat/actions/grant-consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, consent_confirmed: true }) }),
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
   uploadProfilePhoto: (data: FormData) => request<Document>("/api/profile/photo", { method: "PUT", body: data }),

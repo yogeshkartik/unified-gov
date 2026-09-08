@@ -7,7 +7,14 @@ from app.core.database import get_db
 from app.integrations.digilocker.mock import ProviderDocumentNotFoundError
 from app.models.profile import Document
 from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.application_review import (
+    ApplicationReviewRequest,
+    ApplicationReviewResponse,
+    GrantChatConsentRequest,
+    GrantChatConsentResponse,
+)
 from app.schemas.application_progress import (
+    ApplicationProgress,
     ApplicationDocumentActionRequest,
     ApplicationDocumentActionResponse,
     DocumentRequest,
@@ -21,6 +28,8 @@ from app.services import (
     application_document_service,
     application_engine,
     application_progress,
+    application_review_service,
+    consent_service,
     digilocker_service,
     profile_service,
 )
@@ -35,6 +44,86 @@ def send_chat_message(payload: ChatRequest, db: Session = Depends(get_db)) -> Ch
         return chat(db, payload)
     except ChatProviderError as error:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail={"code": "CHAT_UNAVAILABLE"}) from error
+
+
+def _incomplete_detail(error: Exception) -> dict[str, object]:
+    return {
+        "code": "APPLICATION_INCOMPLETE",
+        "message": "Complete the missing application requirements before continuing.",
+        "missing_profile_fields": getattr(error, "missing_profile_fields", []),
+        "missing_documents": getattr(error, "missing_documents", []),
+        "missing_fields": getattr(error, "missing_fields", []),
+    }
+
+
+@router.post(
+    "/chat/actions/get-application-review",
+    response_model=ApplicationReviewResponse,
+)
+def get_application_review(
+    payload: ApplicationReviewRequest, db: Session = Depends(get_db)
+) -> ApplicationReviewResponse:
+    try:
+        return application_review_service.get_application_review(
+            db, payload.application_id
+        )
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+    except application_review_service.ApplicationNotReadyForReviewError as error:
+        raise HTTPException(409, detail=_incomplete_detail(error)) from error
+    except application_review_service.ApplicationReviewUnavailableError as error:
+        raise HTTPException(
+            409, detail={"code": "APPLICATION_REVIEW_UNAVAILABLE"}
+        ) from error
+
+
+@router.post(
+    "/chat/actions/get-application-progress",
+    response_model=ApplicationProgress,
+)
+def get_chat_application_progress(
+    payload: ApplicationReviewRequest, db: Session = Depends(get_db)
+) -> ApplicationProgress:
+    try:
+        return application_progress.get_application_progress(db, payload.application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+
+
+@router.post(
+    "/chat/actions/grant-consent",
+    response_model=GrantChatConsentResponse,
+)
+def grant_chat_consent(
+    payload: GrantChatConsentRequest, db: Session = Depends(get_db)
+) -> GrantChatConsentResponse:
+    try:
+        consent_service.grant_consent(db, payload.application_id)
+        review = application_review_service.get_application_review(
+            db, payload.application_id
+        ).review
+        return GrantChatConsentResponse(
+            progress=application_progress.get_application_progress(
+                db, payload.application_id
+            ),
+            review=review,
+        )
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+    except consent_service.ApplicationIncompleteForConsentError as error:
+        raise HTTPException(409, detail=_incomplete_detail(error)) from error
+    except consent_service.ApplicationNotEligibleForConsentError as error:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "APPLICATION_NOT_ELIGIBLE_FOR_CONSENT",
+                "message": "This application cannot receive consent in its current stage.",
+            },
+        ) from error
+    except application_review_service.ApplicationReviewUnavailableError as error:
+        raise HTTPException(
+            409, detail={"code": "APPLICATION_REVIEW_UNAVAILABLE"}
+        ) from error
 
 
 @router.post("/chat/actions/start-application", response_model=StartApplicationResponse)
