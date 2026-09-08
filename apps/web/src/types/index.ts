@@ -244,6 +244,21 @@ export interface MockDigiLockerDocument {
   issuer: string;
 }
 
+export interface ChatServiceCard {
+  type: "SERVICE_CARD";
+  service_id: string;
+  name: string;
+  description: string;
+  department: string;
+  category: string;
+  government_level: string;
+  jurisdiction_code: string;
+  fee: number;
+  currency: string;
+}
+
+export interface ChatResponse { message: string; components: ChatServiceCard[]; }
+
 export interface CitizenApplicationSummary {
   id: string;
   service_id: string;

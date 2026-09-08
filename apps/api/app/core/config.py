@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./unified_gov.db"
     frontend_url: str = "http://localhost:3000"
     upload_dir: str = str(Path(__file__).resolve().parents[2] / "storage" / "uploads")
+    openai_api_key: str | None = None
+    openai_chat_model: str = "gpt-5-mini"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

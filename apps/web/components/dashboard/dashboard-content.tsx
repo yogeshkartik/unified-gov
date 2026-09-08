@@ -14,6 +14,7 @@ import { localizeService, localizeServiceName } from "@/src/i18n/service-localiz
 import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import type { Language } from "@/src/i18n/languages";
 import { localeFor } from "@/src/i18n/locale-format";
+import { CitizenAssistant } from "@/components/chat/citizen-assistant";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
@@ -78,7 +79,7 @@ export function DashboardContent() {
   const formatDate = (value: string) => new Intl.DateTimeFormat(localeFor(language), { day: "numeric", month: "short" }).format(new Date(value));
   const applicationSummary = draftCount > 0 ? t("dashboardApplicationsWithDrafts", { drafts: draftCount, submitted: submittedCount }) : t("dashboardApplicationsSubmitted", { submitted: submittedCount });
 
-  return <div className="space-y-6">
+  return <><div className="space-y-6">
     <Reveal delay={0}>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-sm font-medium text-muted-foreground">{t("dashboard")}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">{t("welcome", { name: firstName })}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{complete ? t("dashboardReadyDescription") : t("dashboardIncompleteDescription", { completion })}</p></div>
@@ -107,7 +108,7 @@ export function DashboardContent() {
         <div className="overflow-hidden rounded-xl border bg-card">{popularServices.map((service, index) => { const Icon = serviceIcon(service.category); return <Link key={service.id} href={`/services/${service.id}`} className={`group grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${index > 0 ? "border-t" : ""}`}><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold leading-5">{service.name}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{service.category}</p></div><span className="flex items-center gap-1 text-xs font-medium text-primary">{t("view")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></span></Link>; })}</div>
       </section>
     </Reveal>
-  </div>;
+  </div><CitizenAssistant /></>;
 }
 
 function SummaryLink({ href, icon: Icon, title, detail, action, tone }: { href: string; icon: typeof CheckCircle2; title: string; detail: string; action: string; tone: string }) {
