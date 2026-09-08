@@ -15,6 +15,7 @@ import { applicationFlowPath, applicationFlowSteps } from "@/components/applicat
 import type { Language } from "@/src/i18n/languages";
 import { localeFor } from "@/src/i18n/locale-format";
 import { categoryAccent, categoryHoverAccent } from "@/components/services/category-accent";
+import { permanentAddressJurisdiction } from "@/src/i18n/jurisdictions";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
@@ -28,9 +29,21 @@ function applicationStep(status: ApplicationSummary["status"]) {
 
 function featuredServices(services: GovernmentService[]) {
   const sorted = [...services].sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+  const stateServices = sorted.filter((service) => service.government_level === "STATE");
+  const centralServices = sorted.filter((service) => service.government_level === "CENTRAL");
   const selected: GovernmentService[] = [];
   const selectedIds = new Set<string>();
-  for (const service of sorted) { if (!selected.some((item) => item.category === service.category)) { selected.push(service); selectedIds.add(service.id); } if (selected.length === 4) return selected; }
+
+  // Keep state-specific recommendations prominent, while retaining a nationally available service.
+  for (const key of ["CASTE_CERTIFICATE", "STATE_MERIT_SCHOLARSHIP", "STATE_RECRUITMENT_EXAM"]) {
+    const service = stateServices.find((item) => item.service_key === key);
+    if (service) { selected.push(service); selectedIds.add(service.id); }
+  }
+  for (const service of centralServices) {
+    if (!selectedIds.has(service.id)) { selected.push(service); selectedIds.add(service.id); }
+    if (selected.length === 4) return selected;
+  }
+  for (const service of stateServices) { if (!selected.some((item) => item.category === service.category)) { selected.push(service); selectedIds.add(service.id); } if (selected.length === 4) return selected; }
   for (const service of sorted) { if (!selectedIds.has(service.id)) selected.push(service); if (selected.length === 4) break; }
   return selected;
 }
@@ -60,7 +73,17 @@ export function DashboardContent() {
   const { language, t } = useCitizenPreferences();
   const [data, setData] = useState<DashboardData>();
   const [error, setError] = useState(false);
-  useEffect(() => { Promise.all([api.getProfile(), api.getServices(), api.getDocuments(), api.getApplications()]).then(([profile, services, documents, applications]) => setData({ profile, services, documents, applications })).catch(() => setError(true)); }, []);
+  useEffect(() => {
+    let active = true;
+    api.getProfile().then((profile) => Promise.all([
+      api.getServices(permanentAddressJurisdiction(profile) ?? "IN"),
+      api.getDocuments(),
+      api.getApplications(),
+    ]).then(([services, documents, applications]) => ({ profile, services, documents, applications })))
+      .then((result) => { if (active) setData(result); })
+      .catch(() => { if (active) setError(true); });
+    return () => { active = false; };
+  }, []);
   const localizedServices = useMemo(() => (data?.services ?? []).map((service) => localizeService(service, language)), [data?.services, language]);
   const popularServices = useMemo(() => featuredServices(localizedServices), [localizedServices]);
   if (error) return <ErrorState>{t("dashboardLoadError")}</ErrorState>;

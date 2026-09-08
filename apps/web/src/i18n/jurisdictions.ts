@@ -1,4 +1,5 @@
 import type { Language } from "@/src/i18n/languages";
+import type { CitizenProfile } from "@/src/types";
 
 export const serviceJurisdictions = [
   { code: "IN", names: { en: "All India", hi: "अखिल भारतीय", mr: "संपूर्ण भारत", kn: "ಅಖಿಲ ಭಾರತ", ta: "அகில இந்தியா", te: "అఖిల భారతదేశం", bn: "সারা ভারত" } },
@@ -29,6 +30,11 @@ export function profileStateToJurisdiction(state: string | null | undefined): Se
     return normalized as ServiceJurisdictionCode;
   }
   return profileStateAliases[normalized];
+}
+
+/** Resolves the authoritative permanent address into a supported catalog jurisdiction. */
+export function permanentAddressJurisdiction(profile: Pick<CitizenProfile, "addresses">): ServiceJurisdictionCode | undefined {
+  return profileStateToJurisdiction(profile.addresses.find((address) => address.type === "PERMANENT")?.state);
 }
 
 export function jurisdictionName(code: string, language: Language) {
