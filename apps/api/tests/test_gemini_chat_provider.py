@@ -22,6 +22,7 @@ from app.services.chat_service import (
     ChatRateLimitError,
     GeminiChatProvider,
     OpenAIChatProvider,
+    SYSTEM_INSTRUCTIONS,
     _model_progress,
     create_chat_provider,
     chat,
@@ -89,6 +90,13 @@ def test_gemini_reads_interaction_output_text(monkeypatch) -> None:
     provider = GeminiChatProvider(client=SimpleNamespace(interactions=TextInteractions()))
     response = provider.respond([{"role": "user", "content": "Hello"}])
     assert response.output_text == "Hello from Gemini."
+
+
+def test_shared_instruction_sets_helpful_service_response_style() -> None:
+    assert "two short plain-text paragraphs" in SYSTEM_INSTRUCTIONS
+    assert "directly answer the citizen's actual question" in SYSTEM_INSTRUCTIONS
+    assert "Do not invent eligibility" in SYSTEM_INSTRUCTIONS
+    assert "During an active application, keep responses fast and conversational" in SYSTEM_INSTRUCTIONS
 
 
 def test_gemini_tool_loop_returns_authoritative_cards(db, monkeypatch) -> None:
