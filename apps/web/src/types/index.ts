@@ -257,7 +257,28 @@ export interface ChatServiceCard {
   currency: string;
 }
 
-export interface ChatResponse { message: string; components: ChatServiceCard[]; }
+export interface ProgressField { key: string; label: string; field_type: string; required: boolean; options: string[] | null; value?: unknown; }
+export interface ProgressDocument { requirement_id: string; document_type: string; label: string; required: boolean; document_id: string | null; }
+export interface ApplicationProgress {
+  type: "APPLICATION_PROGRESS";
+  application_id: string;
+  service: { id: string; name: string; department: string };
+  status: string;
+  profile: { satisfied: string[]; missing: string[] };
+  application_fields: { satisfied: ProgressField[]; missing: ProgressField[] };
+  documents: { satisfied: ProgressDocument[]; missing: ProgressDocument[] };
+  consent: { required: boolean; granted: boolean; status: string };
+  payment: { required: boolean; amount: number; currency: string; status: string };
+  submission_status: string;
+  ready_for_review: boolean;
+  ready_for_consent: boolean;
+  ready_for_payment: boolean;
+  ready_for_submission: boolean;
+  next_stage: string;
+}
+export type ChatComponent = ChatServiceCard | ApplicationProgress;
+export interface ChatResponse { message: string; components: ChatComponent[]; }
+export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; }
 
 export interface CitizenApplicationSummary {
   id: string;

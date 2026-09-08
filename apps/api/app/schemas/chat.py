@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.application_progress import ApplicationProgress
+
 
 class ChatHistoryMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -12,6 +14,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=12)
     locale: str = Field(default="en", max_length=10)
+    active_application_id: str | None = Field(default=None, max_length=36)
 
 
 class ChatServiceCard(BaseModel):
@@ -29,4 +32,4 @@ class ChatServiceCard(BaseModel):
 
 class ChatResponse(BaseModel):
     message: str
-    components: list[ChatServiceCard] = Field(default_factory=list)
+    components: list[ChatServiceCard | ApplicationProgress] = Field(default_factory=list)

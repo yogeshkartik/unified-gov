@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 
 const source = JSON.parse(readFileSync(new URL("../src/i18n/en.json", import.meta.url), "utf8"));
 const completeResources = ["hi", "mr"];
+// These keys are intentionally supplied by deadlineUi in regional.ts for every locale.
+const regionalKeys = new Set(["submissionDate", "applicationDeadline"]);
 let failed = false;
 
 for (const locale of completeResources) {
   const dictionary = JSON.parse(readFileSync(new URL(`../src/i18n/${locale}.json`, import.meta.url), "utf8"));
-  const missing = Object.keys(source).filter((key) => !(key in dictionary));
+  const missing = Object.keys(source).filter((key) => !(key in dictionary) && !regionalKeys.has(key));
   const extra = Object.keys(dictionary).filter((key) => !(key in source));
   const placeholderMismatches = Object.keys(source).filter((key) => {
     if (!(key in dictionary)) return false;

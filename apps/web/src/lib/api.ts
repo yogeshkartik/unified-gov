@@ -15,6 +15,7 @@ import type {
   MockDigiLockerDocument,
   SubmissionResult,
   ChatResponse,
+  StartApplicationResponse,
 } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -95,7 +96,8 @@ async function download(path: string): Promise<{ blob: Blob; filename: string }>
 }
 
 export const api = {
-  sendChat: (message: string, history: Array<{ role: "user" | "assistant"; content: string }>, locale: string) => request<ChatResponse>("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history, locale }) }),
+  sendChat: (message: string, history: Array<{ role: "user" | "assistant"; content: string }>, locale: string, activeApplicationId?: string) => request<ChatResponse>("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history, locale, active_application_id: activeApplicationId }) }),
+  startChatApplication: (serviceId: string) => request<StartApplicationResponse>("/api/chat/actions/start-application", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ service_id: serviceId }) }),
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
   uploadProfilePhoto: (data: FormData) => request<Document>("/api/profile/photo", { method: "PUT", body: data }),

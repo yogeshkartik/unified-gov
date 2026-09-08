@@ -12,7 +12,7 @@ from app.models.application import Application, ApplicationAnswer, ApplicationDo
 from app.models.consent import Consent, ConsentStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.profile import DocumentSource, DocumentType, Profile, User
-from app.models.service import Service, ServiceField, ServiceFieldType
+from app.models.service import GovernmentLevel, Service, ServiceField, ServiceFieldType, ServiceStatus
 from app.schemas.application import (
     AdditionalDataUpdate,
     ApplicationDetailResponse,
@@ -21,6 +21,7 @@ from app.schemas.application import (
 )
 from app.services.profile_service import get_demo_user
 from app.services.service_catalog import ServiceNotFoundError, get_service
+from app.services.recommendations import permanent_state_code
 
 
 class ApplicationNotFoundError(Exception):
@@ -39,6 +40,10 @@ class InvalidApplicationFieldsError(Exception):
 
 class ApplicationDeletionNotAllowedError(Exception):
     pass
+
+
+class ServiceNotAvailableError(Exception): pass
+class ServiceJurisdictionError(Exception): pass
 
 
 ACTIONABLE_STATUSES = {
@@ -73,6 +78,33 @@ def create_application(db: Session, service_id: str) -> ApplicationEngineRespons
     application.status = required_status(required_field_keys(service.fields, {}))
     db.commit()
     return build_engine_response(db, application.id)
+
+
+def create_or_resume_application(db: Session, service_id: str) -> tuple[str, ApplicationEngineResponse]:
+    """Idempotently find an unfinished normal application or create one."""
+    service = get_service(db, service_id)
+    if service.status != ServiceStatus.OPEN:
+        raise ServiceNotAvailableError
+    user = get_demo_user(db)
+    # Serialize starts for this citizen on PostgreSQL so concurrent button retries
+    # cannot both observe an empty draft set. SQLite safely ignores FOR UPDATE.
+    db.scalar(select(User.id).where(User.id == user.id).with_for_update())
+    if service.government_level == GovernmentLevel.STATE:
+        profile = user.profile
+        if profile is None or permanent_state_code(profile) != service.jurisdiction_code:
+            raise ServiceJurisdictionError
+    existing = db.scalar(
+        select(Application)
+        .where(
+            Application.user_id == user.id,
+            Application.service_id == service.id,
+            Application.status.in_(ACTIONABLE_STATUSES),
+        )
+        .order_by(Application.updated_at.desc())
+    )
+    if existing is not None:
+        return "RESUMED", build_engine_response(db, existing.id)
+    return "CREATED", create_application(db, service.id)
 
 
 def save_additional_data(
