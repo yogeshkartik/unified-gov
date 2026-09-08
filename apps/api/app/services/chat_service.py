@@ -21,12 +21,20 @@ from app.services.recommendations import permanent_state_code
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, document compatibility, progress, ownership, review availability, payment requirements, and submission readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field. Documents may be attached only through the document tools using canonical IDs returned by list_available_documents. Final review values come only from get_application_review. Success may be claimed only after a successful tool result. Never request or send document bytes, full review personal data, payment transaction data, or submission snapshots to the model. Ordinary conversational messages, including yes, okay, continue, pay it, or submit it, never grant consent, process payment, or submit an application; those actions are available only through explicit structured UI controls and are not model tools. Do not claim profile data was changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable to you. Respond in the user's language when practical."""
+SYSTEM_INSTRUCTIONS = """You are the concise citizen assistant for this government-service portal. Use backend tools for every portal fact: services, jurisdiction, fees, requirements, profile availability, and application progress. Backend results are authoritative; never infer or invent them.
+
+For state-specific services such as income, caste, domicile, or state certificates, call get_my_profile before search_services when the citizen has not explicitly supplied a state. Use the returned permanent_state_code to prioritize that jurisdiction. Do not list every state's variant; ask one concise clarification only when the profile has no usable jurisdiction.
+
+Use text for a brief explanation and next action. The UI cards already show fees, requirements, documents, progress, review, payment, and success, so do not repeat them unless the citizen asks. Use plain text, not Markdown headings, tables, or decorative formatting. Respond in the selected UI language when practical; do not translate IDs, reference numbers, filenames, canonical values, or citizen-entered values.
+
+Create or resume an application only when the citizen explicitly asks to apply. Save fields only with set_application_field. Attach documents only through document tools and canonical IDs. Final review comes only from get_application_review. Never request or send document bytes, full review personal data, payment transaction data, or submission snapshots.
+
+Ordinary messages such as yes, continue, pay, or submit never grant consent, process payment, or submit an application. Those actions are available only through explicit structured UI controls and are not tools. Do not claim profile data changed, consent, payment, or submission succeeded unless an authoritative backend result says so."""
 
 TOOLS = [
-    {"type": "function", "name": "search_services", "description": "Find active citizen-facing portal services.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
+    {"type": "function", "name": "search_services", "description": "Find active canonical portal services. For state-specific requests, use a state_code returned by get_my_profile when available; do not guess jurisdiction.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
     {"type": "function", "name": "get_service_details", "description": "Get canonical details for a service ID returned by search_services.", "parameters": {"type": "object", "properties": {"service_id": {"type": "string"}}, "required": ["service_id"], "additionalProperties": False}},
-    {"type": "function", "name": "get_my_profile", "description": "Get minimized application-relevant availability for the authenticated citizen profile.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"type": "function", "name": "get_my_profile", "description": "Get minimized profile availability and permanent-state jurisdiction. Call before searching state-specific services when the citizen did not state a jurisdiction.", "parameters": {"type": "object", "properties": {}, "additionalProperties": False}},
     {"type": "function", "name": "create_or_resume_application", "description": "Create or resume the authenticated citizen's normal application for an active canonical service.", "parameters": {"type": "object", "properties": {"service_id": {"type": "string"}}, "required": ["service_id"], "additionalProperties": False}},
     {"type": "function", "name": "get_application_progress", "description": "Get authoritative progress for an application owned by the authenticated citizen.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}}, "required": ["application_id"], "additionalProperties": False}},
     {"type": "function", "name": "set_application_field", "description": "Validate and save one canonical active service field for an editable application owned by the authenticated citizen.", "parameters": {"type": "object", "properties": {"application_id": {"type": "string"}, "field_key": {"type": "string"}, "value": {}}, "required": ["application_id", "field_key", "value"], "additionalProperties": False}},
@@ -100,6 +108,7 @@ class GeminiChatProvider:
             "input": input_data,
             "tools": TOOLS,
             "system_instruction": SYSTEM_INSTRUCTIONS,
+            "generation_config": {"thinking_level": settings.gemini_thinking_level},
         }
         if self._previous_interaction_id:
             request["previous_interaction_id"] = self._previous_interaction_id
@@ -192,6 +201,23 @@ def _record_application_state(
     return progress, question, document_request
 
 
+def _model_progress(progress: ApplicationProgress) -> dict[str, Any]:
+    """Return only orchestration state; complete values stay in UI-only cards."""
+    return {
+        "application_id": progress.application_id,
+        "status": progress.status,
+        "next_stage": progress.next_stage,
+        "missing_profile_fields": progress.profile.missing,
+        "missing_application_field_keys": [field.key for field in progress.application_fields.missing],
+        "missing_document_types": [document.document_type for document in progress.documents.missing],
+        "consent_granted": progress.consent.granted,
+        "payment_required": progress.payment.required,
+        "payment_status": progress.payment.status,
+        "ready_for_review": progress.ready_for_review,
+        "ready_for_submission": progress.ready_for_submission,
+    }
+
+
 def _tool_result(
     db: Session,
     name: str,
@@ -227,7 +253,7 @@ def _tool_result(
             progress, question, document_request = _record_application_state(
                 db, application.id, progresses, questions, document_requests
             )
-            return {"result": result, "application_id": application.id, "progress": progress.model_dump(), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
+            return {"result": result, "application_id": application.id, "progress": _model_progress(progress), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
         except service_catalog.ServiceNotFoundError: return {"error": "SERVICE_NOT_FOUND"}
         except application_engine.ServiceNotAvailableError: return {"error": "SERVICE_NOT_AVAILABLE"}
         except application_engine.ServiceJurisdictionError: return {"error": "SERVICE_JURISDICTION_MISMATCH"}
@@ -236,17 +262,17 @@ def _tool_result(
             progress, question, document_request = _record_application_state(
                 db, str(arguments.get("application_id", "")), progresses, questions, document_requests
             )
-            return {"progress": progress.model_dump(), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
+            return {"progress": _model_progress(progress), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
         except application_engine.ApplicationNotFoundError: return {"error": "APPLICATION_NOT_FOUND"}
     if name == "set_application_field":
         try:
-            value, application = application_engine.set_application_field(
+            _value, application = application_engine.set_application_field(
                 db, str(arguments.get("application_id", "")), str(arguments.get("field_key", "")), arguments.get("value")
             )
             progress, question, document_request = _record_application_state(
                 db, application.id, progresses, questions, document_requests
             )
-            return {"saved_field_key": arguments.get("field_key"), "saved_value": value, "progress": progress.model_dump(), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
+            return {"saved_field_key": arguments.get("field_key"), "progress": _model_progress(progress), "next_question": question.model_dump() if question else None, "next_document": document_request.model_dump() if document_request else None}
         except application_engine.ApplicationNotFoundError: return {"error": "APPLICATION_NOT_FOUND"}
         except application_engine.ApplicationFieldNotFoundError: return {"error": "FIELD_NOT_FOUND"}
         except application_engine.ApplicationFieldNotApplicableError: return {"error": "FIELD_NOT_APPLICABLE"}
@@ -279,7 +305,7 @@ def _tool_result(
             )
             return {
                 "attached_document": application_document_service.document_choice(document).model_dump(),
-                "progress": progress.model_dump(),
+                "progress": _model_progress(progress),
                 "next_document": document_request.model_dump() if document_request else None,
             }
         except application_engine.ApplicationNotFoundError: return {"error": "APPLICATION_NOT_FOUND"}

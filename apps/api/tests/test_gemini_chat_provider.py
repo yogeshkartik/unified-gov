@@ -7,10 +7,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import settings
 from app.core.database import Base
 from app.schemas.chat import ChatRequest
+from app.schemas.application_progress import (
+    ApplicationFieldProgress,
+    ApplicationProgress,
+    ConsentProgress,
+    DocumentProgress,
+    PaymentProgress,
+    ProfileProgress,
+    ProgressField,
+    ProgressService,
+)
 from app.services.chat_service import (
     ChatProviderError,
     GeminiChatProvider,
     OpenAIChatProvider,
+    _model_progress,
     create_chat_provider,
     chat,
 )
@@ -91,6 +102,7 @@ def test_gemini_tool_loop_returns_authoritative_cards(db, monkeypatch) -> None:
     assert len(interactions.requests) == 2
     assert interactions.requests[0]["model"] == "gemini-test"
     assert interactions.requests[0]["tools"][0]["name"] == "search_services"
+    assert interactions.requests[0]["generation_config"] == {"thinking_level": "low"}
     assert interactions.requests[1]["previous_interaction_id"] == "interaction-1"
     tool_response = interactions.requests[1]["input"][0]
     assert tool_response["type"] == "function_result"
@@ -151,3 +163,32 @@ def test_gemini_returns_safe_tool_failure_to_the_model(db, monkeypatch) -> None:
 
     assert response.message == "Please try another request."
     assert '"error": "UNKNOWN_TOOL"' in interactions.requests[1]["input"][0]["result"][0]["text"]
+
+
+def test_model_progress_excludes_saved_application_values() -> None:
+    progress = ApplicationProgress(
+        application_id="application-1",
+        service=ProgressService(id="PM_KISAN_001", name="PM-KISAN", department="Agriculture"),
+        status="ADDITIONAL_INFO_REQUIRED",
+        profile=ProfileProgress(satisfied=["full_name"], missing=[]),
+        application_fields=ApplicationFieldProgress(
+            satisfied=[ProgressField(key="farmer_declaration", label="Farmer declaration", field_type="checkbox", required=True, value=True)],
+            missing=[],
+        ),
+        documents=DocumentProgress(),
+        consent=ConsentProgress(granted=False, status="PENDING"),
+        payment=PaymentProgress(required=False, amount=0, currency="INR", status="NOT_REQUIRED"),
+        submission_status="NOT_READY",
+        ready_for_review=False,
+        ready_for_consent=False,
+        ready_for_payment=False,
+        ready_for_submission=False,
+        next_stage="ADDITIONAL_INFORMATION",
+    )
+
+    result = _model_progress(progress)
+
+    assert result["application_id"] == "application-1"
+    assert "farmer_declaration" not in result
+    assert "value" not in str(result)
+    assert "amount" not in result
