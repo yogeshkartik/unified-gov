@@ -17,6 +17,8 @@ import type {
   ChatResponse,
   StartApplicationResponse,
   SetApplicationFieldResponse,
+  ApplicationDocumentActionResponse,
+  DocumentRequest,
 } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -100,6 +102,10 @@ export const api = {
   sendChat: (message: string, history: Array<{ role: "user" | "assistant"; content: string }>, locale: string, activeApplicationId?: string) => request<ChatResponse>("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history, locale, active_application_id: activeApplicationId }) }),
   startChatApplication: (serviceId: string) => request<StartApplicationResponse>("/api/chat/actions/start-application", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ service_id: serviceId }) }),
   setChatApplicationField: (applicationId: string, fieldKey: string, value: unknown) => request<SetApplicationFieldResponse>("/api/chat/actions/set-application-field", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, field_key: fieldKey, value }) }),
+  listChatApplicationDocuments: (applicationId: string) => request<DocumentRequest | null>("/api/chat/actions/list-available-documents", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
+  attachChatApplicationDocument: (applicationId: string, requirementId: string, documentId: string) => request<ApplicationDocumentActionResponse>("/api/chat/actions/attach-document", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, requirement_id: requirementId, document_id: documentId }) }),
+  importChatDigiLockerDocument: (applicationId: string, requirementId: string, documentId: string) => request<ApplicationDocumentActionResponse>("/api/chat/actions/import-digilocker-document", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, requirement_id: requirementId, document_id: documentId }) }),
+  uploadChatApplicationDocument: (data: FormData) => request<ApplicationDocumentActionResponse>("/api/chat/actions/upload-document", { method: "POST", body: data }),
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
   uploadProfilePhoto: (data: FormData) => request<Document>("/api/profile/photo", { method: "PUT", body: data }),

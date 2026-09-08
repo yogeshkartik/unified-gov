@@ -98,11 +98,42 @@ class ApplicationQuestion(BaseModel):
     field: QuestionField
 
 
+class DocumentRequirement(BaseModel):
+    id: str
+    label: str
+    document_type: str
+    required: bool
+
+
+class AvailableDocument(BaseModel):
+    document_id: str
+    name: str
+    document_type: str
+    source: str
+
+
+class AvailableDigiLockerDocument(BaseModel):
+    document_id: str
+    name: str
+    document_type: str
+    issuer: str
+
+
+class DocumentRequest(BaseModel):
+    type: Literal["DOCUMENT_REQUEST"] = "DOCUMENT_REQUEST"
+    application_id: str
+    requirement: DocumentRequirement
+    existing_documents: list[AvailableDocument] = Field(default_factory=list)
+    digilocker_options: list[AvailableDigiLockerDocument] = Field(default_factory=list)
+    upload_allowed: bool = True
+
+
 class StartApplicationResponse(BaseModel):
     result: Literal["CREATED", "RESUMED"]
     application_id: str
     progress: ApplicationProgress
     next_question: ApplicationQuestion | None = None
+    next_document: DocumentRequest | None = None
 
 
 class SetApplicationFieldRequest(BaseModel):
@@ -116,3 +147,20 @@ class SetApplicationFieldResponse(BaseModel):
     saved_value: Any
     progress: ApplicationProgress
     next_question: ApplicationQuestion | None = None
+    next_document: DocumentRequest | None = None
+
+
+class ApplicationDocumentActionRequest(BaseModel):
+    application_id: str = Field(min_length=1, max_length=36)
+    requirement_id: str = Field(min_length=1, max_length=36)
+    document_id: str = Field(min_length=1, max_length=100)
+
+
+class ListApplicationDocumentsRequest(BaseModel):
+    application_id: str = Field(min_length=1, max_length=36)
+
+
+class ApplicationDocumentActionResponse(BaseModel):
+    attached_document: AvailableDocument
+    progress: ApplicationProgress
+    next_document: DocumentRequest | None = None

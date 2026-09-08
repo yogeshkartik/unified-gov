@@ -96,6 +96,16 @@ def select_digilocker_documents(
         ) from error
     except ProviderDocumentNotFoundError as error:
         raise digilocker_document_not_found(str(error)) from error
+    except application_document_service.IncompatibleApplicationDocumentError as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "INCOMPATIBLE_DOCUMENT"},
+        ) from error
+    except application_engine.ApplicationNotEditableError as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_NOT_EDITABLE"},
+        ) from error
 
 
 @router.post(
@@ -114,6 +124,16 @@ def select_my_documents(
         raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
     except application_document_service.ApplicationDocumentNotFoundError as error:
         raise HTTPException(404, detail={"code": "DOCUMENT_NOT_FOUND"}) from error
+    except application_document_service.IncompatibleApplicationDocumentError as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "INCOMPATIBLE_DOCUMENT"},
+        ) from error
+    except application_engine.ApplicationNotEditableError as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_NOT_EDITABLE"},
+        ) from error
 
 
 def digilocker_document_not_found(document_id: str) -> HTTPException:

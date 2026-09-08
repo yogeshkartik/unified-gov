@@ -1,15 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import NoReturn
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.integrations.digilocker.mock import ProviderDocumentNotFoundError
+from app.models.profile import Document
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.schemas.application_progress import (
+    ApplicationDocumentActionRequest,
+    ApplicationDocumentActionResponse,
+    DocumentRequest,
+    ListApplicationDocumentsRequest,
     SetApplicationFieldRequest,
     SetApplicationFieldResponse,
     StartApplicationRequest,
     StartApplicationResponse,
 )
-from app.services import application_engine, application_progress
+from app.services import (
+    application_document_service,
+    application_engine,
+    application_progress,
+    digilocker_service,
+    profile_service,
+)
 from app.services.service_catalog import ServiceNotFoundError
 from app.services.chat_service import ChatProviderError, chat
 
@@ -32,6 +46,7 @@ def start_application(payload: StartApplicationRequest, db: Session = Depends(ge
             application_id=application.id,
             progress=application_progress.get_application_progress(db, application.id),
             next_question=application_progress.get_next_application_question(db, application.id),
+            next_document=application_document_service.get_next_document_request(db, application.id),
         )
     except ServiceNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "SERVICE_NOT_FOUND"}) from error
@@ -52,6 +67,7 @@ def set_application_field(payload: SetApplicationFieldRequest, db: Session = Dep
             saved_value=saved_value,
             progress=application_progress.get_application_progress(db, application.id),
             next_question=application_progress.get_next_application_question(db, application.id),
+            next_document=application_document_service.get_next_document_request(db, application.id),
         )
     except application_engine.ApplicationNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"code": "APPLICATION_NOT_FOUND"}) from error
@@ -66,3 +82,102 @@ def set_application_field(payload: SetApplicationFieldRequest, db: Session = Dep
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "INVALID_APPLICATION_FIELD", "fields": error.fields},
         ) from error
+
+
+@router.post("/chat/actions/list-available-documents", response_model=DocumentRequest | None)
+def list_available_documents(
+    payload: ListApplicationDocumentsRequest, db: Session = Depends(get_db)
+) -> DocumentRequest | None:
+    try:
+        return application_document_service.get_next_document_request(db, payload.application_id)
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+
+
+def _document_action_response(
+    db: Session, application_id: str, document: Document
+) -> ApplicationDocumentActionResponse:
+    return ApplicationDocumentActionResponse(
+        attached_document=application_document_service.document_choice(document),
+        progress=application_progress.get_application_progress(db, application_id),
+        next_document=application_document_service.get_next_document_request(db, application_id),
+    )
+
+
+def _raise_document_action_error(error: Exception) -> NoReturn:
+    if isinstance(error, application_engine.ApplicationNotFoundError):
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+    if isinstance(error, application_document_service.ApplicationDocumentNotFoundError):
+        raise HTTPException(404, detail={"code": "DOCUMENT_NOT_FOUND"}) from error
+    if isinstance(error, ProviderDocumentNotFoundError):
+        raise HTTPException(404, detail={"code": "DIGILOCKER_DOCUMENT_NOT_FOUND"}) from error
+    if isinstance(error, application_document_service.ApplicationDocumentRequirementNotFoundError):
+        raise HTTPException(422, detail={"code": "APPLICATION_REQUIREMENT_NOT_FOUND"}) from error
+    if isinstance(error, application_document_service.IncompatibleApplicationDocumentError):
+        raise HTTPException(422, detail={"code": "INCOMPATIBLE_DOCUMENT"}) from error
+    if isinstance(error, application_document_service.UnsupportedApplicationDocumentRequirementError):
+        raise HTTPException(422, detail={"code": "UNSUPPORTED_DOCUMENT_REQUIREMENT"}) from error
+    if isinstance(error, application_document_service.ApplicationDocumentRequirementNotApplicableError):
+        raise HTTPException(409, detail={"code": "DOCUMENT_REQUIREMENT_NOT_APPLICABLE"}) from error
+    if isinstance(error, application_engine.ApplicationNotEditableError):
+        raise HTTPException(409, detail={"code": "APPLICATION_NOT_EDITABLE"}) from error
+    if isinstance(error, profile_service.InvalidDocumentError):
+        raise HTTPException(
+            422, detail={"code": error.code, "message": error.message}
+        ) from error
+    raise error
+
+
+@router.post("/chat/actions/attach-document", response_model=ApplicationDocumentActionResponse)
+def attach_document(
+    payload: ApplicationDocumentActionRequest, db: Session = Depends(get_db)
+) -> ApplicationDocumentActionResponse:
+    try:
+        document = application_document_service.attach_document(
+            db,
+            payload.application_id,
+            payload.requirement_id,
+            payload.document_id,
+        )
+        return _document_action_response(db, payload.application_id, document)
+    except Exception as error:
+        _raise_document_action_error(error)
+
+
+@router.post(
+    "/chat/actions/import-digilocker-document",
+    response_model=ApplicationDocumentActionResponse,
+)
+def import_digilocker_document(
+    payload: ApplicationDocumentActionRequest, db: Session = Depends(get_db)
+) -> ApplicationDocumentActionResponse:
+    try:
+        document = digilocker_service.import_and_attach_document(
+            db,
+            payload.application_id,
+            payload.requirement_id,
+            payload.document_id,
+        )
+        return _document_action_response(db, payload.application_id, document)
+    except Exception as error:
+        _raise_document_action_error(error)
+
+
+@router.post(
+    "/chat/actions/upload-document",
+    response_model=ApplicationDocumentActionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    application_id: str = Form(...),
+    requirement_id: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> ApplicationDocumentActionResponse:
+    try:
+        document = await application_document_service.upload_and_attach_document(
+            db, application_id, requirement_id, file, require_current=True
+        )
+        return _document_action_response(db, application_id, document)
+    except Exception as error:
+        _raise_document_action_error(error)

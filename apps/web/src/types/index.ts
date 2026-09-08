@@ -282,10 +282,23 @@ export interface ApplicationQuestion {
   application_id: string;
   field: { key: string; label: string; field_type: string; required: boolean; options: string[] | null; help_text: string | null };
 }
-export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion;
+export interface DocumentRequest {
+  type: "DOCUMENT_REQUEST";
+  application_id: string;
+  requirement: { id: string; label: string; document_type: string; required: boolean };
+  existing_documents: Array<{ document_id: string; name: string; document_type: string; source: string }>;
+  digilocker_options: Array<{ document_id: string; name: string; document_type: string; issuer: string }>;
+  upload_allowed: boolean;
+}
+export interface ApplicationDocumentActionResponse {
+  attached_document: { document_id: string; name: string; document_type: string; source: string };
+  progress: ApplicationProgress;
+  next_document: DocumentRequest | null;
+}
+export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest;
 export interface ChatResponse { message: string; components: ChatComponent[]; }
-export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; }
-export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; }
+export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
+export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
 
 export interface CitizenApplicationSummary {
   id: string;
