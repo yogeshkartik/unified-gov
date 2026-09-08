@@ -1,6 +1,7 @@
 from app.services import (
     application_engine,
     application_review_service,
+    chat_transaction_service,
     consent_service,
     digilocker_service,
     payment_submission_service,
@@ -12,6 +13,7 @@ from app.services import (
 __all__ = [
     "application_engine",
     "application_review_service",
+    "chat_transaction_service",
     "consent_service",
     "digilocker_service",
     "payment_submission_service",

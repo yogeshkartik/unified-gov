@@ -317,7 +317,22 @@ export interface ConsentCard {
 }
 export interface ApplicationReviewResponse { review: ApplicationReview; consent_card: ConsentCard | null; }
 export interface GrantChatConsentResponse { progress: ApplicationProgress; review: ApplicationReview; }
-export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest | ApplicationReview | ConsentCard;
+export interface PaymentCard {
+  type: "PAYMENT_CARD";
+  application_id: string;
+  amount: number;
+  currency: string;
+  payment_status: string;
+  demo: true;
+  transaction_reference: string | null;
+  completed_at: string | null;
+}
+export interface SubmissionConfirmation { type: "SUBMISSION_CONFIRMATION"; application_id: string; service_name: string; }
+export interface SubmissionSuccess { type: "SUBMISSION_SUCCESS"; application_id: string; service_name: string; reference_number: string; submitted_at: string; status: string; }
+export interface TransactionComponentsResponse { payment_card: PaymentCard | null; submission_confirmation: SubmissionConfirmation | null; submission_success: SubmissionSuccess | null; }
+export interface PayChatApplicationResponse { payment: PaymentResult; payment_card: PaymentCard; progress: ApplicationProgress; submission_confirmation: SubmissionConfirmation | null; }
+export interface SubmitChatApplicationResponse { progress: ApplicationProgress; success: SubmissionSuccess; }
+export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest | ApplicationReview | ConsentCard | PaymentCard | SubmissionConfirmation | SubmissionSuccess;
 export interface ChatResponse { message: string; components: ChatComponent[]; }
 export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
 export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }

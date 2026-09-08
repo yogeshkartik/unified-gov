@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bot, CheckCircle2, LoaderCircle, Send, X } from "lucide-react";
 import { api } from "@/src/lib/api";
-import type { ApplicationDocumentActionResponse, ApplicationProgress, ApplicationQuestion, ChatComponent, ChatServiceCard, GrantChatConsentResponse } from "@/src/types";
+import type { ApplicationDocumentActionResponse, ApplicationProgress, ApplicationQuestion, ChatComponent, ChatServiceCard, GrantChatConsentResponse, PayChatApplicationResponse, SubmitChatApplicationResponse } from "@/src/types";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,9 @@ import { ApplicationQuestionCard } from "@/components/chat/application-question"
 import { DocumentRequestCard } from "@/components/chat/document-request";
 import { ReviewCard } from "@/components/chat/review-card";
 import { ConsentCard } from "@/components/chat/consent-card";
+import { PaymentCard } from "@/components/chat/payment-card";
+import { SubmissionConfirmation } from "@/components/chat/submission-confirmation";
+import { SubmissionSuccess } from "@/components/chat/submission-success";
 import { localizeServiceFieldLabel } from "@/src/i18n/service-localization";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; components?: ChatComponent[] };
@@ -56,6 +59,21 @@ export function CitizenAssistant() {
       return [];
     }
   }
+  async function transactionComponents(progress: ApplicationProgress): Promise<ChatComponent[]> {
+    if (!["PAYMENT", "SUBMISSION", "COMPLETE"].includes(progress.next_stage)) return [];
+    try {
+      const result = await api.getChatTransactionComponents(progress.application_id);
+      return [
+        ...(result.payment_card ? [result.payment_card] : []),
+        ...(result.submission_confirmation ? [result.submission_confirmation] : []),
+        ...(result.submission_success ? [result.submission_success] : []),
+      ];
+    } catch { return []; }
+  }
+  async function stageComponents(progress: ApplicationProgress): Promise<ChatComponent[]> {
+    const [review, transaction] = await Promise.all([reviewComponents(progress), transactionComponents(progress)]);
+    return [...review, ...transaction];
+  }
   async function send(value = draft) {
     const text = value.trim(); if (!text || busy) return;
     const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: text };
@@ -69,7 +87,7 @@ export function CitizenAssistant() {
     if (applyingServiceId) return;
     setApplyingServiceId(service.service_id); setError(false);
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content: t("applyForService", { name: service.name }) }]);
-    try { const result = await api.startChatApplication(service.service_id); const review = await reviewComponents(result.progress); setActiveApplicationId(result.application_id); setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: review.length ? t("reviewReadyMessage") : t(result.result === "CREATED" ? "applicationStartedMessage" : "applicationResumedMessage"), components: [result.progress, ...(result.next_question ? [result.next_question] : []), ...(result.next_document ? [result.next_document] : []), ...review] }]); }
+    try { const result = await api.startChatApplication(service.service_id); const stage = await stageComponents(result.progress); setActiveApplicationId(result.application_id); setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: stage.some((component) => component.type === "REVIEW_CARD") ? t("reviewReadyMessage") : t(result.result === "CREATED" ? "applicationStartedMessage" : "applicationResumedMessage"), components: [result.progress, ...(result.next_question ? [result.next_question] : []), ...(result.next_document ? [result.next_document] : []), ...stage] }]); }
     catch { setError(true); }
     finally { setApplyingServiceId(undefined); inputRef.current?.focus(); }
   }
@@ -77,28 +95,29 @@ export function CitizenAssistant() {
     const result = await api.setChatApplicationField(question.application_id, question.field.key, value);
     setActiveApplicationId(question.application_id);
     const fieldLabel = localizeServiceFieldLabel(question.field.key, question.field.label, language);
-    const review = await reviewComponents(result.progress);
+    const stage = await stageComponents(result.progress);
     setMessages((current) => [...current,
       { id: crypto.randomUUID(), role: "user", content: t("answerForField", { field: fieldLabel, value: displayValue }) },
-      { id: crypto.randomUUID(), role: "assistant", content: review.length ? t("reviewReadyMessage") : t(result.next_question ? "answerSavedMessage" : "additionalInformationComplete"), components: [result.progress, ...(result.next_question ? [result.next_question] : []), ...(result.next_document ? [result.next_document] : []), ...review] },
+      { id: crypto.randomUUID(), role: "assistant", content: stage.some((component) => component.type === "REVIEW_CARD") ? t("reviewReadyMessage") : t(result.next_question ? "answerSavedMessage" : "additionalInformationComplete"), components: [result.progress, ...(result.next_question ? [result.next_question] : []), ...(result.next_document ? [result.next_document] : []), ...stage] },
     ]);
   }
   async function documentAttached(result: ApplicationDocumentActionResponse) {
-    const review = await reviewComponents(result.progress);
+    const stage = await stageComponents(result.progress);
     setActiveApplicationId(result.progress.application_id);
     setMessages((current) => [...current, {
       id: crypto.randomUUID(),
       role: "assistant",
-      content: review.length
+      content: stage.some((component) => component.type === "REVIEW_CARD")
         ? t("reviewReadyMessage")
         : result.next_document
         ? t("chatDocumentAttached", { name: result.attached_document.name })
         : t("chatDocumentsComplete"),
-      components: [result.progress, ...(result.next_document ? [result.next_document] : []), ...review],
+      components: [result.progress, ...(result.next_document ? [result.next_document] : []), ...stage],
     }]);
   }
-  function consentGranted(result: GrantChatConsentResponse) {
-    setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => component.type !== "CONSENT_CARD" || component.application_id !== result.progress.application_id) })), { id: crypto.randomUUID(), role: "assistant", content: t("consentRecordedMessage"), components: [result.review, result.progress] }]);
+  async function consentGranted(result: GrantChatConsentResponse) {
+    const transaction = await transactionComponents(result.progress);
+    setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => component.type !== "CONSENT_CARD" || component.application_id !== result.progress.application_id) })), { id: crypto.randomUUID(), role: "assistant", content: t("consentRecordedMessage"), components: [result.review, result.progress, ...transaction] }]);
   }
   async function consentRejected(applicationId: string) {
     try {
@@ -106,11 +125,19 @@ export function CitizenAssistant() {
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", content: t("progressRefreshedMessage"), components: [progress] }]);
     } catch {}
   }
+  function paymentCompleted(result: PayChatApplicationResponse) {
+    setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => component.type !== "PAYMENT_CARD" || component.application_id !== result.progress.application_id) })), { id: crypto.randomUUID(), role: "assistant", content: t("demoPaymentCompleted"), components: [result.payment_card, result.progress, ...(result.submission_confirmation ? [result.submission_confirmation] : [])] }]);
+  }
+  function submissionCompleted(result: SubmitChatApplicationResponse) {
+    const applicationId = result.progress.application_id;
+    const actionable = new Set(["TEXT_QUESTION", "TEXTAREA_QUESTION", "SELECT_QUESTION", "BOOLEAN_QUESTION", "NUMBER_QUESTION", "DOCUMENT_REQUEST", "CONSENT_CARD", "PAYMENT_CARD", "SUBMISSION_CONFIRMATION"]);
+    setMessages((current) => [...current.map((message) => ({ ...message, components: message.components?.filter((component) => !("application_id" in component && component.application_id === applicationId && actionable.has(component.type))) })), { id: crypto.randomUUID(), role: "assistant", content: t("applicationSubmittedMessage"), components: [result.progress, result.success] }]);
+  }
   return <>
     <Button className="fixed right-4 bottom-4 z-40 rounded-full shadow-lg sm:right-6 sm:bottom-6" onPress={() => { if (messages.length === 0) setMessages([{ id: "welcome", role: "assistant", content: t("chatWelcome") }]); setOpen(true); }} aria-label={t("openAssistant")}><Bot aria-hidden="true" /> <span className="hidden sm:inline">{t("assistant")}</span></Button>
     {open ? <Dialog isOpen={open} onOpenChange={setOpen} showCloseButton={false} className="fixed top-0 right-0 left-auto h-dvh w-full max-w-[440px] translate-x-0 translate-y-0 gap-0 rounded-none p-0 sm:rounded-l-xl" overlayClassName="z-50">
       <DialogHeader className="flex-row items-center justify-between border-b px-4 py-4"><div className="flex items-center gap-2"><Bot className="size-5 text-primary" aria-hidden="true" /><DialogTitle>{t("assistant")}</DialogTitle></div><Button variant="ghost" size="icon-sm" onPress={() => setOpen(false)} aria-label={t("closeAssistant")}><X aria-hidden="true" /></Button></DialogHeader>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden"><div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">{messages.map((message) => <div key={message.id} className={message.role === "user" ? "ml-8 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground" : "mr-4 min-w-0 rounded-lg bg-muted px-3 py-2 text-sm"}>{message.content}{message.components?.map((component) => component.type === "SERVICE_CARD" ? <ServiceCard key={`service-${component.service_id}`} service={component} applying={applyingServiceId === component.service_id} onApply={apply} /> : component.type === "APPLICATION_PROGRESS" ? <ApplicationProgressCard key={`application-${component.application_id}`} progress={component} /> : component.type === "DOCUMENT_REQUEST" ? <DocumentRequestCard key={`document-${component.application_id}-${component.requirement.id}`} request={component} onAttached={documentAttached} /> : component.type === "REVIEW_CARD" ? <ReviewCard key={`review-${component.application_id}`} review={component} onContinue={() => setReviewedApplications((current) => new Set(current).add(component.application_id))} /> : component.type === "CONSENT_CARD" ? reviewedApplications.has(component.application_id) ? <ConsentCard key={`consent-${component.application_id}`} card={component} onGranted={consentGranted} onRejected={() => consentRejected(component.application_id)} /> : null : <ApplicationQuestionCard key={`question-${component.application_id}-${component.field.key}`} question={component} onSave={saveQuestion} />)}</div>)}{busy || applyingServiceId ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{applyingServiceId ? t("startingApplication") : t("chatThinking")}</p> : null}{error ? <p role="alert" className="text-sm text-destructive">{t("chatError")}</p> : null}<div ref={bottomRef} /></div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden"><div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">{messages.map((message) => <div key={message.id} className={message.role === "user" ? "ml-8 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground" : "mr-4 min-w-0 rounded-lg bg-muted px-3 py-2 text-sm"}>{message.content}{message.components?.map((component) => component.type === "SERVICE_CARD" ? <ServiceCard key={`service-${component.service_id}`} service={component} applying={applyingServiceId === component.service_id} onApply={apply} /> : component.type === "APPLICATION_PROGRESS" ? <ApplicationProgressCard key={`application-${component.application_id}`} progress={component} /> : component.type === "DOCUMENT_REQUEST" ? <DocumentRequestCard key={`document-${component.application_id}-${component.requirement.id}`} request={component} onAttached={documentAttached} /> : component.type === "REVIEW_CARD" ? <ReviewCard key={`review-${component.application_id}`} review={component} onContinue={() => setReviewedApplications((current) => new Set(current).add(component.application_id))} /> : component.type === "CONSENT_CARD" ? reviewedApplications.has(component.application_id) ? <ConsentCard key={`consent-${component.application_id}`} card={component} onGranted={consentGranted} onRejected={() => consentRejected(component.application_id)} /> : null : component.type === "PAYMENT_CARD" ? <PaymentCard key={`payment-${component.application_id}`} card={component} onPaid={paymentCompleted} onRejected={() => consentRejected(component.application_id)} /> : component.type === "SUBMISSION_CONFIRMATION" ? <SubmissionConfirmation key={`submission-${component.application_id}`} card={component} onSubmitted={submissionCompleted} onRejected={() => consentRejected(component.application_id)} /> : component.type === "SUBMISSION_SUCCESS" ? <SubmissionSuccess key={`success-${component.application_id}`} success={component} /> : <ApplicationQuestionCard key={`question-${component.application_id}-${component.field.key}`} question={component} onSave={saveQuestion} />)}</div>)}{busy || applyingServiceId ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{applyingServiceId ? t("startingApplication") : t("chatThinking")}</p> : null}{error ? <p role="alert" className="text-sm text-destructive">{t("chatError")}</p> : null}<div ref={bottomRef} /></div>
         {messages.length <= 1 ? <div className="flex gap-2 overflow-x-auto px-4 pb-2">{[t("chatPromptIncome"), t("chatPromptKisan")].map((prompt) => <Button key={prompt} size="sm" variant="outline" className="shrink-0" onPress={() => send(prompt)}>{prompt}</Button>)}</div> : null}
         <form className="flex items-end gap-2 border-t p-3" onSubmit={(event) => { event.preventDefault(); send(); }}><label className="sr-only" htmlFor="citizen-assistant-input">{t("askGovernmentService")}</label><Textarea id="citizen-assistant-input" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder={t("askGovernmentService")} rows={2} className="min-h-11 resize-none" disabled={busy} /><Button type="submit" size="icon" isDisabled={busy || !draft.trim()} aria-label={t("send")}><Send aria-hidden="true" /></Button></form>
       </div>

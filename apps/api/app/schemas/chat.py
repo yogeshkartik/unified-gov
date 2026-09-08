@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.application_progress import ApplicationProgress, ApplicationQuestion, DocumentRequest
 from app.schemas.application_review import ApplicationReview, ConsentCard
+from app.schemas.chat_transaction import PaymentCard, SubmissionConfirmation, SubmissionSuccess
 
 
 class ChatHistoryMessage(BaseModel):
@@ -40,4 +41,7 @@ class ChatResponse(BaseModel):
         | DocumentRequest
         | ApplicationReview
         | ConsentCard
+        | PaymentCard
+        | SubmissionConfirmation
+        | SubmissionSuccess
     ] = Field(default_factory=list)

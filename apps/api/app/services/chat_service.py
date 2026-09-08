@@ -11,15 +11,16 @@ from app.core.config import settings
 from app.models.service import Service, ServiceStatus
 from app.schemas.chat import ChatRequest, ChatResponse, ChatServiceCard
 from app.schemas.application_review import ApplicationReview, ConsentCard
+from app.schemas.chat_transaction import PaymentCard, SubmissionConfirmation, SubmissionSuccess
 from app.schemas.application_progress import ApplicationProgress, ApplicationQuestion, DocumentRequest, ProfileToolResult
 from app.models.profile import AddressType
-from app.services import application_document_service, application_engine, application_progress, application_review_service, digilocker_service, profile_service, service_catalog
+from app.services import application_document_service, application_engine, application_progress, application_review_service, chat_transaction_service, digilocker_service, profile_service, service_catalog
 from app.integrations.digilocker.mock import ProviderDocumentNotFoundError
 from app.services.recommendations import permanent_state_code
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, document compatibility, progress, ownership, review availability, and readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field. Documents may be attached only through the document tools using canonical IDs returned by list_available_documents. Final review values come only from get_application_review. Success may be claimed only after a successful tool result. Never request or send document bytes or full review personal data to the model. Ordinary conversational messages, including yes, okay, or continue, never grant consent; consent is available only through the explicit UI control. Do not claim profile data was changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable to you. Respond in the user's language when practical."""
+SYSTEM_INSTRUCTIONS = """You are the citizen assistant for this government-service portal. Use tools for portal services, citizen profile availability, and applications. The backend tool results are authoritative for requirements, questions, document compatibility, progress, ownership, review availability, payment requirements, and submission readiness; never calculate these from chat history or invent them. You may create or resume an application only when the user explicitly asks to apply. Application fields may be saved only through set_application_field. Documents may be attached only through the document tools using canonical IDs returned by list_available_documents. Final review values come only from get_application_review. Success may be claimed only after a successful tool result. Never request or send document bytes, full review personal data, payment transaction data, or submission snapshots to the model. Ordinary conversational messages, including yes, okay, continue, pay it, or submit it, never grant consent, process payment, or submit an application; those actions are available only through explicit structured UI controls and are not model tools. Do not claim profile data was changed, consent was granted, payment was completed, or an application was submitted: those mutation capabilities are unavailable to you. Respond in the user's language when practical."""
 
 TOOLS = [
     {"type": "function", "name": "search_services", "description": "Find active citizen-facing portal services.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "state_code": {"type": "string"}, "category": {"type": "string"}}, "required": ["query"], "additionalProperties": False}},
@@ -238,7 +239,18 @@ def chat(db: Session, request: ChatRequest, provider: OpenAIChatProvider | None 
                 if reviews:
                     review, consent_card = list(reviews.values())[-1]
                     review_components = [review, *([consent_card] if consent_card else [])]
-                components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:], *review_components]
+                transaction_components: list[PaymentCard | SubmissionConfirmation | SubmissionSuccess] = []
+                if progresses:
+                    progress = list(progresses.values())[-1]
+                    transaction = chat_transaction_service.get_transaction_components(
+                        db, progress.application_id
+                    )
+                    transaction_components = [
+                        *([transaction.payment_card] if transaction.payment_card else []),
+                        *([transaction.submission_confirmation] if transaction.submission_confirmation else []),
+                        *([transaction.submission_success] if transaction.submission_success else []),
+                    ]
+                components = [*_service_card_list(selected), *list(progresses.values())[-1:], *list(questions.values())[-1:], *list(document_requests.values())[-1:], *review_components, *transaction_components]
                 return ChatResponse(message=text, components=components)
             # Preserve the model's call items with the matching call outputs for the next Responses API turn.
             items.extend(getattr(response, "output", []))

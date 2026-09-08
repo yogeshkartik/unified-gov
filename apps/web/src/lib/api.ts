@@ -22,6 +22,9 @@ import type {
   ApplicationProgress,
   ApplicationReviewResponse,
   GrantChatConsentResponse,
+  TransactionComponentsResponse,
+  PayChatApplicationResponse,
+  SubmitChatApplicationResponse,
 } from "@/src/types";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -112,6 +115,9 @@ export const api = {
   getChatApplicationProgress: (applicationId: string) => request<ApplicationProgress>("/api/chat/actions/get-application-progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
   getChatApplicationReview: (applicationId: string) => request<ApplicationReviewResponse>("/api/chat/actions/get-application-review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
   grantChatApplicationConsent: (applicationId: string) => request<GrantChatConsentResponse>("/api/chat/actions/grant-consent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, consent_confirmed: true }) }),
+  getChatTransactionComponents: (applicationId: string) => request<TransactionComponentsResponse>("/api/chat/actions/get-next-transaction", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
+  payChatApplication: (applicationId: string) => request<PayChatApplicationResponse>("/api/chat/actions/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId }) }),
+  submitChatApplication: (applicationId: string) => request<SubmitChatApplicationResponse>("/api/chat/actions/submit-application", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ application_id: applicationId, submission_confirmed: true }) }),
   getProfile: () => request<CitizenProfile>("/api/profile"),
   updateProfile: (profile: Omit<Partial<CitizenProfile>, "addresses"> & { addresses?: Array<Omit<Address, "id">> }) => request<CitizenProfile>("/api/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) }),
   uploadProfilePhoto: (data: FormData) => request<Document>("/api/profile/photo", { method: "PUT", body: data }),

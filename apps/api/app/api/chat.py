@@ -13,6 +13,13 @@ from app.schemas.application_review import (
     GrantChatConsentRequest,
     GrantChatConsentResponse,
 )
+from app.schemas.chat_transaction import (
+    PayApplicationResponse,
+    SubmitApplicationRequest,
+    SubmitApplicationResponse,
+    TransactionComponentsResponse,
+    TransactionRequest,
+)
 from app.schemas.application_progress import (
     ApplicationProgress,
     ApplicationDocumentActionRequest,
@@ -30,7 +37,9 @@ from app.services import (
     application_progress,
     application_review_service,
     consent_service,
+    chat_transaction_service,
     digilocker_service,
+    payment_submission_service,
     profile_service,
 )
 from app.services.service_catalog import ServiceNotFoundError
@@ -88,6 +97,92 @@ def get_chat_application_progress(
         return application_progress.get_application_progress(db, payload.application_id)
     except application_engine.ApplicationNotFoundError as error:
         raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+
+
+@router.post(
+    "/chat/actions/get-next-transaction",
+    response_model=TransactionComponentsResponse,
+)
+def get_next_transaction(
+    payload: TransactionRequest, db: Session = Depends(get_db)
+) -> TransactionComponentsResponse:
+    try:
+        return chat_transaction_service.get_transaction_components(
+            db, payload.application_id
+        )
+    except application_engine.ApplicationNotFoundError as error:
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+
+
+def _raise_transaction_error(error: Exception) -> NoReturn:
+    if isinstance(error, application_engine.ApplicationNotFoundError):
+        raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from error
+    if isinstance(error, payment_submission_service.ApplicationIncompleteForTransactionError):
+        raise HTTPException(409, detail=_incomplete_detail(error)) from error
+    if isinstance(error, payment_submission_service.ConsentRequiredForTransactionError):
+        raise HTTPException(409, detail={"code": "CONSENT_REQUIRED"}) from error
+    if isinstance(error, payment_submission_service.PaymentNotRequiredError):
+        raise HTTPException(409, detail={"code": "PAYMENT_NOT_REQUIRED"}) from error
+    if isinstance(error, payment_submission_service.SuccessfulPaymentRequiredError):
+        raise HTTPException(409, detail={"code": "SUCCESSFUL_PAYMENT_REQUIRED"}) from error
+    if isinstance(error, payment_submission_service.InvalidTransactionStageError):
+        raise HTTPException(409, detail={"code": "INVALID_APPLICATION_STAGE"}) from error
+    if isinstance(error, payment_submission_service.TerminalApplicationTransactionError):
+        raise HTTPException(409, detail={"code": "APPLICATION_TERMINAL"}) from error
+    raise error
+
+
+@router.post("/chat/actions/pay", response_model=PayApplicationResponse)
+def pay_application(
+    payload: TransactionRequest, db: Session = Depends(get_db)
+) -> PayApplicationResponse:
+    try:
+        progress_before = application_progress.get_application_progress(
+            db, payload.application_id
+        )
+        if not progress_before.payment.required:
+            raise payment_submission_service.PaymentNotRequiredError
+        payment = payment_submission_service.process_payment(db, payload.application_id)
+        progress = application_progress.get_application_progress(db, payload.application_id)
+        return PayApplicationResponse(
+            payment=payment,
+            payment_card=chat_transaction_service.payment_card(
+                db, payload.application_id, payment
+            ),
+            progress=progress,
+            submission_confirmation=(
+                chat_transaction_service.submission_confirmation(
+                    db, payload.application_id
+                )
+                if progress.next_stage == "SUBMISSION"
+                else None
+            ),
+        )
+    except Exception as error:
+        _raise_transaction_error(error)
+
+
+@router.post(
+    "/chat/actions/submit-application",
+    response_model=SubmitApplicationResponse,
+)
+def submit_chat_application(
+    payload: SubmitApplicationRequest, db: Session = Depends(get_db)
+) -> SubmitApplicationResponse:
+    try:
+        submission = payment_submission_service.submit_application(
+            db, payload.application_id
+        )
+        return SubmitApplicationResponse(
+            progress=application_progress.get_application_progress(
+                db, payload.application_id
+            ),
+            success=chat_transaction_service.submission_success(
+                db, payload.application_id, submission
+            ),
+        )
+    except Exception as error:
+        _raise_transaction_error(error)
 
 
 @router.post(

@@ -160,6 +160,22 @@ def process_application_payment(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "APPLICATION_SNAPSHOT_REQUIRED"},
         ) from error
+    except payment_submission_service.ApplicationIncompleteForTransactionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "APPLICATION_NOT_READY",
+                "missing_profile_fields": error.missing_profile_fields,
+                "missing_documents": error.missing_documents,
+                "missing_fields": error.missing_fields,
+            },
+        ) from error
+    except payment_submission_service.ConsentRequiredForTransactionError as error:
+        raise HTTPException(422, detail={"code": "CONSENT_REQUIRED"}) from error
+    except payment_submission_service.InvalidTransactionStageError as error:
+        raise HTTPException(409, detail={"code": "INVALID_APPLICATION_STAGE"}) from error
+    except payment_submission_service.TerminalApplicationTransactionError as error:
+        raise HTTPException(409, detail={"code": "APPLICATION_TERMINAL"}) from error
 
 
 @router.post("/applications/{application_id}/submit", response_model=SubmissionResponse)
@@ -178,6 +194,22 @@ def submit_application(application_id: str, db: Session = Depends(get_db)) -> Su
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={"code": "SUCCESSFUL_PAYMENT_REQUIRED"},
         ) from error
+    except payment_submission_service.ApplicationIncompleteForTransactionError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                "code": "APPLICATION_NOT_READY",
+                "missing_profile_fields": error.missing_profile_fields,
+                "missing_documents": error.missing_documents,
+                "missing_fields": error.missing_fields,
+            },
+        ) from error
+    except payment_submission_service.ConsentRequiredForTransactionError as error:
+        raise HTTPException(422, detail={"code": "CONSENT_REQUIRED"}) from error
+    except payment_submission_service.InvalidTransactionStageError as error:
+        raise HTTPException(409, detail={"code": "INVALID_APPLICATION_STAGE"}) from error
+    except payment_submission_service.TerminalApplicationTransactionError as error:
+        raise HTTPException(409, detail={"code": "APPLICATION_TERMINAL"}) from error
 def application_not_found(application_id: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,

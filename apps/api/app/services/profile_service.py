@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -133,7 +134,10 @@ async def save_upload(
     if document_type == DocumentType.OTHER and not custom_name:
         raise InvalidDocumentError("DOCUMENT_NAME_REQUIRED", "Document name is required for the Other category.")
     safe_name = custom_name if document_type == DocumentType.OTHER else category_labels[document_type.value]
-    content = await upload.read()
+    # Avoid an AnyIO worker tied to a previous short-lived event loop when a
+    # caller supplies an actual in-memory stream (for example in tests).
+    file_object = getattr(upload, "file", None)
+    content = file_object.read() if isinstance(file_object, BytesIO) else await upload.read()
     if not content:
         raise InvalidDocumentError("EMPTY_FILE", "The selected file is empty.")
     if len(content) > MAX_UPLOAD_BYTES: raise InvalidDocumentError("FILE_TOO_LARGE", "Files must be 5 MB or smaller.")
@@ -184,7 +188,8 @@ async def save_upload(
 async def replace_upload(db: Session, document_id: str, upload: UploadFile) -> Document:
     document = document_for_user(db, document_id); filename = upload.filename or "upload"; extension = Path(filename).suffix.lower(); expected_mime = ALLOWED_FILES.get(extension)
     if expected_mime is None or upload.content_type != expected_mime: raise InvalidDocumentError("UNSUPPORTED_FILE_TYPE", "Only PDF, JPG, JPEG, PNG and WEBP files are supported.")
-    content = await upload.read()
+    file_object = getattr(upload, "file", None)
+    content = file_object.read() if isinstance(file_object, BytesIO) else await upload.read()
     if not content:
         raise InvalidDocumentError("EMPTY_FILE", "The selected file is empty.")
     if len(content) > MAX_UPLOAD_BYTES: raise InvalidDocumentError("FILE_TOO_LARGE", "Files must be 5 MB or smaller.")
