@@ -72,54 +72,34 @@ async def upload_application_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> DocumentResponse:
-    document = None
     try:
-        application = application_engine.get_application(db, application_id)
-        requirement = next(
-            (item for item in application.service.document_requirements if item.id == requirement_id),
-            None,
+        return await application_document_service.upload_and_attach_document(
+            db, application_id, requirement_id, file
         )
-        if requirement is None:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail={"code": "APPLICATION_REQUIREMENT_NOT_FOUND", "message": "Document requirement does not belong to this application."},
-            )
-        try:
-            document_type = DocumentType(requirement.document_type)
-        except ValueError as exc:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail={"code": "UNSUPPORTED_DOCUMENT_REQUIREMENT", "message": "This document requirement cannot be uploaded."},
-            ) from exc
-        # The application schema, rather than a filename or browser-provided type,
-        # is the source of the document's canonical identity.  OTHER needs its
-        # requirement label as a reusable My Documents display name.
-        document = await profile_service.save_upload(
-            db,
-            file,
-            document_type,
-            requirement.label if document_type == DocumentType.OTHER else None,
-            commit=False,
-        )
-        application_document_service.attach_my_documents(db, application_id, [document.id], commit=False)
-        db.commit()
-        db.refresh(document)
-        return document
     except application_engine.ApplicationNotFoundError as exc:
         raise HTTPException(404, detail={"code": "APPLICATION_NOT_FOUND"}) from exc
     except profile_service.InvalidDocumentError as exc:
-        db.rollback()
-        if document is not None:
-            profile_service._delete_file(document.stored_filename)
         raise error(exc) from exc
-    except HTTPException:
-        db.rollback()
-        raise
-    except Exception:
-        db.rollback()
-        if document is not None:
-            profile_service._delete_file(document.stored_filename)
-        raise
+    except application_document_service.ApplicationDocumentRequirementNotFoundError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "APPLICATION_REQUIREMENT_NOT_FOUND", "message": "Document requirement does not belong to this application."},
+        ) from exc
+    except application_document_service.ApplicationDocumentRequirementNotApplicableError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "DOCUMENT_REQUIREMENT_NOT_APPLICABLE", "message": "This document requirement is not currently active."},
+        ) from exc
+    except application_document_service.UnsupportedApplicationDocumentRequirementError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"code": "UNSUPPORTED_DOCUMENT_REQUIREMENT", "message": "This document requirement cannot be uploaded."},
+        ) from exc
+    except application_engine.ApplicationNotEditableError as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "APPLICATION_NOT_EDITABLE", "message": "Documents can no longer be changed for this application."},
+        ) from exc
 
 
 @router.put("/profile/documents/{document_id}/file", response_model=DocumentResponse)

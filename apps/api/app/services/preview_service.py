@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.application import ApplicationSnapshot, ApplicationStatus
+from app.models.application import Application, ApplicationSnapshot, ApplicationStatus
 from app.models.consent import Consent, ConsentStatus
 from app.models.profile import User
 from app.schemas.application import ApplicationPreviewResponse
@@ -36,7 +36,9 @@ def get_preview(db: Session, application_id: str) -> ApplicationPreviewResponse:
     )
     if existing_snapshot is not None:
         preview = ApplicationPreviewResponse.model_validate(existing_snapshot.snapshot_json)
-        return preview.model_copy(update={"status": application.status})
+        return preview.model_copy(
+            update={"status": ApplicationStatus(application.status)}
+        )
     user = db.scalar(
         select(User)
         .where(User.id == application.user_id)
@@ -109,6 +111,33 @@ def get_preview(db: Session, application_id: str) -> ApplicationPreviewResponse:
     )
 
 
+def get_or_create_snapshot(
+    db: Session,
+    application: Application,
+    *,
+    status: ApplicationStatus | None = None,
+) -> ApplicationSnapshot:
+    """Create the one canonical immutable application snapshot without committing."""
+    existing_snapshot = db.scalar(
+        select(ApplicationSnapshot).where(
+            ApplicationSnapshot.application_id == application.id
+        )
+    )
+    if existing_snapshot is not None:
+        return existing_snapshot
+
+    preview = get_preview(db, application.id)
+    if status is not None:
+        preview = preview.model_copy(update={"status": status})
+    snapshot = ApplicationSnapshot(
+        application_id=application.id,
+        snapshot_json=preview.model_dump(mode="json"),
+    )
+    db.add(snapshot)
+    db.flush()
+    return snapshot
+
+
 def finalize_application(db: Session, application_id: str) -> ApplicationSnapshot:
     application = application_engine.get_application(db, application_id)
     existing_snapshot = db.scalar(
@@ -133,12 +162,7 @@ def finalize_application(db: Session, application_id: str) -> ApplicationSnapsho
         else ApplicationStatus.READY_FOR_REVIEW
     )
     db.flush()
-    preview = get_preview(db, application.id)
-    snapshot = ApplicationSnapshot(
-        application_id=application.id,
-        snapshot_json=preview.model_dump(mode="json"),
-    )
-    db.add(snapshot)
+    snapshot = get_or_create_snapshot(db, application)
     db.commit()
     db.refresh(snapshot)
     return snapshot

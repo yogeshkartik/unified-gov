@@ -244,6 +244,99 @@ export interface MockDigiLockerDocument {
   issuer: string;
 }
 
+export interface ChatServiceCard {
+  type: "SERVICE_CARD";
+  service_id: string;
+  name: string;
+  description: string;
+  department: string;
+  category: string;
+  government_level: string;
+  jurisdiction_code: string;
+  fee: number;
+  currency: string;
+}
+
+export interface ProgressField { key: string; label: string; field_type: string; required: boolean; options: string[] | null; value?: unknown; }
+export interface ProgressDocument { requirement_id: string; document_type: string; label: string; required: boolean; document_id: string | null; }
+export interface ApplicationProgress {
+  type: "APPLICATION_PROGRESS";
+  application_id: string;
+  service: { id: string; name: string; department: string };
+  status: string;
+  profile: { satisfied: string[]; missing: string[] };
+  application_fields: { satisfied: ProgressField[]; missing: ProgressField[] };
+  documents: { satisfied: ProgressDocument[]; missing: ProgressDocument[] };
+  consent: { required: boolean; granted: boolean; status: string };
+  payment: { required: boolean; amount: number; currency: string; status: string };
+  submission_status: string;
+  ready_for_review: boolean;
+  ready_for_consent: boolean;
+  ready_for_payment: boolean;
+  ready_for_submission: boolean;
+  next_stage: string;
+}
+export type ApplicationQuestionType = "TEXT_QUESTION" | "TEXTAREA_QUESTION" | "SELECT_QUESTION" | "BOOLEAN_QUESTION" | "NUMBER_QUESTION";
+export interface ApplicationQuestion {
+  type: ApplicationQuestionType;
+  application_id: string;
+  field: { key: string; label: string; field_type: string; required: boolean; options: string[] | null; help_text: string | null };
+}
+export interface DocumentRequest {
+  type: "DOCUMENT_REQUEST";
+  application_id: string;
+  requirement: { id: string; label: string; document_type: string; required: boolean };
+  existing_documents: Array<{ document_id: string; name: string; document_type: string; source: string }>;
+  digilocker_options: Array<{ document_id: string; name: string; document_type: string; issuer: string }>;
+  upload_allowed: boolean;
+}
+export interface ApplicationDocumentActionResponse {
+  attached_document: { document_id: string; name: string; document_type: string; source: string };
+  progress: ApplicationProgress;
+  next_document: DocumentRequest | null;
+}
+export interface ReviewValue { key: string; label: string; value: unknown; field_type: string; options: string[] | null; }
+export interface ReviewDocument { requirement_id: string; label: string; document_type: string; name: string; source: string; }
+export interface ApplicationReview {
+  type: "REVIEW_CARD";
+  application_id: string;
+  service: { id: string; name: string; department: string };
+  applicant_information: ReviewValue[];
+  application_details: ReviewValue[];
+  documents: ReviewDocument[];
+  payment: { required: boolean; amount: number; currency: string; status: string };
+  consent: { granted: boolean; status: string };
+}
+export interface ConsentCard {
+  type: "CONSENT_CARD";
+  application_id: string;
+  purpose: string;
+  data_categories: string[];
+  document_types: string[];
+  consent_text_key: "APPLICATION_PROCESSING_CONSENT";
+}
+export interface ApplicationReviewResponse { review: ApplicationReview; consent_card: ConsentCard | null; }
+export interface GrantChatConsentResponse { progress: ApplicationProgress; review: ApplicationReview; }
+export interface PaymentCard {
+  type: "PAYMENT_CARD";
+  application_id: string;
+  amount: number;
+  currency: string;
+  payment_status: string;
+  demo: true;
+  transaction_reference: string | null;
+  completed_at: string | null;
+}
+export interface SubmissionConfirmation { type: "SUBMISSION_CONFIRMATION"; application_id: string; service_name: string; }
+export interface SubmissionSuccess { type: "SUBMISSION_SUCCESS"; application_id: string; service_name: string; reference_number: string; submitted_at: string; status: string; }
+export interface TransactionComponentsResponse { payment_card: PaymentCard | null; submission_confirmation: SubmissionConfirmation | null; submission_success: SubmissionSuccess | null; }
+export interface PayChatApplicationResponse { payment: PaymentResult; payment_card: PaymentCard; progress: ApplicationProgress; submission_confirmation: SubmissionConfirmation | null; }
+export interface SubmitChatApplicationResponse { progress: ApplicationProgress; success: SubmissionSuccess; }
+export type ChatComponent = ChatServiceCard | ApplicationProgress | ApplicationQuestion | DocumentRequest | ApplicationReview | ConsentCard | PaymentCard | SubmissionConfirmation | SubmissionSuccess;
+export interface ChatResponse { message: string; components: ChatComponent[]; }
+export interface StartApplicationResponse { result: "CREATED" | "RESUMED"; application_id: string; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
+export interface SetApplicationFieldResponse { saved_field_key: string; saved_value: unknown; progress: ApplicationProgress; next_question: ApplicationQuestion | null; next_document: DocumentRequest | null; }
+
 export interface CitizenApplicationSummary {
   id: string;
   service_id: string;

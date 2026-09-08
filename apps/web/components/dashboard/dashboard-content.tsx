@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FileCheck2, FileText, GraduationCap, Landmark } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileCheck2, FileText, GraduationCap, Landmark, Send, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { api } from "@/src/lib/api";
 import type { ApplicationSummary, CitizenProfile, Document, GovernmentService } from "@/src/types";
@@ -14,6 +14,7 @@ import { localizeService, localizeServiceName } from "@/src/i18n/service-localiz
 import { applicationFlowPath, applicationFlowSteps } from "@/components/application/application-flow-navigation";
 import type { Language } from "@/src/i18n/languages";
 import { localeFor } from "@/src/i18n/locale-format";
+import { CitizenAssistant } from "@/components/chat/citizen-assistant";
 
 type DashboardData = { profile: CitizenProfile; services: GovernmentService[]; documents: Document[]; applications: ApplicationSummary[] };
 const actionableStatuses = new Set(["DRAFT", "ADDITIONAL_INFO_REQUIRED", "CONSENT_REQUIRED", "READY_FOR_REVIEW", "PAYMENT_REQUIRED"]);
@@ -78,7 +79,7 @@ export function DashboardContent() {
   const formatDate = (value: string) => new Intl.DateTimeFormat(localeFor(language), { day: "numeric", month: "short" }).format(new Date(value));
   const applicationSummary = draftCount > 0 ? t("dashboardApplicationsWithDrafts", { drafts: draftCount, submitted: submittedCount }) : t("dashboardApplicationsSubmitted", { submitted: submittedCount });
 
-  return <div className="space-y-6">
+  return <><div className="space-y-9 pb-8">
     <Reveal delay={0}>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-sm font-medium text-muted-foreground">{t("dashboard")}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">{t("welcome", { name: firstName })}</h1><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{complete ? t("dashboardReadyDescription") : t("dashboardIncompleteDescription", { completion })}</p></div>
@@ -87,6 +88,10 @@ export function DashboardContent() {
     </Reveal>
 
     <Reveal delay={0.08}>
+      <DashboardAssistantEntry t={t} />
+    </Reveal>
+
+    <Reveal delay={0.16}>
       {priorityDraft ? <ContinueApplicationCard application={priorityDraft} language={language} t={t} /> : <section className="grid gap-3 sm:grid-cols-3" aria-label={t("dashboardSummary")}>
         <SummaryLink href="/profile" icon={CheckCircle2} title={complete ? t("profileReady") : t("profileIncomplete")} detail={t("completePercent", { completion })} action={complete ? t("view") : t("completeProfile")} tone={complete ? "text-emerald-600" : "text-amber-600"} />
         <SummaryLink href="/applications" icon={FileText} title={t("applications")} detail={applicationSummary} action={t("view")} tone="text-primary" />
@@ -94,24 +99,34 @@ export function DashboardContent() {
       </section>}
     </Reveal>
 
-    <Reveal delay={0.16}>
+    <Reveal delay={0.24}>
       <section aria-labelledby="recent-applications-heading">
         <SectionHeader id="recent-applications-heading" title={t("recentApplications")} href="/applications" action={t("viewAll")} />
         {recentApplications.length === 0 ? <div className="rounded-xl border border-dashed bg-card px-5 py-6"><p className="font-medium">{t("dashboardNoApplications")}</p><p className="mt-1 text-sm text-muted-foreground">{t("dashboardNoApplicationsDescription")}</p><LinkButton href="/services" size="sm" className="mt-4">{t("browseServices")} <ArrowRight aria-hidden="true" /></LinkButton></div> : <div className="overflow-hidden rounded-xl border bg-card">{recentApplications.map((application, index) => { const service = serviceById.get(application.service_id); const serviceName = localizeServiceName(application.service_id, application.service_name, language); return <Link key={application.id} href={`/applications/${application.id}`} className={`group flex min-h-20 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${index > 0 ? "border-t" : ""}`}><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{serviceName}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{service?.category ?? application.department}</p></div><div className="flex shrink-0 items-center gap-2 sm:gap-3"><ApplicationStatusBadge status={application.status} /><time className="hidden text-xs text-muted-foreground sm:block" dateTime={application.updated_at}>{formatDate(application.submitted_at ?? application.updated_at)}</time><ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></div></Link>; })}</div>}
       </section>
     </Reveal>
 
-    <Reveal delay={0.24}>
+    <Reveal delay={0.32}>
       <section aria-labelledby="popular-services-heading">
         <SectionHeader id="popular-services-heading" title={t("popularServices")} href="/services" action={t("viewAllServices")} />
         <div className="overflow-hidden rounded-xl border bg-card">{popularServices.map((service, index) => { const Icon = serviceIcon(service.category); return <Link key={service.id} href={`/services/${service.id}`} className={`group grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5 ${index > 0 ? "border-t" : ""}`}><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" aria-hidden="true" /></span><div className="min-w-0"><h3 className="line-clamp-2 text-sm font-semibold leading-5">{service.name}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">{service.category}</p></div><span className="flex items-center gap-1 text-xs font-medium text-primary">{t("view")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></span></Link>; })}</div>
       </section>
     </Reveal>
-  </div>;
+  </div><CitizenAssistant /></>;
+}
+
+function DashboardAssistantEntry({ t }: { t: ReturnType<typeof useCitizenPreferences>["t"] }) {
+  const openAssistant = (prompt?: string) => window.dispatchEvent(new CustomEvent("citizen-assistant:open", { detail: { prompt } }));
+  const suggestions = [t("assistantPromptIncome"), t("assistantPromptEligibility"), t("assistantPromptKisan"), t("assistantPromptTrack")];
+  return <section className="assistant-entry" aria-labelledby="dashboard-assistant-heading">
+    <div className="flex items-start gap-3"><span className="assistant-entry-icon"><Sparkles className="size-4" aria-hidden="true" /></span><div><h2 id="dashboard-assistant-heading" className="text-base font-semibold tracking-tight">{t("governmentServicesAssistant")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("assistantEntryDescription")}</p></div></div>
+    <button type="button" className="assistant-entry-composer" onClick={() => openAssistant()} aria-label={t("openAssistant")}><Sparkles className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="flex-1 text-left text-sm text-muted-foreground">{t("assistantEntryPlaceholder")}</span><span className="assistant-entry-send"><Send className="size-4" aria-hidden="true" /></span></button>
+    <div className="flex flex-wrap gap-2" aria-label={t("assistantSuggestions")}>{suggestions.map((prompt) => <button key={prompt} type="button" className="assistant-entry-chip" onClick={() => openAssistant(prompt)}>{prompt}</button>)}</div>
+  </section>;
 }
 
 function SummaryLink({ href, icon: Icon, title, detail, action, tone }: { href: string; icon: typeof CheckCircle2; title: string; detail: string; action: string; tone: string }) {
-  return <Link href={href} className="group flex min-h-20 items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className={`size-5 shrink-0 ${tone}`} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{detail}</p></div><span className="sr-only">{action}</span><ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></Link>;
+  return <Link href={href} className="group flex min-h-20 items-center gap-3 rounded-xl border bg-card px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon className={`size-5 shrink-0 ${tone}`} aria-hidden="true" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{title}</p><p className="truncate text-xs text-muted-foreground">{detail}</p></div><span className="sr-only">{action}</span><ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5" aria-hidden="true" /></Link>;
 }
 
 function ContinueApplicationCard({ application, language, t }: { application: ApplicationSummary; language: Language; t: ReturnType<typeof useCitizenPreferences>["t"] }) {

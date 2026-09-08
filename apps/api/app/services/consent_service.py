@@ -26,8 +26,21 @@ class ApplicationIncompleteForConsentError(Exception):
 ConsentAdditionalDataRequiredError = ApplicationIncompleteForConsentError
 
 
+class ApplicationNotEligibleForConsentError(Exception):
+    pass
+
+
 def grant_consent(db: Session, application_id: str) -> Consent:
     application = application_engine.get_application(db, application_id)
+    if application.status in {
+        ApplicationStatus.SUBMITTED,
+        ApplicationStatus.PROCESSING,
+        ApplicationStatus.COMPLETED,
+        ApplicationStatus.REJECTED,
+        ApplicationStatus.CANCELLED,
+    }:
+        raise ApplicationNotEligibleForConsentError
+    existing = db.scalar(select(Consent).where(Consent.application_id == application.id))
     missing_profile_fields, missing_documents, missing_fields = (
         application_engine.determine_missing_requirements(db, application)
     )
@@ -35,6 +48,15 @@ def grant_consent(db: Session, application_id: str) -> Consent:
         raise ApplicationIncompleteForConsentError(
             missing_profile_fields, missing_documents, missing_fields
         )
+    if existing is not None and existing.status == ConsentStatus.GRANTED:
+        if application.status in {
+            ApplicationStatus.READY_FOR_REVIEW,
+            ApplicationStatus.PAYMENT_REQUIRED,
+        }:
+            return existing
+        raise ApplicationNotEligibleForConsentError
+    if application.status != ApplicationStatus.CONSENT_REQUIRED:
+        raise ApplicationNotEligibleForConsentError
 
     data_categories = [
         *application.service.required_profile_fields,
@@ -70,7 +92,7 @@ def grant_consent(db: Session, application_id: str) -> Consent:
         if application.service.name.lower().endswith("application")
         else f"{application.service.name} Application"
     )
-    consent = db.scalar(select(Consent).where(Consent.application_id == application.id))
+    consent = existing
     if consent is None:
         consent = Consent(
             user_id=application.user_id,

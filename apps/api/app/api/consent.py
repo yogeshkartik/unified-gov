@@ -34,3 +34,11 @@ def grant_application_consent(
                 "missing_fields": error.missing_fields,
             },
         ) from error
+    except consent_service.ApplicationNotEligibleForConsentError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "APPLICATION_NOT_ELIGIBLE_FOR_CONSENT",
+                "message": "This application cannot receive consent in its current stage.",
+            },
+        ) from error

@@ -12,7 +12,7 @@ from app.models.application import Application, ApplicationAnswer, ApplicationDo
 from app.models.consent import Consent, ConsentStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.profile import DocumentSource, DocumentType, Profile, User
-from app.models.service import Service, ServiceField, ServiceFieldType
+from app.models.service import GovernmentLevel, Service, ServiceField, ServiceFieldType, ServiceStatus
 from app.schemas.application import (
     AdditionalDataUpdate,
     ApplicationDetailResponse,
@@ -21,6 +21,7 @@ from app.schemas.application import (
 )
 from app.services.profile_service import get_demo_user
 from app.services.service_catalog import ServiceNotFoundError, get_service
+from app.services.recommendations import permanent_state_code
 
 
 class ApplicationNotFoundError(Exception):
@@ -41,12 +42,24 @@ class ApplicationDeletionNotAllowedError(Exception):
     pass
 
 
+class ServiceNotAvailableError(Exception): pass
+class ServiceJurisdictionError(Exception): pass
+class ApplicationNotEditableError(Exception): pass
+class ApplicationFieldNotFoundError(Exception): pass
+class ApplicationFieldNotApplicableError(Exception): pass
+
+
 ACTIONABLE_STATUSES = {
     ApplicationStatus.DRAFT,
     ApplicationStatus.ADDITIONAL_INFO_REQUIRED,
     ApplicationStatus.CONSENT_REQUIRED,
     ApplicationStatus.READY_FOR_REVIEW,
     ApplicationStatus.PAYMENT_REQUIRED,
+}
+EDITABLE_STATUSES = {
+    ApplicationStatus.DRAFT,
+    ApplicationStatus.ADDITIONAL_INFO_REQUIRED,
+    ApplicationStatus.CONSENT_REQUIRED,
 }
 
 
@@ -75,13 +88,46 @@ def create_application(db: Session, service_id: str) -> ApplicationEngineRespons
     return build_engine_response(db, application.id)
 
 
+def create_or_resume_application(db: Session, service_id: str) -> tuple[str, ApplicationEngineResponse]:
+    """Idempotently find an unfinished normal application or create one."""
+    service = get_service(db, service_id)
+    if service.status != ServiceStatus.OPEN:
+        raise ServiceNotAvailableError
+    user = get_demo_user(db)
+    # Serialize starts for this citizen on PostgreSQL so concurrent button retries
+    # cannot both observe an empty draft set. SQLite safely ignores FOR UPDATE.
+    db.scalar(select(User.id).where(User.id == user.id).with_for_update())
+    if service.government_level == GovernmentLevel.STATE:
+        profile = user.profile
+        if profile is None or permanent_state_code(profile) != service.jurisdiction_code:
+            raise ServiceJurisdictionError
+    existing = db.scalar(
+        select(Application)
+        .where(
+            Application.user_id == user.id,
+            Application.service_id == service.id,
+            Application.status.in_(ACTIONABLE_STATUSES),
+        )
+        .order_by(Application.updated_at.desc())
+    )
+    if existing is not None:
+        return "RESUMED", build_engine_response(db, existing.id)
+    return "CREATED", create_application(db, service.id)
+
+
 def save_additional_data(
     db: Session, application_id: str, payload: AdditionalDataUpdate
 ) -> ApplicationEngineResponse:
     application = get_application(db, application_id)
+    if application.status not in EDITABLE_STATUSES:
+        raise ApplicationNotEditableError
     fields_by_key = {field.key: field for field in application.service.fields}
     answers = normalize_answers(payload.answers, fields_by_key)
     errors = validate_answers(answers, fields_by_key)
+    for key, value in answers.items():
+        field = fields_by_key.get(key)
+        if field is not None and field.required and not has_value(value):
+            errors[key] = "This field is required."
     if errors:
         raise InvalidApplicationFieldsError(errors)
 
@@ -102,6 +148,21 @@ def save_additional_data(
     )
     db.commit()
     return build_engine_response(db, application.id)
+
+
+def set_application_field(db: Session, application_id: str, field_key: str, value: Any) -> tuple[Any, ApplicationEngineResponse]:
+    """Validate and upsert one canonical service answer in the normal answer store."""
+    application = get_application(db, application_id)
+    if application.status not in EDITABLE_STATUSES:
+        raise ApplicationNotEditableError
+    fields_by_key = {field.key: field for field in application.service.fields}
+    field = fields_by_key.get(field_key)
+    if field is None:
+        raise ApplicationFieldNotFoundError
+    if field not in active_service_fields(application.service.fields, application.answers_by_key):
+        raise ApplicationFieldNotApplicableError
+    response = save_additional_data(db, application.id, AdditionalDataUpdate(answers={field_key: value}))
+    return response.answers[field_key], response
 
 
 def get_application(db: Session, application_id: str) -> Application:
@@ -304,7 +365,12 @@ def has_profile_data(user: User, field: str) -> bool:
 
 
 def required_field_keys(fields: list[ServiceField], answers: dict[str, Any]) -> list[str]:
-    return [field.key for field in fields if field.required and not has_value(answers.get(field.key))]
+    return [field.key for field in active_service_fields(fields, answers) if field.required and not has_value(answers.get(field.key))]
+
+
+def active_service_fields(fields: list[ServiceField], answers: dict[str, Any]) -> list[ServiceField]:
+    """Single applicability seam; the current ServiceField schema has no conditions."""
+    return fields
 
 
 def has_value(value: Any) -> bool:

@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
@@ -123,7 +124,9 @@ async def save_upload(
     commit: bool = True,
 ) -> Document:
     document_type = canonical_document_type(document_type)
-    filename = upload.filename or "upload"; extension = Path(filename).suffix.lower(); expected_mime = ALLOWED_FILES.get(extension)
+    filename = upload.filename or "upload"
+    extension = Path(filename).suffix.lower()
+    expected_mime = ALLOWED_FILES.get(extension)
     if expected_mime is None or upload.content_type != expected_mime:
         raise InvalidDocumentError("UNSUPPORTED_FILE_TYPE", "Only PDF, JPG, JPEG, PNG and WEBP files are supported.")
     category_labels = {item.value: item.value.replace("_", " ").title() for item in DocumentType}
@@ -131,43 +134,68 @@ async def save_upload(
     if document_type == DocumentType.OTHER and not custom_name:
         raise InvalidDocumentError("DOCUMENT_NAME_REQUIRED", "Document name is required for the Other category.")
     safe_name = custom_name if document_type == DocumentType.OTHER else category_labels[document_type.value]
-    content = await upload.read()
+    # Avoid an AnyIO worker tied to a previous short-lived event loop when a
+    # caller supplies an actual in-memory stream (for example in tests).
+    file_object = getattr(upload, "file", None)
+    content = file_object.read() if isinstance(file_object, BytesIO) else await upload.read()
+    if not content:
+        raise InvalidDocumentError("EMPTY_FILE", "The selected file is empty.")
     if len(content) > MAX_UPLOAD_BYTES: raise InvalidDocumentError("FILE_TOO_LARGE", "Files must be 5 MB or smaller.")
-    if document_type == DocumentType.PHOTOGRAPH and not is_image_upload(content, extension):
+    if not has_valid_file_signature(content, extension):
+        raise InvalidDocumentError("INVALID_FILE_CONTENT", "The file contents do not match its format.")
+    if document_type == DocumentType.PHOTOGRAPH and extension == ".pdf":
         raise InvalidDocumentError("UNSUPPORTED_PHOTOGRAPH", "A Photograph must be a JPG, JPEG, PNG or WEBP image.")
-    stored_filename = f"{uuid4()}{extension}"; upload_dir = Path(settings.upload_dir); upload_dir.mkdir(parents=True, exist_ok=True); (upload_dir / stored_filename).write_bytes(content)
     user = get_demo_user(db)
+    stored_filename = f"{uuid4()}{extension}"
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    (upload_dir / stored_filename).write_bytes(content)
     if document_type == DocumentType.PHOTOGRAPH:
         old = db.scalar(select(Document).where(Document.user_id == user.id, Document.document_type == DocumentType.PHOTOGRAPH))
         if old is not None:
-            _delete_file(old.stored_filename)
+            old_stored_filename = old.stored_filename
             old.name = old.display_name = "Photograph"
             old.storage_key = old.stored_filename = stored_filename
             old.original_filename = filename
             old.mime_type = upload.content_type
             old.size_bytes = len(content)
-            if commit:
-                db.commit()
-                db.refresh(old)
-            else:
-                db.flush()
-            return old
+            try:
+                if commit:
+                    db.commit()
+                    db.refresh(old)
+                    _delete_file(old_stored_filename)
+                else:
+                    db.flush()
+                    old._replaced_stored_filename = old_stored_filename
+                return old
+            except Exception:
+                _delete_file(stored_filename)
+                raise
     document = Document(user_id=user.id, name=safe_name, display_name=safe_name, document_type=document_type, source=DocumentSource.PROFILE_UPLOAD, storage_key=stored_filename, stored_filename=stored_filename, original_filename=filename, mime_type=upload.content_type, size_bytes=len(content), is_imported=True)
-    db.add(document)
-    if commit:
-        db.commit()
-        db.refresh(document)
-    else:
-        db.flush()
-    return document
+    try:
+        db.add(document)
+        if commit:
+            db.commit()
+            db.refresh(document)
+        else:
+            db.flush()
+        return document
+    except Exception:
+        _delete_file(stored_filename)
+        raise
 
 
 async def replace_upload(db: Session, document_id: str, upload: UploadFile) -> Document:
     document = document_for_user(db, document_id); filename = upload.filename or "upload"; extension = Path(filename).suffix.lower(); expected_mime = ALLOWED_FILES.get(extension)
     if expected_mime is None or upload.content_type != expected_mime: raise InvalidDocumentError("UNSUPPORTED_FILE_TYPE", "Only PDF, JPG, JPEG, PNG and WEBP files are supported.")
-    content = await upload.read()
+    file_object = getattr(upload, "file", None)
+    content = file_object.read() if isinstance(file_object, BytesIO) else await upload.read()
+    if not content:
+        raise InvalidDocumentError("EMPTY_FILE", "The selected file is empty.")
     if len(content) > MAX_UPLOAD_BYTES: raise InvalidDocumentError("FILE_TOO_LARGE", "Files must be 5 MB or smaller.")
-    if document.document_type == DocumentType.PHOTOGRAPH and not is_image_upload(content, extension):
+    if not has_valid_file_signature(content, extension):
+        raise InvalidDocumentError("INVALID_FILE_CONTENT", "The file contents do not match its format.")
+    if document.document_type == DocumentType.PHOTOGRAPH and extension == ".pdf":
         raise InvalidDocumentError("UNSUPPORTED_PHOTOGRAPH", "A Photograph must be a JPG, JPEG, PNG or WEBP image.")
     stored_filename = f"{uuid4()}{extension}"; upload_dir = Path(settings.upload_dir); upload_dir.mkdir(parents=True, exist_ok=True); (upload_dir / stored_filename).write_bytes(content); _delete_file(document.stored_filename)
     document.storage_key = document.stored_filename = stored_filename; document.original_filename = filename; document.mime_type = upload.content_type; document.size_bytes = len(content); db.commit(); db.refresh(document); return document
@@ -207,3 +235,9 @@ def is_image_upload(content: bytes, extension: str) -> bool:
     if signature is None or not content.startswith(signature):
         return False
     return extension != ".webp" or content[8:12] == b"WEBP"
+
+
+def has_valid_file_signature(content: bytes, extension: str) -> bool:
+    if extension == ".pdf":
+        return content.startswith(b"%PDF-")
+    return is_image_upload(content, extension)
