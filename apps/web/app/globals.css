@@ -148,3 +148,10 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .assistant-entry-chip { border: 1px solid var(--border); border-radius: 999px; background: color-mix(in oklab, var(--card) 88%, oklch(0.94 0.04 250)); padding: .4rem .75rem; font-size: .75rem; color: var(--muted-foreground); transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease; }
 .assistant-entry-chip:hover, .assistant-entry-chip:focus-visible { border-color: color-mix(in oklab, var(--primary) 32%, var(--border)); background: color-mix(in oklab, var(--primary) 8%, var(--card)); color: var(--foreground); outline: none; }
 @keyframes assistant-glow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.assistant-modal-composer { border: 1px solid color-mix(in oklab, var(--primary) 16%, var(--border)); border-radius: 1rem; background: color-mix(in oklab, var(--card) 92%, oklch(0.94 0.04 250)); padding: .5rem .625rem; box-shadow: 0 3px 12px oklch(0.47 0.17 257 / 7%); transition: border-color 180ms ease, box-shadow 180ms ease; }
+.assistant-modal-composer:focus-within { border-color: color-mix(in oklab, var(--primary) 42%, var(--border)); box-shadow: 0 0 0 3px oklch(0.72 0.13 215 / 14%), 0 5px 16px oklch(0.47 0.17 257 / 10%); }
+.assistant-thinking-dots { display: inline-flex; align-items: center; gap: 3px; height: 1rem; }
+.assistant-thinking-dots i { width: 4px; height: 4px; border-radius: 999px; background: var(--primary); animation: assistant-thinking 1.1s ease-in-out infinite; }
+.assistant-thinking-dots i:nth-child(2) { animation-delay: 140ms; }
+.assistant-thinking-dots i:nth-child(3) { animation-delay: 280ms; }
+@keyframes assistant-thinking { 0%, 100% { opacity: .3; transform: translateY(1px); } 50% { opacity: 1; transform: translateY(-1px); } }
