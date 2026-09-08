@@ -45,7 +45,7 @@ def test_get_profile_returns_the_synthetic_demo_citizen(db: Session) -> None:
 
     assert profile.full_name == "Rahul Kumar"
     assert profile.email == "rahul.kumar@example.com"
-    assert profile.addresses[0].city == "New Delhi"
+    assert profile.addresses[0].city == "Bengaluru"
 
 
 def test_update_profile_persists_changes(db: Session) -> None:

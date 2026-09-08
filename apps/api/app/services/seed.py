@@ -73,12 +73,13 @@ def seed_demo_citizen(db: Session) -> None:
     user.addresses.append(
         Address(
             type=AddressType.PERMANENT,
-            line1="42 Ashoka Road",
-            line2=None,
-            city="New Delhi",
-            district="Central Delhi",
-            state="Delhi",
-            pincode="110001",
+            line1="12, 5th Main Road",
+            line2="Indiranagar",
+            city="Bengaluru",
+            district="Bengaluru Urban",
+            state="Karnataka",
+            pincode="560038",
+            country="India",
         )
     )
     user.documents.extend(
@@ -505,13 +506,18 @@ def sync_citizen_display_data(db: Session, user: User) -> None:
         user.profile.father_name = "Arun Kumar"
         user.profile.mother_name = "Sunita Kumar"
         user.profile.email = "rahul.kumar@example.com"
-    if user.addresses:
-        address = user.addresses[0]
-        address.line1 = "42 Ashoka Road"
-        address.city = "New Delhi"
-        address.district = "Central Delhi"
-        address.state = "Delhi"
-        address.pincode = "110001"
+    permanent_address = next(
+        (address for address in user.addresses if address.type == AddressType.PERMANENT),
+        None,
+    )
+    if permanent_address is not None:
+        permanent_address.line1 = "12, 5th Main Road"
+        permanent_address.line2 = "Indiranagar"
+        permanent_address.city = "Bengaluru"
+        permanent_address.district = "Bengaluru Urban"
+        permanent_address.state = "Karnataka"
+        permanent_address.pincode = "560038"
+        permanent_address.country = "India"
     if user.education_records:
         education = user.education_records[0]
         education.board_or_university = "Central Board of Secondary Education"

@@ -85,6 +85,7 @@ def test_active_required_document_inventory_is_uploadable_and_has_single_file_se
 def test_candidate_listing_is_requirement_focused_owned_and_backend_ordered(db: Session) -> None:
     application = complete_pm_kisan_field(db)
     licence = owned_document(db, application, "DRIVING_LICENCE", "My driving licence")
+    second_licence = owned_document(db, application, "DRIVING_LICENCE", "My other driving licence")
     owned_document(db, application, DocumentType.INCOME_CERTIFICATE, "Unrelated income")
     foreign = User(email="foreign-documents@example.test", auth_state="DEMO")
     db.add(foreign)
@@ -103,7 +104,7 @@ def test_candidate_listing_is_requirement_focused_owned_and_backend_ordered(db: 
 
     assert request is not None
     assert request.requirement.document_type == "IDENTITY_DOCUMENT"
-    assert [item.document_id for item in request.existing_documents] == [licence.id]
+    assert {item.document_id for item in request.existing_documents} == {licence.id, second_licence.id}
     assert [item.document_id for item in request.digilocker_options] == ["mock-driving-licence"]
     assert request.upload_allowed is True
     assert application_progress.get_application_progress(db, application.id).documents.missing[0].requirement_id == request.requirement.id
@@ -130,6 +131,7 @@ def test_listing_rejects_foreign_application_and_waits_for_fields(db: Session) -
 def test_owned_compatible_attachment_is_canonical_persistent_and_idempotent(db: Session) -> None:
     application = complete_pm_kisan_field(db)
     document = owned_document(db, application, "DRIVING_LICENCE", "Driving licence")
+    owned_document(db, application, "DRIVING_LICENCE", "Another driving licence")
     requirement = application_document_service.get_next_document_request(db, application.id).requirement
 
     result = attach_document_action(
@@ -169,15 +171,34 @@ def test_owned_compatible_attachment_is_canonical_persistent_and_idempotent(db: 
     assert application_document_service.get_next_document_request(db, resumed.id).requirement.document_type == "OTHER"
 
 
-def test_library_existence_foreign_ids_wrong_requirements_and_incompatible_types_fail(
+def test_saved_document_reuse_is_owned_unambiguous_and_idempotent(
     db: Session,
 ) -> None:
     application = complete_pm_kisan_field(db)
-    request = application_document_service.get_next_document_request(db, application.id)
     incompatible = owned_document(db, application, DocumentType.INCOME_CERTIFICATE, "Income")
     compatible = owned_document(db, application, "DRIVING_LICENCE", "Licence")
-    # Library existence alone is never completion.
-    assert application_progress.get_application_progress(db, application.id).documents.satisfied == []
+    # A sole compatible My Documents item is reused before the Assistant can
+    # render a request. An incompatible saved item remains unused.
+    progress = application_progress.get_application_progress(db, application.id)
+    assert progress.documents.satisfied[0].document_id == compatible.id
+    assert application_document_service.get_next_document_request(db, application.id).requirement.document_type == "OTHER"
+    assert db.scalar(
+        select(func.count()).select_from(ApplicationDocument).where(
+            ApplicationDocument.application_id == application.id,
+            ApplicationDocument.document_id == compatible.id,
+        )
+    ) == 1
+
+    # Recalculating progress must not add a duplicate attachment.
+    application_progress.get_application_progress(db, application.id)
+    assert db.scalar(
+        select(func.count()).select_from(ApplicationDocument).where(
+            ApplicationDocument.application_id == application.id,
+            ApplicationDocument.document_id == compatible.id,
+        )
+    ) == 1
+
+    request = application_document_service.get_next_document_request(db, application.id)
 
     other_service_requirement = db.scalar(
         select(ServiceDocumentRequirement)

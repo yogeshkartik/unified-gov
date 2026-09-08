@@ -105,7 +105,7 @@ def test_progress_enforces_ownership_and_reports_live_profile_and_fields(db: Ses
         get_application_progress(db, foreign.id)
 
 
-def test_document_progress_requires_application_attachment_not_library_presence(db: Session) -> None:
+def test_document_progress_reuses_unambiguous_saved_documents(db: Session) -> None:
     _, created = application_engine.create_or_resume_application(db, "NATIONAL_SCHOLARSHIP_001")
     initial = get_application_progress(db, created.id)
     assert {item.document_type for item in initial.documents.missing} == {"INCOME_CERTIFICATE", "MARKSHEET"}
@@ -115,8 +115,10 @@ def test_document_progress_requires_application_attachment_not_library_presence(
         source=DocumentSource.PROFILE_UPLOAD, storage_key="test/marksheet.pdf",
     )
     db.add(marksheet); db.commit()
-    # Merely existing in My Documents is not enough.
-    assert "MARKSHEET" in {item.document_type for item in get_application_progress(db, created.id).documents.missing}
+    # A sole compatible saved document is attached before progress is returned.
+    updated = get_application_progress(db, created.id)
+    assert "MARKSHEET" not in {item.document_type for item in updated.documents.missing}
+    assert any(item.document_id == marksheet.id for item in updated.documents.satisfied)
     attach_my_documents(db, created.id, [marksheet.id])
     updated = get_application_progress(db, created.id)
     assert {item.document_type for item in updated.documents.satisfied} == {"MARKSHEET"}

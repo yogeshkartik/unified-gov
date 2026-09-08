@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models.profile import Document, DocumentType, Education, User
-from app.models.service import Service
+from app.models.profile import AddressType, Document, DocumentType, Education, User
+from app.models.service import GovernmentLevel, Service
+from app.services.recommendations import permanent_state_code
+from app.services.service_catalog import list_services
 from app.services import seed
 from app.services.profile_service import DEMO_USER_EMAIL
 
@@ -43,3 +45,13 @@ def test_seed_main_uses_configured_session_and_is_idempotent(tmp_path, monkeypat
         assert marksheet is not None
         assert marksheet.original_filename == seed.SEED_GENERIC_DOCUMENT_FILENAME
         assert (Path(settings.upload_dir) / str(marksheet.stored_filename)).is_file()
+        permanent = next(address for address in user.addresses if address.type == AddressType.PERMANENT)
+        assert (permanent.line1, permanent.line2, permanent.city, permanent.district) == (
+            "12, 5th Main Road", "Indiranagar", "Bengaluru", "Bengaluru Urban"
+        )
+        assert (permanent.state, permanent.pincode, permanent.country) == ("Karnataka", "560038", "India")
+        assert permanent_state_code(user.profile) == "KA"
+        visible_services = list_services(db, state_code="KA")
+        assert any(service.government_level == GovernmentLevel.CENTRAL for service in visible_services)
+        assert any(service.government_level == GovernmentLevel.STATE and service.jurisdiction_code == "KA" for service in visible_services)
+        assert all(service.government_level != GovernmentLevel.STATE or service.jurisdiction_code == "KA" for service in visible_services)

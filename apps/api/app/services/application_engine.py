@@ -296,6 +296,12 @@ def get_application_detail(db: Session, application_id: str) -> ApplicationDetai
 
 
 def determine_missing_requirements(db: Session, application: Application) -> tuple[list[str], list[str], list[str]]:
+    # Resolve the same unambiguous saved-document choice used by the normal
+    # consent form before reporting any requirement as missing. This keeps the
+    # Assistant from asking for an upload that the citizen has already saved.
+    from app.services import application_document_service
+
+    application_document_service.auto_attach_compatible_my_documents(db, application)
     user = db.scalar(
         select(User)
         .where(User.id == application.user_id)
